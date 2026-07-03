@@ -65,10 +65,12 @@ app/src/androidTest/java/com/expensegarden/app/
 
 - [ ] **Step 2: Enable USB debugging on your phone.** Settings → About phone → tap "Build number" 7× → Developer options → enable "USB debugging". Plug in via USB, accept the RSA prompt.
 
-- [ ] **Step 3: Verify adb sees the device**
+- [ ] **Step 3: Create an emulator (recommended default for Tasks 1–11).** Android Studio → Device Manager → Create Virtual Device → Pixel 8 → an ARM64 API 35 image → Finish, then boot it. `installDebug` and `connectedDebugAndroidTest` treat a running emulator exactly like a plugged-in phone. QR scanning works on it too: Extended Controls (⋯) → Camera lets you set a custom image as a poster in the virtual scene — generate a QR for your own VPA (`brew install qrencode` or any UPI QR generator) and point the in-app scanner at it. The only thing the emulator cannot do is the real payment leg (no UPI apps run on it) — that's Task 12, on the phone.
+
+- [ ] **Step 4: Verify adb sees a target (emulator and/or phone)**
 
 Run: `~/Library/Android/sdk/platform-tools/adb devices`
-Expected: one line with your device serial and `device` (not `unauthorized`).
+Expected: one line per target ending in `device` (not `unauthorized`). The physical phone is only strictly required from Task 12.
 
 Optionally add to PATH in `~/.zshrc`: `export PATH="$PATH:$HOME/Library/Android/sdk/platform-tools"`
 
