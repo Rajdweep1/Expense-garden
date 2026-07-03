@@ -69,7 +69,13 @@ and restraint over service sprawl.
    Unresolved `pending_confirm` rows re-prompt on next launch.
 7. Confirmed transaction emits `transaction.logged` → a seed is planted. **Logging always grows something.**
 
-Manual entry exists for cash/everything else and follows the same path from step 3.
+**Manual entry is a first-class path, not a fallback** — cash, offline payments,
+anything the QR flow missed. Same amount/category/payee UI as step 3, but it is
+post-hoc: the money is already spent, so it skips the gate *decision* (the persona
+may still quip on save) and the row goes straight to `logged` — no `pending_confirm`,
+no UPI round-trip. `occurred_at` is user-settable for backdated logs ("paid this
+morning, logging tonight"). Game rules apply identically: a manual log plants a seed
+like any other.
 
 ### 5.2 Review loop (weekly)
 
