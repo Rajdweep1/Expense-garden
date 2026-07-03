@@ -21,6 +21,11 @@
 
 **Commit rule (user preference):** plain commit messages, **no Co-Authored-By lines, never push.**
 
+**Guardrails for the implementing agent:**
+- Do NOT upgrade any version, add any dependency, or "fix" deprecation warnings unless a step says so. The pinned matrix is deliberate; deprecations called out in steps are known-acceptable.
+- If a step's actual output doesn't match its Expected line, STOP and report — do not improvise a workaround.
+- Implement only what the task lists. No extra abstractions, no speculative helpers, no renames.
+
 ---
 
 ## File structure
@@ -81,7 +86,7 @@ Optionally add to PATH in `~/.zshrc`: `export PATH="$PATH:$HOME/Library/Android/
 **Files:**
 - Create: `settings.gradle.kts`, `build.gradle.kts`, `gradle.properties`, `gradle/libs.versions.toml`, `app/build.gradle.kts`, `app/src/main/AndroidManifest.xml`, `app/src/main/java/com/expensegarden/app/MainActivity.kt`, `.gitignore`
 
-Create the Gradle wrapper by opening the folder in Android Studio after writing the files (it will offer to add the wrapper), or run `gradle wrapper --gradle-version 8.7` if you have Gradle installed via Homebrew (`brew install gradle`).
+Create the Gradle wrapper right after writing the files: `brew install gradle && gradle wrapper --gradle-version 8.7` (one-time bootstrap; the generated `gradlew` + wrapper jar get committed, and brew's gradle is never used again). Opening the folder in Android Studio also generates it, but that path isn't scriptable.
 
 - [ ] **Step 1: Write `.gitignore`**
 
@@ -219,6 +224,10 @@ android {
     }
 }
 
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -248,6 +257,7 @@ The `<queries>` block is load-bearing: Android 11+ package visibility hides UPI 
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="true" />
 
     <queries>
@@ -304,7 +314,7 @@ class MainActivity : ComponentActivity() {
 
 - [ ] **Step 9: Build and run on device**
 
-Open the folder in Android Studio (let it add the Gradle wrapper + sync), then:
+With the wrapper generated (see task preamble), from the repo root:
 
 Run: `./gradlew assembleDebug`
 Expected: `BUILD SUCCESSFUL`
@@ -452,6 +462,10 @@ class UpiUriParserTest {
         assertEquals("x@upi", p?.vpa)
         assertNull(p?.amountPaise)
     }
+    @Test fun `malformed percent encoding does not crash`() {
+        val p = UpiUriParser.parse("upi://pay?pa=x@upi&pn=100%offer")
+        assertEquals("x@upi", p?.vpa)
+    }
 }
 ```
 
@@ -486,7 +500,7 @@ object UpiUriParser {
             val idx = pair.indexOf('=')
             if (idx <= 0) return@mapNotNull null
             val key = pair.substring(0, idx).lowercase()
-            val value = URLDecoder.decode(pair.substring(idx + 1), "UTF-8")
+            val value = safeDecode(pair.substring(idx + 1))
             key to value
         }.toMap()
         val vpa = params["pa"]?.takeIf { it.isNotBlank() } ?: return null
@@ -497,13 +511,20 @@ object UpiUriParser {
             note = params["tn"]?.takeIf { it.isNotBlank() },
         )
     }
+
+    /** Merchant QRs sometimes carry raw '%' — never let decoding crash a scan. */
+    private fun safeDecode(s: String): String = try {
+        URLDecoder.decode(s, "UTF-8")
+    } catch (e: IllegalArgumentException) {
+        s
+    }
 }
 ```
 
 - [ ] **Step 4: Run to verify pass**
 
 Run: `./gradlew test --tests "com.expensegarden.app.capture.UpiUriParserTest"`
-Expected: PASS (7 tests).
+Expected: PASS (8 tests).
 
 - [ ] **Step 5: Commit**
 
@@ -1135,7 +1156,7 @@ class LedgerRepository(private val db: AppDatabase) {
     private fun currentMonthBounds(): Pair<Long, Long> {
         val ym = YearMonth.now(zone)
         val from = ym.atDay(1).atStartOfDay(zone).toInstant().toEpochMilli()
-        val to = ym.atEndOfMonth().atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli()
+        val to = ym.plusMonths(1).atDay(1).atStartOfDay(zone).toInstant().toEpochMilli() - 1
         return from to to
     }
 
@@ -1201,7 +1222,6 @@ We deliberately don't parse the activity result — PSP apps return it inconsist
 ```kotlin
 package com.expensegarden.app.capture
 
-import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -1219,13 +1239,15 @@ object UpiIntents {
             .appendQueryParameter("cu", "INR")
             .apply { if (!note.isNullOrBlank()) appendQueryParameter("tn", note) }
             .build()
-        return try {
-            context.startActivity(Intent.createChooser(Intent(Intent.ACTION_VIEW, uri), "Pay with"))
-            true
-        } catch (e: ActivityNotFoundException) {
+        val pay = Intent(Intent.ACTION_VIEW, uri)
+        // createChooser never throws ActivityNotFoundException — probe explicitly instead.
+        // (resolveActivity's deprecation is acceptable; the replacement needs API 33+.)
+        if (context.packageManager.resolveActivity(pay, 0) == null) {
             Toast.makeText(context, "No UPI app found", Toast.LENGTH_LONG).show()
-            false
+            return false
         }
+        context.startActivity(Intent.createChooser(pay, "Pay with"))
+        return true
     }
 }
 ```
@@ -1259,6 +1281,7 @@ package com.expensegarden.app.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.room.withTransaction
 import com.expensegarden.app.AppContainer
 import com.expensegarden.app.capture.UpiPayee
 import com.expensegarden.app.core.Money
@@ -1360,9 +1383,11 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     fun setOverallBudget(amountPaise: Long?) {
         viewModelScope.launch {
             val month = ledger.currentMonthKey()
-            container.db.budgetDao().deleteOverallForMonth(month)
-            if (amountPaise != null) {
-                container.db.budgetDao().insert(BudgetEntity(categoryId = null, month = month, amountPaise = amountPaise))
+            container.db.withTransaction {
+                container.db.budgetDao().deleteOverallForMonth(month)
+                if (amountPaise != null) {
+                    container.db.budgetDao().insert(BudgetEntity(categoryId = null, month = month, amountPaise = amountPaise))
+                }
             }
         }
     }
@@ -1429,6 +1454,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -1496,7 +1522,7 @@ fun EntryScreen(vm: MainViewModel, onDone: () -> Unit) {
                 readOnly = true,
                 label = { Text("Category") },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryMenuOpen) },
-                modifier = Modifier.menuAnchor().fillMaxWidth(),
+                modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable, true).fillMaxWidth(),
             )
             ExposedDropdownMenu(expanded = categoryMenuOpen, onDismissRequest = { categoryMenuOpen = false }) {
                 categories.forEach { cat ->
@@ -1594,6 +1620,7 @@ package com.expensegarden.app.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -1603,10 +1630,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -1625,7 +1650,6 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(vm: MainViewModel, onScan: () -> Unit, onManual: () -> Unit) {
     val monthSpent by vm.monthSpent.collectAsState()
@@ -1648,7 +1672,22 @@ fun HomeScreen(vm: MainViewModel, onScan: () -> Unit, onManual: () -> Unit) {
                 }
             }
 
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            pending.firstOrNull()?.let { txn ->
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Did ${Money.display(txn.amountPaise)} go through?", style = MaterialTheme.typography.titleMedium)
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Button(onClick = { vm.confirmPending(txn.uuid) }) { Text("Log it") }
+                            OutlinedButton(onClick = { vm.discardPending(txn.uuid) }) { Text("Discard") }
+                        }
+                    }
+                }
+            }
+
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(bottom = 96.dp),
+            ) {
                 items(recent, key = { it.uuid }) { row ->
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Column {
@@ -1670,18 +1709,6 @@ fun HomeScreen(vm: MainViewModel, onScan: () -> Unit, onManual: () -> Unit) {
         ) {
             ExtendedFloatingActionButton(onClick = onScan) { Text("Scan & pay") }
             ExtendedFloatingActionButton(onClick = onManual) { Text("Log manually") }
-        }
-    }
-
-    pending.firstOrNull()?.let { txn ->
-        ModalBottomSheet(onDismissRequest = { /* keep until answered; re-shown next open */ }) {
-            Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Did ${Money.display(txn.amountPaise)} go through?", style = MaterialTheme.typography.titleLarge)
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Button(onClick = { vm.confirmPending(txn.uuid) }) { Text("Log it") }
-                    OutlinedButton(onClick = { vm.discardPending(txn.uuid) }) { Text("Discard") }
-                }
-            }
         }
     }
 
@@ -1836,11 +1863,11 @@ Expected: all unit + instrumented tests pass.
 1. Fresh install (`./gradlew installDebug`). Home shows ₹0.00.
 2. Set a monthly budget via the card (e.g. ₹10,000).
 3. **Manual path:** Log manually → ₹50, "Chaiwala", category Chai & Snacks → Log it. Home shows ₹50.00 and the row.
-4. **QR path, OK severity:** Scan & pay → scan any real UPI QR (a shop's, or generate one for your own VPA) → amount ₹1 → category → Continue to pay → **no gate dialog** (OK skips it) → UPI chooser opens → complete or cancel the ₹1 payment in the UPI app → return to the app → confirm sheet appears → Log it (or Discard if you cancelled). Verify home total.
+4. **QR path, OK severity:** Scan & pay → scan any real UPI QR (a shop's, or generate one for your own VPA) → amount ₹1 → category → Continue to pay → **no gate dialog** (OK skips it) → UPI chooser opens → complete or cancel the ₹1 payment in the UPI app → return to the app → the pending card appears at the top of Home → Log it (or Discard if you cancelled). Verify home total.
 5. **Gate, BREACH:** set budget to ₹100 (spent ₹51 already) → Scan & pay → ₹60 → gate dialog appears with a quip → "Nope, saved" → back home, nothing logged.
 6. **Quip rotation:** repeat step 5 twice — different quip each time.
 7. **Payee memory:** scan the same QR again — category pre-selected from last time.
-8. Kill the app mid-flow after firing an intent (before confirming), reopen — confirm sheet reappears (pending survives restart).
+8. Kill the app mid-flow after firing an intent (before confirming), reopen — the pending card is still there (pending survives restart).
 
 - [ ] **Step 3: Fix anything the script surfaces, then tag**
 
@@ -1857,3 +1884,19 @@ git tag v0.1-capture-core
 - **Spec coverage (1A scope):** capture loop §5.1 → Tasks 3, 4, 7, 9, 11; manual post-hoc path → Tasks 6, 9; gate + silence-on-OK → Tasks 4, 8, 9; quip cache (static seed, LRU, unused-first) → Tasks 5, 6; `game_event` emission §9.2 → Task 6; payee→category learning §8.2 → Task 6; budget (overall only — the 1A trim) → Tasks 5, 8, 10; `breachedAtLogging` weed-rule input §9.3 → Tasks 5, 6, 8. Backdating UI, per-category budgets, dashboard, garden, LLM, FC import → deferred to 1B–1E as headed in the roadmap.
 - **Placeholder scan:** none — every step has complete code or an exact command with expected output.
 - **Type consistency:** `Money.parseToPaise/display/intentAmount`, `UpiPayee(vpa, name, amountPaise, note)`, `Severity.{OK, PACE_WARNING, BREACH}`, `LedgerRepository.Draft`, `GatePrompt(severity, quip)`, `TxnRow` — cross-checked across Tasks 5–11; DAO method names in Task 5 match all call sites in Tasks 6 and 8.
+
+## Hardening review (2026-07-04, pre-execution)
+
+Second pass focused on crash paths, silent misbehavior, and hallucination bait for the implementing agent. Fixes applied above:
+
+1. **Crash:** malformed %-encoding in a merchant QR crashed `URLDecoder.decode` mid-scan → `safeDecode` falls back to the raw value; regression test added (parser suite is now 8 tests).
+2. **Crash-adjacent UX:** `ModalBottomSheet` with a no-op `onDismissRequest` can wedge half-dismissed → pending-confirm is now an inline card pinned above the transaction list (nothing to dismiss; visible while pending exists).
+3. **Dead code / wrong behavior:** `createChooser` never throws `ActivityNotFoundException`, so the "No UPI app found" toast could never fire → explicit `resolveActivity` probe before launching (the manifest `<queries>` block makes UPI handlers visible to it). `resolveActivity`'s deprecation is known-acceptable — its replacement needs API 33+.
+4. **Atomicity:** `setOverallBudget` was delete-then-insert without a transaction → wrapped in `db.withTransaction`.
+5. **Correctness:** month bounds ended at 23:59:59, dropping the last ~1s of each month → end bound is now next-month-start − 1 ms.
+6. **Manifest:** CAMERA permission declared explicitly rather than relying on zxing's manifest merge.
+7. **Build noise:** `exportSchema = true` without `room.schemaLocation` warns every build (bait for an agent to "fix" it wrong) → KSP arg added; `schemas/` gets committed, giving schema history in git.
+8. **Deprecation bait:** no-arg `Modifier.menuAnchor()` is deprecated in Material3 1.3 → switched to `menuAnchor(MenuAnchorType.PrimaryNotEditable, true)`.
+9. **Non-executable instruction:** Gradle wrapper creation was an Android-Studio side effect → now an exact CLI command in the Task 1 preamble.
+10. **Polish:** LazyColumn got `contentPadding(bottom = 96.dp)` so the FABs don't cover the last rows.
+11. **Process:** header gained explicit agent guardrails — no version bumps, no new dependencies, no deprecation chasing, stop-and-report on any Expected-line mismatch.
