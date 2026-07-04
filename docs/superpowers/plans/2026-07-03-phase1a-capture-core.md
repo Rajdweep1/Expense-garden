@@ -147,6 +147,7 @@ room = "2.6.1"
 zxing = "4.3.0"
 junit = "4.13.2"
 androidxJunit = "1.2.1"
+androidxTestRunner = "1.6.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -164,6 +165,7 @@ androidx-room-compiler = { group = "androidx.room", name = "room-compiler", vers
 zxing-embedded = { group = "com.journeyapps", name = "zxing-android-embedded", version.ref = "zxing" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxJunit" }
+androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidxTestRunner" }
 androidx-room-testing = { group = "androidx.room", name = "room-testing", version.ref = "room" }
 
 [plugins]
@@ -245,6 +247,7 @@ dependencies {
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.room.testing)
 }
 ```
@@ -1900,3 +1903,8 @@ Second pass focused on crash paths, silent misbehavior, and hallucination bait f
 9. **Non-executable instruction:** Gradle wrapper creation was an Android-Studio side effect → now an exact CLI command in the Task 1 preamble.
 10. **Polish:** LazyColumn got `contentPadding(bottom = 96.dp)` so the FABs don't cover the last rows.
 11. **Process:** header gained explicit agent guardrails — no version bumps, no new dependencies, no deprecation chasing, stop-and-report on any Expected-line mismatch.
+
+## Execution amendments (2026-07-04, found while executing — approved by Rajdweep)
+
+12. **Missing test runner (Task 5 Step 6):** the androidTest dependency set had no path to `androidx.test:runner` — the Studio template gets it transitively via espresso-core, which this leaner matrix deliberately omits — so `connectedDebugAndroidTest` crashed at instrumentation-bind with `ClassNotFoundException: androidx.test.runner.AndroidJUnitRunner` before running any test. Fix: pin `androidx.test:runner:1.6.2` (same Aug-2024 androidx.test release train as ext-junit 1.2.1 / core 1.6.1) and declare it `androidTestImplementation`. Dependency blocks above amended to match.
+13. **Filtered-test command syntax (Task 2 Step 2):** in Android modules `test` is an umbrella lifecycle task and rejects `--tests`; single-class runs must target the variant task: `./gradlew testDebugUnitTest --tests "..."`. Bare `./gradlew test` (CLAUDE.md, Task 12) is unaffected. The `--tests` commands in Tasks 2–4 were executed with `testDebugUnitTest`.
