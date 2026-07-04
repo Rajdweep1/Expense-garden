@@ -11,11 +11,11 @@
         </intent>
     </queries>
 
-    <!-- android:name=".GardenApp" is added in Task 5 (Application class doesn't exist yet) -->
     <application
         android:label="Expense Garden"
         android:icon="@android:drawable/sym_def_app_icon"
-        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        android:theme="@android:style/Theme.Material.Light.NoActionBar"
+        android:name=".GardenApp">
         <activity
             android:name=".MainActivity"
             android:exported="true">
