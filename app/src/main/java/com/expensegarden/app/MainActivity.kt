@@ -6,10 +6,17 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.IntOffset
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -51,7 +58,12 @@ private fun GardenNav(vm: MainViewModel) {
         }
     }
 
-    NavHost(navController = nav, startDestination = "home") {
+    NavHost(
+        navController = nav,
+        startDestination = "home",
+        enterTransition = { fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMedium)) },
+        exitTransition = { fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMedium)) },
+    ) {
         composable("home") {
             HomeScreen(
                 vm = vm,
@@ -70,7 +82,29 @@ private fun GardenNav(vm: MainViewModel) {
                 },
             )
         }
-        composable("entry") {
+        composable(
+            "entry",
+            // Entry rises like a payment sheet: springy in, brisk non-bouncy out.
+            enterTransition = {
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Up,
+                    animationSpec = spring(
+                        dampingRatio = 0.8f,
+                        stiffness = 380f,
+                        visibilityThreshold = IntOffset.VisibilityThreshold,
+                    ),
+                )
+            },
+            exitTransition = {
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Down,
+                    animationSpec = spring(
+                        stiffness = Spring.StiffnessMedium,
+                        visibilityThreshold = IntOffset.VisibilityThreshold,
+                    ),
+                )
+            },
+        ) {
             EntryScreen(vm = vm, onDone = { nav.popBackStack("home", inclusive = false) })
         }
     }
