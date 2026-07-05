@@ -60,14 +60,14 @@ Emitted inside the same `withTransaction` that makes a txn LOGGED (`saveManualLo
 **DAO additions:**
 - `BudgetDao`: `observeAllForMonth(month)`, scope-keyed upsert (delete+insert inside the caller's transaction — same pattern as 1A's overall), scope-keyed delete.
 - `TransactionDao`: per-category LOGGED sums for a month window (`GROUP BY categoryId`); category usage counts over the last 90 days (chips); `observeRecent` row gains `categoryId` + `regret`; `setRegret(uuid, value)`.
-- `CategoryDao`: unchanged — rollup happens in pure Kotlin.
+- `CategoryDao`: gains only a suspend `all()` fetch — rollup itself happens in pure Kotlin. `GameEventDao` gains a read query (`allByIdAsc`) for tests and the future 1C fold.
 
 **Month-bounds fix (1A cleanup):** `observeMonthSpent()` freezes bounds at flow creation and goes stale across a month boundary. 1B parameterizes month-window queries by an explicit month key supplied at collection/composition time; home and dashboard both use the fixed path.
 
 ## 6. `stats/` module (new; pure Kotlin, JVM-tested — spec §6)
 
 - `PaceProjector`: linear projection `spent × daysInMonth / dayOfMonth` (guarded for day 1), projected month-end delta vs budget, remaining per-day allowance `max(0, (budget − spent) / daysLeft)`.
-- `MonthStatsFolder`: (categories, per-category sums, budget rows, day/days) → header stats + per-scope rollup rows with severity. Feeds both the dashboard and the gate's scope list so the two can never disagree.
+- `MonthStatsFolder`: (categories, per-category sums, budget rows, day/days) → header stats + per-scope rollup rows with severity. Feeds the dashboard; the gate's scope list is assembled from the same `CategoryTree` + rollup + `GateEvaluator` primitives, so the two can never disagree.
 - `GateAggregator` (in `gate/`): scope list → worst severity + most-specific offender. `GateEvaluator` itself is untouched; its 1A tests stand.
 
 ## 7. UI
@@ -88,7 +88,7 @@ Emitted inside the same `withTransaction` that makes a txn LOGGED (`saveManualLo
 
 ## 8. Dependencies
 
-Exactly one, test-only: `androidx.room:room-testing` pinned to the existing `room = "2.6.1"` version ref, `androidTestImplementation`. No runtime dependencies added. Pinned-matrix guardrail otherwise unchanged.
+None. `androidx.room:room-testing` (needed for `MigrationTestHelper`) turned out to be already pinned and wired since the 1A runner fix (amendment #12) — verified in `libs.versions.toml` and `app/build.gradle.kts` during plan writing. Pinned-matrix guardrail fully intact.
 
 ## 9. Testing
 
