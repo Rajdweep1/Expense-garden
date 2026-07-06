@@ -2,6 +2,7 @@ package com.expensegarden.app.data
 
 import androidx.room.withTransaction
 import com.expensegarden.app.gate.GateAggregator
+import com.expensegarden.app.gate.GateEvaluator
 import com.expensegarden.app.gate.GateVerdict
 import com.expensegarden.app.gate.ScopeInput
 import com.expensegarden.app.stats.CategoryTree
@@ -37,6 +38,7 @@ class LedgerRepository(private val db: AppDatabase) {
         db.withTransaction {
             db.transactionDao().setStatus(uuid, TxnStatus.LOGGED)
             db.gameEventDao().insert(loggedEvent(uuid))
+            db.transactionDao().byUuid(uuid)?.let { emitCrossings(it) }
         }
     }
 
@@ -129,7 +131,10 @@ class LedgerRepository(private val db: AppDatabase) {
                 )
             )
             db.payeeDao().setDefaultCategory(payeeId, draft.categoryId)      // payee->category map learns
-            if (status == TxnStatus.LOGGED) db.gameEventDao().insert(loggedEvent(uuid))
+            if (status == TxnStatus.LOGGED) {
+                db.gameEventDao().insert(loggedEvent(uuid))
+                db.transactionDao().byUuid(uuid)?.let { emitCrossings(it) }
+            }
         }
         return uuid
     }
@@ -141,6 +146,49 @@ class LedgerRepository(private val db: AppDatabase) {
         return db.payeeDao().insert(
             PayeeEntity(name = draft.payeeName, vpa = draft.vpa, defaultCategoryId = draft.categoryId)
         )
+    }
+
+    /** Weather events for the live month only (spec §3/§4): emit when this txn moved a scope's
+     *  spend from ≤ threshold to > threshold. Same-month dedup is free — a later txn starts past the line. */
+    private suspend fun emitCrossings(txn: TransactionEntity) {
+        val txnMonth = monthKeyOf(txn.occurredAt)
+        if (txnMonth != currentMonthKey()) return
+        val budgets = db.budgetDao().allForMonth(txnMonth)
+        if (budgets.isEmpty()) return
+        val tree = CategoryTree(db.categoryDao().all())
+        val chain = tree.ancestorChain(txn.categoryId).toSet()
+        val (from, to) = boundsOfMonth(txnMonth)
+        val leafSums = db.transactionDao().loggedSumsByCategory(from, to).associate { it.categoryId to it.totalPaise }
+        val rolled = tree.rollupSums(leafSums)
+        val (day, days) = dayAndLengthOf(txn.occurredAt)
+
+        for (b in budgets) {
+            val affected = b.categoryId == null || b.categoryId in chain
+            if (!affected) continue
+            val after = if (b.categoryId == null) leafSums.values.sum() else rolled[b.categoryId] ?: 0L
+            val before = after - txn.amountPaise
+            if (before <= b.amountPaise && after > b.amountPaise) {
+                db.gameEventDao().insert(crossingEvent("budget.breached", txnMonth, b, after, txn.uuid, allowancePaise = null))
+                continue
+            }
+            val allowance = GateEvaluator.paceAllowancePaise(b.amountPaise, day, days)
+            if (before <= allowance && after > allowance) {
+                db.gameEventDao().insert(crossingEvent("budget.pace_warning", txnMonth, b, after, txn.uuid, allowancePaise = allowance))
+            }
+        }
+    }
+
+    private fun crossingEvent(
+        type: String, month: String, budget: BudgetEntity, spentPaise: Long, txnUuid: String, allowancePaise: Long?,
+    ): GameEventEntity {
+        val payload = JSONObject()
+            .put("month", month)
+            .put("categoryId", budget.categoryId ?: JSONObject.NULL)
+            .put("budgetPaise", budget.amountPaise)
+            .put("spentPaise", spentPaise)
+            .put("txnUuid", txnUuid)
+        allowancePaise?.let { payload.put("allowancePaise", it) }
+        return GameEventEntity(type = type, payloadJson = payload.toString(), transactionUuid = txnUuid, createdAt = now())
     }
 
     private fun loggedEvent(uuid: String): GameEventEntity =
