@@ -5,7 +5,9 @@
 
 ## 1. Scope
 
-**In:** `game/` fold module (events → GardenState, pure Kotlin), `render/` module (Compose Canvas isometric renderer, ~10 procedural flat-vector plant archetypes), home-surface takeover (garden IS home; recent list relocates to dashboard), weather from budget health, month-end archival + greenhouse album-lite, streaks-lite (no-spend days, under-budget streak, `streak.hit`), `month.closed` emission via an idempotent on-open reconciler, plant tap → detail/regret dialog, investment back-row trees (cumulative, never reset monthly).
+**In:** `game/` fold module (events → GardenState, pure Kotlin), `render/` module (Compose Canvas isometric renderer), **sprite-based flora** from an AI-generated asset pack (authored by Rajdweep from a written asset brief; CC0 packs as fallback source) with procedural flat-vector painters as dev-placeholder and permanent fallback, home-surface takeover (garden IS home; recent list relocates to dashboard), weather from budget health, month-end archival + greenhouse album-lite, streaks-lite (no-spend days, under-budget streak, `streak.hit`), `month.closed` emission via an idempotent on-open reconciler, plant tap → detail/regret dialog, investment back-row trees (cumulative, never reset monthly).
+
+**Graphics bar (user-set):** lively and fluid at Fortune City level or better. "FC-style" decomposes into two halves — *ambient motion* (drifting clouds, per-plant sway, butterflies, pop-in springs, breathing sun, weather moods — all code, all in 1C core) and *asset detail* (the sprite pack). The animated companion sample (2026-07-07) fixed the motion language; the sprite track raises the detail ceiling.
 
 **Deferred, with reasons:**
 - Roaster character sprite → 1D (its body and its AI voice belong in one plan; the gate already speaks in text).
@@ -22,7 +24,9 @@
 | Plant placement | Chronological serpentine tiling: sort by `(occurredAt, uuid)`, fill diamond tiles front-to-back; grid grows by rows as the month fills | Hash-placed tiles (gaps/collisions); random (unstable across folds). Backdating inserts mid-sequence and shifts later plants one tile — acceptable, gardens change overnight |
 | Weather source | **Live month stats** (same `MonthStatsFolder` numbers as the dashboard): overall severity OK/PACE/BREACH → SUNNY/OVERCAST/DROUGHT; archived months freeze at their final-state severity | Deriving weather from crossing events (can't recover when health recovers — violates redemption); the crossing events remain the historical record for future animation/digests |
 | Time-based events | `GameEventReconciler` runs once per app-foreground: appends missing `month.closed` (previous months) and `streak.hit` (thresholds 3/7/14/30 days) idempotently — the local-first answer to "no server, no cron" | Background WorkManager job (new dependency, overkill for on-open needs) |
-| Renderer | Single `GardenCanvas` composable; painter's algorithm (back-to-front by tile row); plants = pure `DrawScope` functions per archetype; idle sway via one `infiniteTransition` | AndroidView/SurfaceView (unneeded); per-plant composables (defeats Canvas batching) |
+| Renderer | Single `GardenCanvas` composable; painter's algorithm (back-to-front by tile row); idle sway via one `infiniteTransition` | AndroidView/SurfaceView (unneeded); per-plant composables (defeats Canvas batching) |
+| Flora rendering | **Sprite asset pack behind the `PlantPainter` seam** (user's call: procedural ceiling sits below the FC bar). Staged: procedural painters ship first so nothing blocks on art; sprites land as a skin swap judged at the look checkpoint. Sky, tiles, shadows, particles, butterflies stay procedural — motion belongs in code | Procedural-only (below the wanted bar); spriting the sky/tiles too (finicky tiling, kills the cheap weather/motion layers) |
+| Asset pipeline | Written **asset brief** (sprite list, 2:1 iso camera, top-left key light, palette, 512px transparent PNGs, bottom-center anchor, no baked shadows) → Rajdweep generates via free image AI (parent spec blesses AI packs) or CC0 fallback (e.g. Kenney) → PNGs committed under `app/src/main/assets/garden/` → `SpritePainter` loads `ImageBitmap`s once, draws with tier scaling | Bundling paid art (₹0 rule); drawable resources (assets/ keeps density handling explicit and files swappable without recompiling resource ids) |
 | Home restructure | Garden full-bleed; translucent stats strip top (spent · hint → dashboard); pending-confirm card + FABs overlay with existing spring animations; greenhouse icon top-left | Keeping recent list on home (fights the scene); bottom tabs (nav stays as-is) |
 
 ## 3. `game/` module (pure Kotlin, JVM-tested)
@@ -55,7 +59,11 @@
 
 - **`IsoMath`** (pure, unit-tested): `(row, col) → screen Offset` for 2:1 diamonds (tileW 2×tileH), z-index = row+col, grid-bounds → canvas-fit scaling.
 - **`GardenCanvas`**: sky gradient by weather (warm / grey / dusty), sun or clouds, tile field with front-edge soil wall (raised-bed depth), plants drawn back-to-front with ellipse shadows, back-row trees on the horizon line, sparkle accents on no-spend/streak state, gentle sine sway (one `infiniteTransition`, phase-offset per plant seed). New-plant pop-in: scale-in animation for uuids that appeared since the previous composition.
-- **`PlantPainter`**: ~10 archetype draw functions on `DrawScope` (petal flower, tulip, bell flower, herb tuft, bush, hedge, perennial shrub, sapling→tree, thistle weed, odd mushroom), each parameterized by sizeTier + seed-jittered hue/scale/lean. Flat vector only; an asset-pack upgrade later swaps painters, not mechanics.
+- **`PlantPainter`** (the seam): `interface PlantPainter { fun DrawScope.draw(plant: Plant, anchor: Offset, scale: Float, swayRadians: Float) }` with two implementations:
+  - `ProceduralPainter` — ~10 archetype draw functions (petal flower, tulip, bell flower, herb tuft, bush, hedge, perennial shrub, sapling→tree, thistle weed, odd mushroom), seed-jittered hue/scale/lean. Ships first; permanent fallback for any sprite the pack lacks.
+  - `SpritePainter` — decodes the asset-pack PNGs from `assets/garden/` once into cached `ImageBitmap`s; draws base-anchored with tier scaling and canvas-rotation sway (slight bitmap rotation around the anchor reads as wind). Falls back per-archetype to `ProceduralPainter` when a file is missing, so a partial pack still renders a full garden.
+  - Both honor the same anchor/scale/sway contract, so motion, hit-testing, and mechanics are painter-agnostic.
+- **Asset brief** (a committed doc, written during the plan): exact sprite inventory (10 archetypes + 2–3 weed variants + tree trunk stages), style guide (2:1 isometric camera, top-left key light, soft cartoon shading, FC-adjacent pastel palette chips), format rules (512×512 transparent PNG, subject fills ~80% height, bottom-center anchor at the stem base, no baked ground shadow — the renderer draws shadows). Rajdweep generates the pack with any free image AI; CC0 packs are the fallback source.
 - **Interaction:** tap hit-test (nearest tile by inverse IsoMath) → plant detail dialog: payee, amount, category, date + the existing Worth it/Regret chips (retag re-folds live — a weed can bloom back on the spot).
 
 ## 5. UI restructure
@@ -69,12 +77,12 @@
 
 - **JVM:** `GardenFolder` (every mapping-table row incl. weed flip on regret clear, investment cumulation, weather from stats, serpentine stability under backdated insert, jitter determinism = same input → identical state), `IsoMath` (projection, z-order, fit), reconciler decision function (idempotence, threshold edges), streak/no-spend derivation (month boundaries, today-exclusion).
 - **Instrumented:** reconciler end-to-end (emits once, re-run adds nothing), fold-over-real-DB integration (seeded txns → expected plant count/weeds).
-- **Renderer:** no pixel tests; emulator screenshot smoke per UI task, plus an explicit **look checkpoint** mid-plan: a static garden rendered from synthetic data (a full month: flowers, hedge, weed, tree, drought sky) screenshotted for Rajdweep's approval **before** the home takeover lands — art direction gets judged on the real Canvas, not on emoji mockups.
+- **Renderer:** no pixel tests; emulator screenshot smoke per UI task, plus **two user checkpoints**: (1) *motion checkpoint* on the procedural placeholder — synthetic full garden (flowers, hedge, weed, tree, drought sky, sway/clouds/pop-in) approved before the home takeover lands; (2) *look checkpoint* on the sprite pack once Rajdweep's generated PNGs are wired — this is where "FC or better" gets judged. If the pack disappoints, the brief iterates while the procedural garden keeps shipping.
 - Full 1A+1B suites stay green (46 JVM + 20 instrumented untouched).
 
 ## 7. Dependencies & data
 
-**None.** No new libraries, no schema change (fold-on-read needs no tables). New DAO queries only: LOGGED txns between bounds (full rows), events by type, events between bounds. `game_event` stays append-only; the reconciler only appends.
+**No new libraries, no schema change** (fold-on-read needs no tables). New DAO queries only: LOGGED txns between bounds (full rows), events by type, events between bounds. `game_event` stays append-only; the reconciler only appends. The sprite pack is static PNGs under `app/src/main/assets/garden/` — repo-committed art, not a dependency; decoding uses the platform's `BitmapFactory` via Compose's `ImageBitmap`, nothing added to the version catalog. External input: the pack itself comes from Rajdweep (free image AI from the brief, or CC0) — the only step in Phase 1 that needs his hands mid-plan besides checkpoints.
 
 ## 8. Invariants upheld
 
