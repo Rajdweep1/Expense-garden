@@ -25,4 +25,9 @@ class GateEvaluatorTest {
         // day 20/30: allowance = 10000 * 20/30 * 1.15 = ₹7,666.67. Spent 5000 + paying 1000 = 6000 < allowance
         assertEquals(Severity.OK, GateEvaluator.evaluate(500_000L, budget, 100_000L, 20, 30))
     }
+
+    @Test fun `pace allowance is day-proportional with grace`() {
+        // 10000₹ budget, day 10/30: 10000 * 10/30 * 1.15 = ₹3,833.33 → 383333 paise (floor)
+        assertEquals(383_333L, GateEvaluator.paceAllowancePaise(1_000_000L, 10, 30))
+    }
 }
