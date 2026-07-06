@@ -61,7 +61,7 @@ The repository (Task 10) needs the pace threshold as a number, not just a verdic
 - Modify: `app/src/main/java/com/expensegarden/app/gate/GateEvaluator.kt`
 - Test: `app/src/test/java/com/expensegarden/app/gate/GateEvaluatorTest.kt` (append only)
 
-- [ ] **Step 1: Append the failing test to GateEvaluatorTest**
+- [x] **Step 1: Append the failing test to GateEvaluatorTest**
 
 ```kotlin
     @Test fun `pace allowance is day-proportional with grace`() {
@@ -70,12 +70,12 @@ The repository (Task 10) needs the pace threshold as a number, not just a verdic
     }
 ```
 
-- [ ] **Step 2: Run — expect compile failure (function missing)**
+- [x] **Step 2: Run — expect compile failure (function missing)**
 
 Run: `export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" && ./gradlew testDebugUnitTest --tests "com.expensegarden.app.gate.GateEvaluatorTest"`
 Expected: FAILED — `unresolved reference: paceAllowancePaise`
 
-- [ ] **Step 3: Implement — replace GateEvaluator body**
+- [x] **Step 3: Implement — replace GateEvaluator body**
 
 ```kotlin
 object GateEvaluator {
@@ -101,12 +101,12 @@ object GateEvaluator {
 }
 ```
 
-- [ ] **Step 4: Run — all 6 gate tests pass**
+- [x] **Step 4: Run — all 6 gate tests pass**
 
 Run: same command as Step 2.
 Expected: BUILD SUCCESSFUL, 6 tests passed (the 5 originals prove behavior is unchanged).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/src/main/java/com/expensegarden/app/gate/GateEvaluator.kt app/src/test/java/com/expensegarden/app/gate/GateEvaluatorTest.kt
@@ -123,7 +123,7 @@ Pure Kotlin over `parentId`; written for arbitrary depth even though the seed is
 - Create: `app/src/main/java/com/expensegarden/app/stats/CategoryTree.kt`
 - Create: `app/src/test/java/com/expensegarden/app/stats/CategoryTreeTest.kt`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```kotlin
 package com.expensegarden.app.stats
@@ -161,12 +161,12 @@ class CategoryTreeTest {
 }
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" && ./gradlew testDebugUnitTest --tests "com.expensegarden.app.stats.CategoryTreeTest"`
 Expected: FAILED — `unresolved reference: CategoryTree`
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 ```kotlin
 package com.expensegarden.app.stats
@@ -203,11 +203,11 @@ class CategoryTree(categories: List<CategoryEntity>) {
 }
 ```
 
-- [ ] **Step 4: Run to verify pass**
+- [x] **Step 4: Run to verify pass**
 
 Run: same command. Expected: BUILD SUCCESSFUL, 4 tests passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/src/main/java/com/expensegarden/app/stats/CategoryTree.kt app/src/test/java/com/expensegarden/app/stats/CategoryTreeTest.kt
@@ -222,7 +222,7 @@ git commit -m "feat: category tree with ancestor chain and subtree rollup"
 - Create: `app/src/main/java/com/expensegarden/app/stats/PaceProjector.kt`
 - Create: `app/src/test/java/com/expensegarden/app/stats/PaceProjectorTest.kt`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```kotlin
 package com.expensegarden.app.stats
@@ -250,12 +250,12 @@ class PaceProjectorTest {
 }
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" && ./gradlew testDebugUnitTest --tests "com.expensegarden.app.stats.PaceProjectorTest"`
 Expected: FAILED — `unresolved reference: PaceProjector`
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 ```kotlin
 package com.expensegarden.app.stats
@@ -275,9 +275,9 @@ object PaceProjector {
 }
 ```
 
-- [ ] **Step 4: Run to verify pass** — same command. Expected: 5 tests passed.
+- [x] **Step 4: Run to verify pass** — same command. Expected: 5 tests passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/src/main/java/com/expensegarden/app/stats/PaceProjector.kt app/src/test/java/com/expensegarden/app/stats/PaceProjectorTest.kt
@@ -292,7 +292,7 @@ git commit -m "feat: pace projector - linear month-end projection and per-day al
 - Create: `app/src/main/java/com/expensegarden/app/gate/GateAggregator.kt`
 - Create: `app/src/test/java/com/expensegarden/app/gate/GateAggregatorTest.kt`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```kotlin
 package com.expensegarden.app.gate
@@ -342,12 +342,12 @@ class GateAggregatorTest {
 }
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" && ./gradlew testDebugUnitTest --tests "com.expensegarden.app.gate.GateAggregatorTest"`
 Expected: FAILED — `unresolved reference: ScopeInput`
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 ```kotlin
 package com.expensegarden.app.gate
@@ -377,9 +377,9 @@ object GateAggregator {
 }
 ```
 
-- [ ] **Step 4: Run to verify pass** — same command. Expected: 5 tests passed.
+- [x] **Step 4: Run to verify pass** — same command. Expected: 5 tests passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/src/main/java/com/expensegarden/app/gate/GateAggregator.kt app/src/test/java/com/expensegarden/app/gate/GateAggregatorTest.kt
@@ -394,7 +394,7 @@ git commit -m "feat: gate aggregator - worst severity across budget scopes, deep
 - Create: `app/src/main/java/com/expensegarden/app/stats/MonthStatsFolder.kt`
 - Create: `app/src/test/java/com/expensegarden/app/stats/MonthStatsFolderTest.kt`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```kotlin
 package com.expensegarden.app.stats
@@ -457,12 +457,12 @@ class MonthStatsFolderTest {
 }
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" && ./gradlew testDebugUnitTest --tests "com.expensegarden.app.stats.MonthStatsFolderTest"`
 Expected: FAILED — `unresolved reference: MonthStatsFolder`
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 ```kotlin
 package com.expensegarden.app.stats
@@ -536,9 +536,9 @@ object MonthStatsFolder {
 }
 ```
 
-- [ ] **Step 4: Run to verify pass** — same command. Expected: 6 tests passed.
+- [x] **Step 4: Run to verify pass** — same command. Expected: 6 tests passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/src/main/java/com/expensegarden/app/stats/MonthStatsFolder.kt app/src/test/java/com/expensegarden/app/stats/MonthStatsFolderTest.kt
@@ -553,7 +553,7 @@ git commit -m "feat: month stats folder - rolled category rows, projection, per-
 - Create: `app/src/main/java/com/expensegarden/app/stats/ChipOrder.kt`
 - Create: `app/src/test/java/com/expensegarden/app/stats/ChipOrderTest.kt`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```kotlin
 package com.expensegarden.app.stats
@@ -581,12 +581,12 @@ class ChipOrderTest {
 }
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" && ./gradlew testDebugUnitTest --tests "com.expensegarden.app.stats.ChipOrderTest"`
 Expected: FAILED — `unresolved reference: ChipOrder`
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 ```kotlin
 package com.expensegarden.app.stats
@@ -602,9 +602,9 @@ object ChipOrder {
 }
 ```
 
-- [ ] **Step 4: Run to verify pass** — same command. Expected: 3 tests passed.
+- [x] **Step 4: Run to verify pass** — same command. Expected: 3 tests passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/src/main/java/com/expensegarden/app/stats/ChipOrder.kt app/src/test/java/com/expensegarden/app/stats/ChipOrderTest.kt
@@ -624,7 +624,7 @@ SQLite can't `ALTER TABLE ADD CONSTRAINT`; the migration recreates the table. `M
 - Create: `app/src/androidTest/java/com/expensegarden/app/data/MigrationTest.kt`
 - Generated: `app/schemas/com.expensegarden.app.data.AppDatabase/2.json` (commit it)
 
-- [ ] **Step 1: Write the failing migration test**
+- [x] **Step 1: Write the failing migration test**
 
 ```kotlin
 package com.expensegarden.app.data
@@ -681,12 +681,12 @@ class MigrationTest {
 }
 ```
 
-- [ ] **Step 2: Run — expect compile failure (MIGRATION_1_2 missing)**
+- [x] **Step 2: Run — expect compile failure (MIGRATION_1_2 missing)**
 
 Run: `export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" && ./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.expensegarden.app.data.MigrationTest`
 Expected: compile FAILED — `unresolved reference: MIGRATION_1_2`. (Emulator must be up: `adb devices` → `emulator-5554 device`.)
 
-- [ ] **Step 3: Update BudgetEntity — add the FK**
+- [x] **Step 3: Update BudgetEntity — add the FK**
 
 In `Entities.kt`, replace the `budget` entity annotation block:
 
@@ -709,7 +709,7 @@ data class BudgetEntity(
 )
 ```
 
-- [ ] **Step 4: Create Migrations.kt**
+- [x] **Step 4: Create Migrations.kt**
 
 ```kotlin
 package com.expensegarden.app.data
@@ -738,7 +738,7 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
 }
 ```
 
-- [ ] **Step 5: Bump version and register the migration in AppDatabase.kt**
+- [x] **Step 5: Bump version and register the migration in AppDatabase.kt**
 
 Change the `@Database` annotation line and the builder:
 
@@ -754,7 +754,7 @@ Change the `@Database` annotation line and the builder:
                 .build()
 ```
 
-- [ ] **Step 6: Build to export 2.json, then reconcile the migration SQL**
+- [x] **Step 6: Build to export 2.json, then reconcile the migration SQL**
 
 Run: `export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" && ./gradlew :app:compileDebugKotlin && python3 -c "
 import json
@@ -764,17 +764,17 @@ print(e['createSql']); print(e['indices'][0]['createSql']); print(e['foreignKeys
 Expected: `2.json` exists; `createSql` reads `CREATE TABLE IF NOT EXISTS \`${TABLE_NAME}\` (\`id\` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, \`categoryId\` INTEGER, \`month\` TEXT NOT NULL, \`amountPaise\` INTEGER NOT NULL, FOREIGN KEY(\`categoryId\`) REFERENCES \`category\`(\`id\`) ON UPDATE NO ACTION ON DELETE CASCADE )`; the FK entry shows `"onDelete": "CASCADE"`.
 If the printed createSql differs in ANY way from the migration's CREATE TABLE (modulo `${TABLE_NAME}` → `budget_new`): edit Migrations.kt to match it exactly, don't negotiate.
 
-- [ ] **Step 7: Run the migration test**
+- [x] **Step 7: Run the migration test**
 
 Run: the Step 2 command.
 Expected: BUILD SUCCESSFUL, 1 test passed (validation includes the schema diff — a mismatch fails loudly with both schemas printed).
 
-- [ ] **Step 8: Run the full existing instrumented suite (regression)**
+- [x] **Step 8: Run the full existing instrumented suite (regression)**
 
 Run: `export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" && ./gradlew connectedDebugAndroidTest`
 Expected: BUILD SUCCESSFUL — 4 old + 1 new instrumented tests pass (fresh in-memory DBs create at v2 directly; SeedCallback unaffected).
 
-- [ ] **Step 9: Commit (schema history included)**
+- [x] **Step 9: Commit (schema history included)**
 
 ```bash
 git add app/src/main/java/com/expensegarden/app/data/Entities.kt app/src/main/java/com/expensegarden/app/data/Migrations.kt app/src/main/java/com/expensegarden/app/data/AppDatabase.kt app/src/androidTest/java/com/expensegarden/app/data/MigrationTest.kt app/schemas/com.expensegarden.app.data.AppDatabase/2.json
@@ -790,7 +790,7 @@ git commit -m "feat: room migration v1-v2 - budget gains category fk with cascad
 - Modify: `app/src/main/java/com/expensegarden/app/ui/HomeScreen.kt` (compile-only: TxnRow call sites unchanged — new fields are additive; verify build)
 - Create: `app/src/androidTest/java/com/expensegarden/app/data/BudgetDaoTest.kt`
 
-- [ ] **Step 1: Write the failing DAO tests**
+- [x] **Step 1: Write the failing DAO tests**
 
 ```kotlin
 package com.expensegarden.app.data
@@ -865,12 +865,12 @@ class BudgetDaoTest {
 }
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" && ./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.expensegarden.app.data.BudgetDaoTest`
 Expected: compile FAILED — `unresolved reference: allForMonth` (and friends).
 
-- [ ] **Step 3: Implement the DAO additions in Daos.kt**
+- [x] **Step 3: Implement the DAO additions in Daos.kt**
 
 Extend `TxnRow` (same file, replaces the old data class):
 
@@ -966,12 +966,12 @@ Append to `GameEventDao` (tests + the 1C fold both need to read):
     suspend fun allByIdAsc(): List<GameEventEntity>
 ```
 
-- [ ] **Step 4: Run to verify pass**
+- [x] **Step 4: Run to verify pass**
 
 Run: the Step 2 command. Expected: 3 tests passed.
 Then: `./gradlew connectedDebugAndroidTest` — all instrumented green (TxnRow change compiles HomeScreen untouched: field additions only).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/src/main/java/com/expensegarden/app/data/Daos.kt app/src/androidTest/java/com/expensegarden/app/data/BudgetDaoTest.kt
@@ -987,7 +987,7 @@ git commit -m "feat: dao additions - scoped budgets, category sums, usage counts
 - Modify: `app/src/main/java/com/expensegarden/app/ui/MainViewModel.kt` (only what's needed to keep the build green)
 - Create: `app/src/androidTest/java/com/expensegarden/app/data/GateScopeTest.kt`
 
-- [ ] **Step 1: Write the failing repository test**
+- [x] **Step 1: Write the failing repository test**
 
 ```kotlin
 package com.expensegarden.app.data
@@ -1053,12 +1053,12 @@ class GateScopeTest {
 }
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" && ./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.expensegarden.app.data.GateScopeTest`
 Expected: compile FAILED — `unresolved reference: evaluateGate`.
 
-- [ ] **Step 3: Implement in LedgerRepository.kt**
+- [x] **Step 3: Implement in LedgerRepository.kt**
 
 New imports at top:
 
@@ -1138,7 +1138,7 @@ Add scope assembly + gate evaluation:
     }
 ```
 
-- [ ] **Step 4: Keep MainViewModel compiling (minimal edits, full rework comes in Task 12)**
+- [x] **Step 4: Keep MainViewModel compiling (minimal edits, full rework comes in Task 12)**
 
 In `MainViewModel.kt`, replace the two call sites of the changed APIs:
 
@@ -1150,12 +1150,12 @@ In `MainViewModel.kt`, replace the two call sites of the changed APIs:
 
 In `prepareGate` and `saveManualFromDraft`, replace `ledger.monthSpentPaise()` with `ledger.monthSpentPaise()` — no change needed (default parameter covers it). Verify with the build.
 
-- [ ] **Step 5: Run to verify pass**
+- [x] **Step 5: Run to verify pass**
 
 Run: the Step 2 command. Expected: 3 tests passed.
 Then: `./gradlew testDebugUnitTest && ./gradlew connectedDebugAndroidTest` — everything green.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add app/src/main/java/com/expensegarden/app/data/LedgerRepository.kt app/src/main/java/com/expensegarden/app/ui/MainViewModel.kt app/src/androidTest/java/com/expensegarden/app/data/GateScopeTest.kt
@@ -1170,7 +1170,7 @@ git commit -m "feat: scope-aware gate evaluation - rollup budgets, backdated-mon
 - Modify: `app/src/main/java/com/expensegarden/app/data/LedgerRepository.kt`
 - Create: `app/src/androidTest/java/com/expensegarden/app/data/CrossingEventTest.kt`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```kotlin
 package com.expensegarden.app.data
@@ -1257,12 +1257,12 @@ class CrossingEventTest {
 }
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" && ./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.expensegarden.app.data.CrossingEventTest`
 Expected: tests FAIL — `budget.breached` count is 0 everywhere (emission not implemented; compile succeeds since Task 8/9 added the queries).
 
-- [ ] **Step 3: Implement emission in LedgerRepository.kt**
+- [x] **Step 3: Implement emission in LedgerRepository.kt**
 
 Add import `com.expensegarden.app.gate.GateEvaluator`. Extend the two LOGGED transitions — in `save(...)`, after the existing `gameEventDao().insert(loggedEvent(uuid))` line inside the transaction, and in `confirm(...)` likewise:
 
@@ -1330,12 +1330,12 @@ New private members:
     }
 ```
 
-- [ ] **Step 4: Run to verify pass**
+- [x] **Step 4: Run to verify pass**
 
 Run: the Step 2 command. Expected: 5 tests passed.
 Then full instrumented suite: `./gradlew connectedDebugAndroidTest` — green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/src/main/java/com/expensegarden/app/data/LedgerRepository.kt app/src/androidTest/java/com/expensegarden/app/data/CrossingEventTest.kt
@@ -1350,7 +1350,7 @@ git commit -m "feat: budget crossing events - breached and pace_warning emitted 
 - Modify: `app/src/main/java/com/expensegarden/app/data/LedgerRepository.kt`
 - Create: `app/src/androidTest/java/com/expensegarden/app/data/RegretTest.kt`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```kotlin
 package com.expensegarden.app.data
@@ -1418,12 +1418,12 @@ class RegretTest {
 }
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" && ./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.expensegarden.app.data.RegretTest`
 Expected: compile FAILED — `unresolved reference: setRegret` on the repository (DAO has it; repo doesn't yet).
 
-- [ ] **Step 3: Implement in LedgerRepository.kt**
+- [x] **Step 3: Implement in LedgerRepository.kt**
 
 ```kotlin
     /** Regret is re-taggable; only transitions touching REGRET leave history (spec §4).
@@ -1450,9 +1450,9 @@ Expected: compile FAILED — `unresolved reference: setRegret` on the repository
     }
 ```
 
-- [ ] **Step 4: Run to verify pass** — the Step 2 command. Expected: 4 tests passed.
+- [x] **Step 4: Run to verify pass** — the Step 2 command. Expected: 4 tests passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/src/main/java/com/expensegarden/app/data/LedgerRepository.kt app/src/androidTest/java/com/expensegarden/app/data/RegretTest.kt
@@ -1470,7 +1470,7 @@ git commit -m "feat: regret tagging - retaggable rating with append-only regret 
 
 No new unit tests here — the logic is in already-tested pure units; this task is wiring. The build plus existing suites are the check.
 
-- [ ] **Step 1: Rework MainViewModel.kt**
+- [x] **Step 1: Rework MainViewModel.kt**
 
 Replace `GatePrompt` and the affected members:
 
@@ -1539,7 +1539,7 @@ Replace `prepareGate` and `saveManualFromDraft` to use the verdict (and delete `
 
 `savePendingFromDraft` keeps its signature — EntryScreen still passes `prompt.severity`. Imports to add: `com.expensegarden.app.data.Regret`, `com.expensegarden.app.stats.ChipOrder`, `kotlinx.coroutines.flow.combine`, `kotlinx.coroutines.flow.emitAll`, `kotlinx.coroutines.flow.flow` (`GateEvaluator` stays imported — homeHeader uses it).
 
-- [ ] **Step 2: EntryScreen gate dialog title names the offender**
+- [x] **Step 2: EntryScreen gate dialog title names the offender**
 
 Replace the `title = { ... }` line in the gate `AlertDialog`:
 
@@ -1550,7 +1550,7 @@ Replace the `title = { ... }` line in the gate `AlertDialog`:
             },
 ```
 
-- [ ] **Step 3: HomeScreen minimal compile fix**
+- [x] **Step 3: HomeScreen minimal compile fix**
 
 `vm.monthSpent`/`vm.monthBudget` no longer exist and `vm.setOverallBudget` is gone. Interim wiring only (Task 15 does the real skeleton): replace the two collections at the top with
 
@@ -1568,12 +1568,12 @@ point the odometer `AnimatedContent` at `targetState = header?.spentPaise ?: 0L`
                     )
 ```
 
-- [ ] **Step 4: Build + full JVM suite**
+- [x] **Step 4: Build + full JVM suite**
 
 Run: `export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" && ./gradlew :app:compileDebugKotlin testDebugUnitTest`
 Expected: BUILD SUCCESSFUL; all JVM tests green (now 46: 22 from 1A + 24 new).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/src/main/java/com/expensegarden/app/ui/MainViewModel.kt app/src/main/java/com/expensegarden/app/ui/EntryScreen.kt app/src/main/java/com/expensegarden/app/ui/HomeScreen.kt
@@ -1590,7 +1590,7 @@ git commit -m "feat: viewmodel rework - scoped gate verdicts, home header state,
 - Modify: `app/src/main/java/com/expensegarden/app/MainActivity.kt`
 - Modify: `app/src/main/java/com/expensegarden/app/ui/HomeScreen.kt` (card tap-through)
 
-- [ ] **Step 1: DashboardViewModel.kt**
+- [x] **Step 1: DashboardViewModel.kt**
 
 ```kotlin
 package com.expensegarden.app.ui
@@ -1654,7 +1654,7 @@ class DashboardViewModel(private val container: AppContainer) : ViewModel() {
 }
 ```
 
-- [ ] **Step 2: DashboardScreen.kt**
+- [x] **Step 2: DashboardScreen.kt**
 
 ```kotlin
 package com.expensegarden.app.ui
@@ -1817,7 +1817,7 @@ private fun severityColor(s: Severity): Color = when (s) {
 
 Note: `LinearProgressIndicator(progress = { ... })` is the lambda overload current in this BOM; if the build flags it deprecated-vs-missing, use the lambda form shown — do NOT chase other overloads.
 
-- [ ] **Step 3: Wire navigation in MainActivity.kt and the tap-through in HomeScreen.kt**
+- [x] **Step 3: Wire navigation in MainActivity.kt and the tap-through in HomeScreen.kt**
 
 MainActivity: add a `dashVm` next to `vm` in the activity...
 
@@ -1850,12 +1850,12 @@ HomeScreen: add the parameter `onOpenDashboard: () -> Unit` and make the month c
 
 (Import `androidx.compose.foundation.clickable` and `com.expensegarden.app.ui.DashboardViewModel`/import updates in MainActivity as the compiler directs.)
 
-- [ ] **Step 4: Build, install, smoke on the emulator**
+- [x] **Step 4: Build, install, smoke on the emulator**
 
 Run: `export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" && ./gradlew installDebug && adb shell am start -n com.expensegarden.app/.MainActivity`
 Expected: app opens. Tap the "This month" card → dashboard fades in showing spent total (₹105 from the 1A smoke data), "Set overall budget" if none for this month, parent category rows with the July spends under Food & Drinks. Set a category budget via a row tap → progress bar appears. `adb exec-out screencap -p > /tmp/dash.png` for the record.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/src/main/java/com/expensegarden/app/ui/DashboardViewModel.kt app/src/main/java/com/expensegarden/app/ui/DashboardScreen.kt app/src/main/java/com/expensegarden/app/MainActivity.kt app/src/main/java/com/expensegarden/app/ui/HomeScreen.kt
@@ -1869,7 +1869,7 @@ git commit -m "feat: dashboard - month stats, pace, per-category budgets with pr
 **Files:**
 - Modify: `app/src/main/java/com/expensegarden/app/ui/EntryScreen.kt`
 
-- [ ] **Step 1: Replace the ExposedDropdownMenuBox block with chips + sheet**
+- [x] **Step 1: Replace the ExposedDropdownMenuBox block with chips + sheet**
 
 Delete the whole `ExposedDropdownMenuBox { ... }` block and the `categoryMenuOpen` state; add in their place (plus a `var allCategoriesOpen by remember { mutableStateOf(false) }`):
 
@@ -1914,7 +1914,7 @@ Delete the whole `ExposedDropdownMenuBox { ... }` block and the `categoryMenuOpe
 
 New imports: `androidx.compose.foundation.clickable`, `androidx.compose.foundation.layout.FlowRow`, `androidx.compose.foundation.layout.PaddingValues`, `androidx.compose.foundation.lazy.LazyColumn`, `androidx.compose.foundation.lazy.items`, `androidx.compose.material3.FilterChip`, `androidx.compose.material3.ModalBottomSheet`. Add `@OptIn(ExperimentalLayoutApi::class)` alongside the existing `@OptIn(ExperimentalMaterial3Api::class)` (import `androidx.compose.foundation.layout.ExperimentalLayoutApi`). Remove the now-unused dropdown imports (`DropdownMenuItem`, `ExposedDropdownMenuBox`, `ExposedDropdownMenuDefaults`, `MenuAnchorType`).
 
-- [ ] **Step 2: Add the backdating row (manual entries only)**
+- [x] **Step 2: Add the backdating row (manual entries only)**
 
 After the "Paid to" field's `if (!draft.fromScan) { ... }` block, extend that same block (still inside it, after the payee field):
 
@@ -1954,13 +1954,13 @@ After the "Paid to" field's `if (!draft.fromScan) { ... }` block, extend that sa
 
 New imports: `androidx.compose.material3.DatePicker`, `androidx.compose.material3.DatePickerDialog`, `androidx.compose.material3.OutlinedButton`, `androidx.compose.material3.SelectableDates`, `androidx.compose.material3.rememberDatePickerState`, `java.time.Instant`, `java.time.LocalDate`, `java.time.ZoneId`, `java.time.ZoneOffset`, `java.time.format.DateTimeFormatter`.
 
-- [ ] **Step 3: Build + smoke**
+- [x] **Step 3: Build + smoke**
 
 Run: `export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" && ./gradlew installDebug`
 Then on the emulator: Log manually → chips render in one/two rows, tap "All…" → sheet with full indented list, pick a child; date button shows today, pick yesterday; save with ₹15 → home list shows it dated yesterday. Verify by `adb shell "run-as com.expensegarden.app sqlite3 /data/data/com.expensegarden.app/databases/garden.db 'SELECT amountPaise, occurredAt FROM txn ORDER BY createdAt DESC LIMIT 1'"` — occurredAt falls inside yesterday (local noon).
 Expected: all of the above; no IME required for category selection.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add app/src/main/java/com/expensegarden/app/ui/EntryScreen.kt
@@ -1974,7 +1974,7 @@ git commit -m "feat: entry - quick-pick category chips with all-sheet, manual ba
 **Files:**
 - Modify: `app/src/main/java/com/expensegarden/app/ui/HomeScreen.kt`
 
-- [ ] **Step 1: Header uses HomeHeader state (skeleton + hint)**
+- [x] **Step 1: Header uses HomeHeader state (skeleton + hint)**
 
 Replace the month-card contents: collect `val header by vm.homeHeader.collectAsState()` instead of the separate `monthSpent`/`budget` collections, and render:
 
@@ -2021,7 +2021,7 @@ private fun hintLine(s: Severity) = when (s) {
 
 Delete the now-unused `monthSpent`/`budget` collections and any leftover budget-dialog remnants from Task 12's interim state.
 
-- [ ] **Step 2: Regret dialog on recent rows**
+- [x] **Step 2: Regret dialog on recent rows**
 
 Make each recent row clickable and add the dialog. Row change:
 
@@ -2080,13 +2080,13 @@ State + dialog (state near the other `remember`s; dialog after the pending-card 
 
 New imports: `androidx.compose.foundation.clickable`, `androidx.compose.foundation.layout.height`, `androidx.compose.material3.FilterChip`, `androidx.compose.ui.draw.alpha`, `com.expensegarden.app.data.Regret`, `com.expensegarden.app.data.TxnRow`, `com.expensegarden.app.gate.Severity`. (`TransactionEntity` import stays — the pending card still uses it.)
 
-- [ ] **Step 3: Build + smoke**
+- [x] **Step 3: Build + smoke**
 
 Run: `export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" && ./gradlew installDebug`
 On the emulator: cold-start the app (`adb shell am force-stop com.expensegarden.app` first) — the header shows the quiet skeleton, then the amount springs in; tap a recent row → dialog; mark "Regret" → row line gains "· regret". Verify the event: `adb shell "run-as com.expensegarden.app sqlite3 /data/data/com.expensegarden.app/databases/garden.db \"SELECT type FROM game_event ORDER BY id DESC LIMIT 1\""` → `transaction.regretted`.
 Expected: all of the above.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add app/src/main/java/com/expensegarden/app/ui/HomeScreen.kt
@@ -2101,12 +2101,12 @@ git commit -m "feat: home - loading skeleton, budget hint, regret tagging on rec
 - Modify: `docs/superpowers/plans/2026-07-06-phase1b-budgets-dashboard.md` (tick checkboxes, log any amendments)
 - Modify: memory `expense-garden-phase1a-status.md` (1B status entry)
 
-- [ ] **Step 1: Full suites**
+- [x] **Step 1: Full suites**
 
 Run: `export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" && ./gradlew testDebugUnitTest && ./gradlew connectedDebugAndroidTest`
 Expected: BUILD SUCCESSFUL twice. JVM: 46 tests (22 old + 24 new). Instrumented: 20 (4 old + 16 new: 1 migration, 3 budget-dao, 3 gate-scope, 5 crossing, 4 regret). Zero failures.
 
-- [ ] **Step 2: Emulator E2E sweep (scripted where possible, uiautomator coordinates — not blind taps)**
+- [x] **Step 2: Emulator E2E sweep (scripted where possible, uiautomator coordinates — not blind taps)**
 
 1. Fresh install over existing data (`./gradlew installDebug` — NOT a wipe): app opens, migration v1→v2 runs on the real `garden.db`; home renders the 1A data. Check: `adb shell "run-as com.expensegarden.app sqlite3 /data/data/com.expensegarden.app/databases/garden.db 'PRAGMA user_version'"` → `2`.
 2. Dashboard: totals match home; set a Food & Drinks budget below current Food spend → row turns error-tinted, header hint updates.
@@ -2117,9 +2117,9 @@ Expected: BUILD SUCCESSFUL twice. JVM: 46 tests (22 old + 24 new). Instrumented:
 
 Expected: every step checks out; any mismatch = STOP and report before proceeding.
 
-- [ ] **Step 3: Tick all checkboxes in this plan, add an "Execution amendments" entry for anything that deviated, update memory status**
+- [x] **Step 3: Tick all checkboxes in this plan, add an "Execution amendments" entry for anything that deviated, update memory status**
 
-- [ ] **Step 4: Final commit**
+- [x] **Step 4: Final commit**
 
 ```bash
 git add docs/superpowers/plans/2026-07-06-phase1b-budgets-dashboard.md
