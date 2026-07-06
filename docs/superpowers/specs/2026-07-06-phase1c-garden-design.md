@@ -71,7 +71,7 @@
 - **Home = `GardenHomeScreen`**: full-bleed `GardenCanvas`; translucent top strip (month spent odometer + hint, tap → dashboard — the 1B skeleton behavior carries over); greenhouse icon (top-left) → album; pending-confirm card and the two FABs float above the garden with their existing spring animations.
 - **Dashboard** gains the **Recent** section (rows + regret dialog move from home unchanged).
 - **`GreenhouseScreen`** (album-lite): vertical list of archived month cards — each a small frozen `GardenCanvas` render (same fold, smaller viewport) + month name + spent/budget line; tap → full-screen frozen bed. Months with no data don't appear.
-- Navigation: `garden` (start), `dashboard`, `entry`, `greenhouse`; existing transitions retained (entry sheet spring, default fades).
+- Navigation: `home` (start — now the garden; keeping the existing route name avoids touching EntryScreen's `popBackStack("home")`), `dashboard`, `entry`, `greenhouse`; existing transitions retained (entry sheet spring, default fades).
 
 ## 6. Testing & the look checkpoint
 
