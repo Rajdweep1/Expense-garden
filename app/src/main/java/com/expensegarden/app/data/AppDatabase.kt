@@ -22,7 +22,7 @@ class EnumConverters {
         CategoryEntity::class, PayeeEntity::class, TransactionEntity::class,
         BudgetEntity::class, GameEventEntity::class, QuipEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 @TypeConverters(EnumConverters::class)
@@ -37,6 +37,7 @@ abstract class AppDatabase : RoomDatabase() {
     companion object {
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "garden.db")
+                .addMigrations(MIGRATION_1_2)
                 .addCallback(SeedCallback)
                 .build()
     }

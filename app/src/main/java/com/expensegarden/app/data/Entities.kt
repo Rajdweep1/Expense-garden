@@ -71,10 +71,16 @@ data class TransactionEntity(
 @Entity(
     tableName = "budget",
     indices = [Index(value = ["categoryId", "month"], unique = true)],
+    foreignKeys = [ForeignKey(
+        entity = CategoryEntity::class,
+        parentColumns = ["id"],
+        childColumns = ["categoryId"],
+        onDelete = ForeignKey.CASCADE,   // a budget without its category is meaningless; categories are seed-only, so belt-and-braces
+    )],
 )
 data class BudgetEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val categoryId: Long?,                 // null = overall budget (only kind used in 1A)
+    val categoryId: Long?,                 // null = overall budget
     val month: String,                     // "2026-07"
     val amountPaise: Long,
 )

@@ -2132,7 +2132,8 @@ git commit -m "docs: 1b plan executed - checkboxes ticked, amendments logged"
 
 (Log deviations here as they happen — pattern proven in 1A.)
 
-1. **Task 5 test expectation corrected (plan arithmetic bug).** The plan asserted chai's row severity `OK` for ₹600 spent against its own ₹1000 budget at day 15/30 ("fine at day 15") — wrong: the pace line is 1000 × 15/30 × 1.15 = ₹575, so ₹600 is `PACE_WARNING`. `MonthStatsFolder` behavior is correct per spec; the committed test asserts `PACE_WARNING`. No production-code change.
+1. **Task 7 needed schema assets wiring (plan gap).** `MigrationTestHelper` failed with `FileNotFoundException: …assets… 1.json` — exported schemas must be exposed to androidTest via `sourceSets { getByName("androidTest").assets.srcDir("$projectDir/schemas") }` in `app/build.gradle.kts` (official Room migration-testing setup, linked from the error). One build-file line; no dependency or version change.
+2. **Task 5 test expectation corrected (plan arithmetic bug).** The plan asserted chai's row severity `OK` for ₹600 spent against its own ₹1000 budget at day 15/30 ("fine at day 15") — wrong: the pace line is 1000 × 15/30 × 1.15 = ₹575, so ₹600 is `PACE_WARNING`. `MonthStatsFolder` behavior is correct per spec; the committed test asserts `PACE_WARNING`. No production-code change.
 
 ## Deferred to later plans (recorded so they aren't forgotten)
 
