@@ -44,6 +44,29 @@ class LedgerRepository(private val db: AppDatabase) {
 
     suspend fun discard(uuid: String) = db.transactionDao().setStatus(uuid, TxnStatus.DISCARDED)
 
+    /** Regret is re-taggable; only transitions touching REGRET leave history (spec §4).
+     *  Never punishes the log — this feeds garden rendering only. */
+    suspend fun setRegret(uuid: String, value: Regret) {
+        db.withTransaction {
+            val txn = db.transactionDao().byUuid(uuid) ?: return@withTransaction
+            if (txn.regret == value) return@withTransaction
+            db.transactionDao().setRegret(uuid, value)
+            if (value == Regret.REGRET) {
+                val payload = JSONObject().put("uuid", uuid)
+                    .put("categoryId", txn.categoryId).put("amountPaise", txn.amountPaise)
+                db.gameEventDao().insert(GameEventEntity(
+                    type = "transaction.regretted", payloadJson = payload.toString(),
+                    transactionUuid = uuid, createdAt = now(),
+                ))
+            } else if (txn.regret == Regret.REGRET) {
+                db.gameEventDao().insert(GameEventEntity(
+                    type = "transaction.regret_cleared", payloadJson = JSONObject().put("uuid", uuid).toString(),
+                    transactionUuid = uuid, createdAt = now(),
+                ))
+            }
+        }
+    }
+
     /** User backed out at the gate — record the dodge; the game rewards it later (1C). */
     suspend fun recordGateDodge(amountPaise: Long, categoryId: Long) {
         val payload = JSONObject().put("amountPaise", amountPaise).put("categoryId", categoryId)
