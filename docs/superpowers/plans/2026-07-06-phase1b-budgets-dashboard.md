@@ -2132,6 +2132,8 @@ git commit -m "docs: 1b plan executed - checkboxes ticked, amendments logged"
 
 (Log deviations here as they happen — pattern proven in 1A.)
 
+1. **Task 5 test expectation corrected (plan arithmetic bug).** The plan asserted chai's row severity `OK` for ₹600 spent against its own ₹1000 budget at day 15/30 ("fine at day 15") — wrong: the pace line is 1000 × 15/30 × 1.15 = ₹575, so ₹600 is `PACE_WARNING`. `MonthStatsFolder` behavior is correct per spec; the committed test asserts `PACE_WARNING`. No production-code change.
+
 ## Deferred to later plans (recorded so they aren't forgotten)
 
 - Gate-dialog category-title verification on the live scan path → rides the Task-12 (1A) resume alongside the QR poster leg.
