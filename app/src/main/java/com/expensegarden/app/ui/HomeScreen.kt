@@ -48,11 +48,9 @@ import java.time.format.DateTimeFormatter
 
 @Composable
 fun HomeScreen(vm: MainViewModel, onScan: () -> Unit, onManual: () -> Unit) {
-    val monthSpent by vm.monthSpent.collectAsState()
-    val budget by vm.monthBudget.collectAsState()
+    val header by vm.homeHeader.collectAsState()
     val pending by vm.pendingConfirm.collectAsState()
     val recent by vm.recent.collectAsState(initial = emptyList())
-    var budgetDialogOpen by remember { mutableStateOf(false) }
     val dateFmt = remember { DateTimeFormatter.ofPattern("dd MMM") }
 
     Box(Modifier.fillMaxSize()) {
@@ -62,7 +60,7 @@ fun HomeScreen(vm: MainViewModel, onScan: () -> Unit, onManual: () -> Unit) {
                     Text("This month", style = MaterialTheme.typography.labelMedium)
                     // Odometer tick: exact values only — old amount floats up, new rises from below.
                     AnimatedContent(
-                        targetState = monthSpent,
+                        targetState = header?.spentPaise ?: 0L,
                         transitionSpec = {
                             (slideInVertically(spring(dampingRatio = 0.8f, stiffness = 380f)) { it / 2 } +
                                 fadeIn(spring(stiffness = Spring.StiffnessMedium))) togetherWith
@@ -73,10 +71,11 @@ fun HomeScreen(vm: MainViewModel, onScan: () -> Unit, onManual: () -> Unit) {
                     ) { spent ->
                         Text(Money.display(spent), style = MaterialTheme.typography.headlineMedium)
                     }
-                    val b = budget
-                    TextButton(onClick = { budgetDialogOpen = true }) {
-                        Text(if (b == null) "Set a budget" else "Budget: ${Money.display(b.amountPaise)}")
-                    }
+                    val b = header?.overallBudgetPaise
+                    Text(
+                        if (b == null) "No budget set" else "Budget: ${Money.display(b)}",
+                        style = MaterialTheme.typography.labelMedium,
+                    )
                 }
             }
 
@@ -135,21 +134,4 @@ fun HomeScreen(vm: MainViewModel, onScan: () -> Unit, onManual: () -> Unit) {
         }
     }
 
-    if (budgetDialogOpen) {
-        var text by remember { mutableStateOf(budget?.let { Money.intentAmount(it.amountPaise) } ?: "") }
-        AlertDialog(
-            onDismissRequest = { budgetDialogOpen = false },
-            title = { Text("Monthly budget") },
-            text = {
-                OutlinedTextField(value = text, onValueChange = { text = it }, label = { Text("Amount (₹)") })
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    vm.setOverallBudget(Money.parseToPaise(text))
-                    budgetDialogOpen = false
-                }) { Text("Save") }
-            },
-            dismissButton = { TextButton(onClick = { budgetDialogOpen = false }) { Text("Cancel") } },
-        )
-    }
 }

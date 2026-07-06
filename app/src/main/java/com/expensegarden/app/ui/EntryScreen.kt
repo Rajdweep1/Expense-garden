@@ -134,7 +134,10 @@ fun EntryScreen(vm: MainViewModel, onDone: () -> Unit) {
         val amountPaise = Money.parseToPaise(draft.amountText) ?: return@let
         AlertDialog(
             onDismissRequest = { gate = null },
-            title = { Text(if (prompt.severity == Severity.BREACH) "Over budget" else "Ahead of pace") },
+            title = {
+                val base = if (prompt.severity == Severity.BREACH) "Over budget" else "Ahead of pace"
+                Text(prompt.scopeLabel?.let { "$base — $it" } ?: base)
+            },
             text = { Text(prompt.quip) },
             confirmButton = {
                 TextButton(onClick = {
