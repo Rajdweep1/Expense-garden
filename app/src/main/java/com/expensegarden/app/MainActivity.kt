@@ -21,6 +21,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.expensegarden.app.capture.UpiUriParser
+import com.expensegarden.app.ui.DashboardScreen
+import com.expensegarden.app.ui.DashboardViewModel
 import com.expensegarden.app.ui.EntryScreen
 import com.expensegarden.app.ui.HomeScreen
 import com.expensegarden.app.ui.MainViewModel
@@ -31,19 +33,22 @@ class MainActivity : ComponentActivity() {
     private val vm: MainViewModel by viewModels {
         MainViewModel.factory((application as GardenApp).container)
     }
+    private val dashVm: DashboardViewModel by viewModels {
+        DashboardViewModel.factory((application as GardenApp).container)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme {
-                Surface { GardenNav(vm) }
+                Surface { GardenNav(vm, dashVm) }
             }
         }
     }
 }
 
 @Composable
-private fun GardenNav(vm: MainViewModel) {
+private fun GardenNav(vm: MainViewModel, dashVm: DashboardViewModel) {
     val nav = rememberNavController()
     val context = LocalContext.current
 
@@ -80,8 +85,10 @@ private fun GardenNav(vm: MainViewModel) {
                     vm.startManualDraft()
                     nav.navigate("entry")
                 },
+                onOpenDashboard = { nav.navigate("dashboard") },
             )
         }
+        composable("dashboard") { DashboardScreen(vm = dashVm) }
         composable(
             "entry",
             // Entry rises like a payment sheet: springy in, brisk non-bouncy out.

@@ -1,0 +1,59 @@
+package com.expensegarden.app.ui
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
+import androidx.room.withTransaction
+import com.expensegarden.app.AppContainer
+import com.expensegarden.app.data.BudgetEntity
+import com.expensegarden.app.stats.MonthStats
+import com.expensegarden.app.stats.MonthStatsFolder
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+
+class DashboardViewModel(private val container: AppContainer) : ViewModel() {
+    private val ledger = container.ledger
+
+    /** null = loading (skeleton). flow{} wrapper: re-subscription re-derives the month key (spec §5 staleness fix). */
+    val stats: StateFlow<MonthStats?> =
+        flow {
+            val monthKey = ledger.currentMonthKey()
+            val (from, to) = ledger.boundsOfMonth(monthKey)
+            emitAll(
+                combine(
+                    container.db.categoryDao().observeAll(),
+                    container.db.transactionDao().observeLoggedSumsByCategory(from, to),
+                    container.db.budgetDao().observeAllForMonth(monthKey),
+                ) { cats, sums, budgets ->
+                    val (day, days) = ledger.today()
+                    MonthStatsFolder.fold(cats, sums.associate { it.categoryId to it.totalPaise }, budgets, day, days)
+                }
+            )
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    /** amountPaise null = clear. categoryId null = overall. Same delete+insert idiom as 1A. */
+    fun setBudget(categoryId: Long?, amountPaise: Long?) {
+        viewModelScope.launch {
+            val monthKey = ledger.currentMonthKey()   // at call time, not VM birth
+            container.db.withTransaction {
+                if (categoryId == null) container.db.budgetDao().deleteOverallForMonth(monthKey)
+                else container.db.budgetDao().deleteForCategory(categoryId, monthKey)
+                if (amountPaise != null && amountPaise > 0) {
+                    container.db.budgetDao().insert(BudgetEntity(categoryId = categoryId, month = monthKey, amountPaise = amountPaise))
+                }
+            }
+        }
+    }
+
+    companion object {
+        fun factory(container: AppContainer) = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T = DashboardViewModel(container) as T
+        }
+    }
+}

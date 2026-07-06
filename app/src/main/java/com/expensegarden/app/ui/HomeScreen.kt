@@ -11,6 +11,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,7 +48,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @Composable
-fun HomeScreen(vm: MainViewModel, onScan: () -> Unit, onManual: () -> Unit) {
+fun HomeScreen(vm: MainViewModel, onScan: () -> Unit, onManual: () -> Unit, onOpenDashboard: () -> Unit) {
     val header by vm.homeHeader.collectAsState()
     val pending by vm.pendingConfirm.collectAsState()
     val recent by vm.recent.collectAsState(initial = emptyList())
@@ -55,7 +56,7 @@ fun HomeScreen(vm: MainViewModel, onScan: () -> Unit, onManual: () -> Unit) {
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Card(Modifier.fillMaxWidth()) {
+            Card(Modifier.fillMaxWidth().clickable(onClick = onOpenDashboard)) {
                 Column(Modifier.padding(16.dp)) {
                     Text("This month", style = MaterialTheme.typography.labelMedium)
                     // Odometer tick: exact values only — old amount floats up, new rises from below.
