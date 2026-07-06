@@ -12,6 +12,9 @@ interface CategoryDao {
 
     @Query("SELECT * FROM category WHERE id = :id")
     suspend fun byId(id: Long): CategoryEntity?
+
+    @Query("SELECT * FROM category")
+    suspend fun all(): List<CategoryEntity>
 }
 
 @Dao
@@ -34,8 +37,13 @@ data class TxnRow(
     val amountPaise: Long,
     val payeeName: String,
     val categoryName: String,
+    val categoryId: Long,
+    val regret: Regret,
     val occurredAt: Long,
 )
+
+data class CategorySum(val categoryId: Long, val totalPaise: Long)
+data class CategoryUsage(val categoryId: Long, val uses: Int)
 
 @Dao
 interface TransactionDao {
@@ -55,11 +63,42 @@ interface TransactionDao {
     fun observeLoggedSumBetween(fromMillis: Long, toMillis: Long): Flow<Long>
 
     @Query(
-        """SELECT t.uuid, t.amountPaise, p.name AS payeeName, c.name AS categoryName, t.occurredAt
+        """SELECT t.uuid, t.amountPaise, p.name AS payeeName, c.name AS categoryName,
+                  t.categoryId, t.regret, t.occurredAt
            FROM txn t JOIN payee p ON p.id = t.payeeId JOIN category c ON c.id = t.categoryId
            WHERE t.status = 'LOGGED' ORDER BY t.occurredAt DESC LIMIT 50"""
     )
     fun observeRecent(): Flow<List<TxnRow>>
+
+    @Query("SELECT * FROM txn WHERE uuid = :uuid")
+    suspend fun byUuid(uuid: String): TransactionEntity?
+
+    @Query("UPDATE txn SET regret = :regret WHERE uuid = :uuid")
+    suspend fun setRegret(uuid: String, regret: Regret)
+
+    @Query(
+        """SELECT categoryId, COALESCE(SUM(amountPaise), 0) AS totalPaise FROM txn
+           WHERE status = 'LOGGED' AND occurredAt BETWEEN :fromMillis AND :toMillis GROUP BY categoryId"""
+    )
+    suspend fun loggedSumsByCategory(fromMillis: Long, toMillis: Long): List<CategorySum>
+
+    @Query(
+        """SELECT categoryId, COALESCE(SUM(amountPaise), 0) AS totalPaise FROM txn
+           WHERE status = 'LOGGED' AND occurredAt BETWEEN :fromMillis AND :toMillis GROUP BY categoryId"""
+    )
+    fun observeLoggedSumsByCategory(fromMillis: Long, toMillis: Long): Flow<List<CategorySum>>
+
+    @Query(
+        """SELECT categoryId, COUNT(*) AS uses FROM txn
+           WHERE status = 'LOGGED' AND occurredAt >= :sinceMillis GROUP BY categoryId"""
+    )
+    fun observeCategoryUsageSince(sinceMillis: Long): Flow<List<CategoryUsage>>
+
+    @Query(
+        """SELECT categoryId, COUNT(*) AS uses FROM txn
+           WHERE status = 'LOGGED' AND occurredAt >= :sinceMillis GROUP BY categoryId"""
+    )
+    suspend fun categoryUsageSince(sinceMillis: Long): List<CategoryUsage>
 }
 
 @Dao
@@ -75,12 +114,25 @@ interface BudgetDao {
 
     @Insert
     suspend fun insert(budget: BudgetEntity)
+
+    @Query("SELECT * FROM budget WHERE month = :month")
+    suspend fun allForMonth(month: String): List<BudgetEntity>
+
+    @Query("SELECT * FROM budget WHERE month = :month")
+    fun observeAllForMonth(month: String): Flow<List<BudgetEntity>>
+
+    // NULL never matches `categoryId = ?` in SQL — overall rows need the dedicated IS NULL delete above.
+    @Query("DELETE FROM budget WHERE categoryId = :categoryId AND month = :month")
+    suspend fun deleteForCategory(categoryId: Long, month: String)
 }
 
 @Dao
 interface GameEventDao {
     @Insert
     suspend fun insert(event: GameEventEntity)
+
+    @Query("SELECT * FROM game_event ORDER BY id")
+    suspend fun allByIdAsc(): List<GameEventEntity>
 }
 
 @Dao
