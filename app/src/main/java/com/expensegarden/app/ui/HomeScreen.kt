@@ -19,16 +19,18 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -40,9 +42,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
 import com.expensegarden.app.core.Money
+import com.expensegarden.app.data.Regret
 import com.expensegarden.app.data.TransactionEntity
+import com.expensegarden.app.data.TxnRow
+import com.expensegarden.app.gate.Severity
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -53,30 +59,39 @@ fun HomeScreen(vm: MainViewModel, onScan: () -> Unit, onManual: () -> Unit, onOp
     val pending by vm.pendingConfirm.collectAsState()
     val recent by vm.recent.collectAsState(initial = emptyList())
     val dateFmt = remember { DateTimeFormatter.ofPattern("dd MMM") }
+    var regretTarget by remember { mutableStateOf<TxnRow?>(null) }
 
     Box(Modifier.fillMaxSize()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.statusBarsPadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Card(Modifier.fillMaxWidth().clickable(onClick = onOpenDashboard)) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("This month", style = MaterialTheme.typography.labelMedium)
-                    // Odometer tick: exact values only — old amount floats up, new rises from below.
-                    AnimatedContent(
-                        targetState = header?.spentPaise ?: 0L,
-                        transitionSpec = {
-                            (slideInVertically(spring(dampingRatio = 0.8f, stiffness = 380f)) { it / 2 } +
-                                fadeIn(spring(stiffness = Spring.StiffnessMedium))) togetherWith
-                                (slideOutVertically(spring(stiffness = Spring.StiffnessMedium)) { -it / 2 } +
-                                    fadeOut(spring(stiffness = Spring.StiffnessMedium)))
-                        },
-                        label = "monthSpent",
-                    ) { spent ->
-                        Text(Money.display(spent), style = MaterialTheme.typography.headlineMedium)
+                val h = header
+                if (h == null) {
+                    // Skeleton: fixed-height quiet block until Room's first emission (kills the ₹0.00 flash).
+                    Column(Modifier.padding(16.dp).fillMaxWidth().height(72.dp).alpha(0.3f)) {
+                        Text("This month", style = MaterialTheme.typography.labelMedium)
                     }
-                    val b = header?.overallBudgetPaise
-                    Text(
-                        if (b == null) "No budget set" else "Budget: ${Money.display(b)}",
-                        style = MaterialTheme.typography.labelMedium,
-                    )
+                } else {
+                    Column(Modifier.padding(16.dp)) {
+                        Text("This month", style = MaterialTheme.typography.labelMedium)
+                        // Odometer tick: exact values only — old amount floats up, new rises from below.
+                        AnimatedContent(
+                            targetState = h.spentPaise,
+                            transitionSpec = {
+                                (slideInVertically(spring(dampingRatio = 0.8f, stiffness = 380f)) { it / 2 } +
+                                    fadeIn(spring(stiffness = Spring.StiffnessMedium))) togetherWith
+                                    (slideOutVertically(spring(stiffness = Spring.StiffnessMedium)) { -it / 2 } +
+                                        fadeOut(spring(stiffness = Spring.StiffnessMedium)))
+                            },
+                            label = "monthSpent",
+                        ) { spent ->
+                            Text(Money.display(spent), style = MaterialTheme.typography.headlineMedium)
+                        }
+                        Text(
+                            h.overallBudgetPaise?.let { "Budget: ${Money.display(it)} · ${hintLine(h.hint)}" }
+                                ?: "Tap for the dashboard",
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                    }
                 }
             }
 
@@ -110,13 +125,18 @@ fun HomeScreen(vm: MainViewModel, onScan: () -> Unit, onManual: () -> Unit, onOp
             ) {
                 items(recent, key = { it.uuid }) { row ->
                     Row(
-                        Modifier.fillMaxWidth().animateItem(),
+                        Modifier.fillMaxWidth().animateItem().clickable { regretTarget = row },
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Column {
                             Text(row.payeeName, style = MaterialTheme.typography.bodyLarge)
                             Text(
-                                "${row.categoryName} · ${dateFmt.format(Instant.ofEpochMilli(row.occurredAt).atZone(ZoneId.systemDefault()))}",
+                                "${row.categoryName} · ${dateFmt.format(Instant.ofEpochMilli(row.occurredAt).atZone(ZoneId.systemDefault()))}" +
+                                    when (row.regret) {
+                                        Regret.REGRET -> " · regret"
+                                        Regret.WORTH_IT -> " · worth it"
+                                        Regret.UNRATED -> ""
+                                    },
                                 style = MaterialTheme.typography.bodySmall,
                             )
                         }
@@ -135,4 +155,31 @@ fun HomeScreen(vm: MainViewModel, onScan: () -> Unit, onManual: () -> Unit, onOp
         }
     }
 
+    regretTarget?.let { row ->
+        AlertDialog(
+            onDismissRequest = { regretTarget = null },
+            title = { Text("${Money.display(row.amountPaise)} — ${row.payeeName}") },
+            text = {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = row.regret == Regret.WORTH_IT,
+                        onClick = { vm.setRegret(row.uuid, Regret.WORTH_IT); regretTarget = null },
+                        label = { Text("Worth it") },
+                    )
+                    FilterChip(
+                        selected = row.regret == Regret.REGRET,
+                        onClick = { vm.setRegret(row.uuid, Regret.REGRET); regretTarget = null },
+                        label = { Text("Regret") },
+                    )
+                }
+            },
+            confirmButton = { TextButton(onClick = { regretTarget = null }) { Text("Close") } },
+        )
+    }
+}
+
+private fun hintLine(s: Severity) = when (s) {
+    Severity.OK -> "on pace"
+    Severity.PACE_WARNING -> "ahead of pace"
+    Severity.BREACH -> "over budget"
 }
