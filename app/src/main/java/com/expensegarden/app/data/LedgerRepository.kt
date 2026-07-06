@@ -1,7 +1,12 @@
 package com.expensegarden.app.data
 
 import androidx.room.withTransaction
+import com.expensegarden.app.gate.GateAggregator
+import com.expensegarden.app.gate.GateVerdict
+import com.expensegarden.app.gate.ScopeInput
+import com.expensegarden.app.stats.CategoryTree
 import org.json.JSONObject
+import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
@@ -47,13 +52,13 @@ class LedgerRepository(private val db: AppDatabase) {
 
     fun observePendingConfirm(): Flow<List<TransactionEntity>> = db.transactionDao().observePendingConfirm()
     fun observeRecent(): Flow<List<TxnRow>> = db.transactionDao().observeRecent()
-    fun observeMonthSpent(): Flow<Long> {
-        val (from, to) = currentMonthBounds()
+    fun observeMonthSpent(monthKey: String): Flow<Long> {
+        val (from, to) = boundsOfMonth(monthKey)
         return db.transactionDao().observeLoggedSumBetween(from, to)
     }
 
-    suspend fun monthSpentPaise(): Long {
-        val (from, to) = currentMonthBounds()
+    suspend fun monthSpentPaise(monthKey: String = currentMonthKey()): Long {
+        val (from, to) = boundsOfMonth(monthKey)
         return db.transactionDao().loggedSumBetween(from, to)
     }
 
@@ -61,6 +66,54 @@ class LedgerRepository(private val db: AppDatabase) {
     fun today(): Pair<Int, Int> {
         val d = LocalDate.now(zone)
         return d.dayOfMonth to d.lengthOfMonth()
+    }
+
+    fun monthKeyOf(epochMillis: Long): String =
+        YearMonth.from(Instant.ofEpochMilli(epochMillis).atZone(zone)).toString()
+
+    fun boundsOfMonth(monthKey: String): Pair<Long, Long> {
+        val ym = YearMonth.parse(monthKey)
+        val from = ym.atDay(1).atStartOfDay(zone).toInstant().toEpochMilli()
+        val to = ym.plusMonths(1).atDay(1).atStartOfDay(zone).toInstant().toEpochMilli() - 1
+        return from to to
+    }
+
+    fun dayAndLengthOf(epochMillis: Long): Pair<Int, Int> {
+        val d = Instant.ofEpochMilli(epochMillis).atZone(zone).toLocalDate()
+        return d.dayOfMonth to d.lengthOfMonth()
+    }
+
+    /** Budget scopes relevant to a payment in [categoryId] during [occurredAt]'s month:
+     *  overall (depth 0) + every budgeted category on the ancestor chain (deeper = more specific). */
+    suspend fun scopeInputs(categoryId: Long, occurredAt: Long): List<ScopeInput> {
+        val monthKey = monthKeyOf(occurredAt)
+        val budgets = db.budgetDao().allForMonth(monthKey)
+        if (budgets.isEmpty()) return emptyList()
+        val tree = CategoryTree(db.categoryDao().all())
+        val chain = tree.ancestorChain(categoryId)                       // [self, …, root]
+        val (from, to) = boundsOfMonth(monthKey)
+        val leafSums = db.transactionDao().loggedSumsByCategory(from, to)
+            .associate { it.categoryId to it.totalPaise }
+        val rolled = tree.rollupSums(leafSums)
+        return budgets.mapNotNull { b ->
+            when {
+                b.categoryId == null -> ScopeInput(null, "overall", b.amountPaise, leafSums.values.sum(), depth = 0)
+                b.categoryId in chain -> ScopeInput(
+                    categoryId = b.categoryId,
+                    label = tree.byId(b.categoryId)?.name ?: "?",
+                    budgetPaise = b.amountPaise,
+                    spentPaise = rolled[b.categoryId] ?: 0L,
+                    depth = chain.size - chain.indexOf(b.categoryId),    // self deepest
+                )
+                else -> null
+            }
+        }
+    }
+
+    /** Worst severity across scopes, evaluated in the month the txn belongs to (spec §3: backdating). */
+    suspend fun evaluateGate(categoryId: Long, amountPaise: Long, occurredAt: Long): GateVerdict {
+        val (day, days) = dayAndLengthOf(occurredAt)
+        return GateAggregator.aggregate(scopeInputs(categoryId, occurredAt), amountPaise, day, days)
     }
 
     private suspend fun save(draft: Draft, source: TxnSource, status: TxnStatus, breached: Boolean): String {
@@ -97,13 +150,6 @@ class LedgerRepository(private val db: AppDatabase) {
             transactionUuid = uuid,
             createdAt = now(),
         )
-
-    private fun currentMonthBounds(): Pair<Long, Long> {
-        val ym = YearMonth.now(zone)
-        val from = ym.atDay(1).atStartOfDay(zone).toInstant().toEpochMilli()
-        val to = ym.plusMonths(1).atDay(1).atStartOfDay(zone).toInstant().toEpochMilli() - 1
-        return from to to
-    }
 
     private fun now(): Long = System.currentTimeMillis()
 }

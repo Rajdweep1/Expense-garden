@@ -42,7 +42,7 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         container.db.categoryDao().observeAll()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val monthSpent: StateFlow<Long> =
-        ledger.observeMonthSpent()
+        ledger.observeMonthSpent(ledger.currentMonthKey())
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
     val monthBudget: StateFlow<BudgetEntity?> =
         container.db.budgetDao().observeOverallForMonth(ledger.currentMonthKey())
