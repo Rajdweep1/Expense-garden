@@ -23,6 +23,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
@@ -87,8 +88,29 @@ fun GardenCanvas(
         val iso = IsoMath.fit(state.gridRows, state.gridCols, size.width, size.height, topReservePx, bottomReservePx)
         isoState.clear(); isoState.add(iso)
 
-        // ---- sky ----
-        drawRect(Brush.verticalGradient(GardenPalette.sky(state.weather)))
+        // ---- FC-style ocean world: airy horizon fading into calm water ----
+        drawRect(Brush.verticalGradient(GardenPalette.sky(state.weather), endY = size.height * .30f))
+        drawRect(
+            Brush.verticalGradient(GardenPalette.ocean(state.weather), startY = size.height * .22f, endY = size.height),
+            topLeft = Offset(0f, size.height * .22f), size = Size(size.width, size.height * .78f),
+        )
+        // wave glints — deterministic scatter, twinkling on the clock
+        repeat(18) { i ->
+            val gx = ((i * 61) % 97) / 97f * size.width
+            val gy = size.height * (.26f + ((i * 37) % 89) / 89f * .70f)
+            val tw = sin((livePhase * 2f + i * .37f) * 2f * PI.toFloat()) * .5f + .5f
+            drawLine(
+                GardenPalette.waveGlint.copy(alpha = .10f + .20f * tw),
+                Offset(gx, gy), Offset(gx + 14f + 10f * tw, gy), strokeWidth = 3f, cap = StrokeCap.Round,
+            )
+        }
+        // little boats drifting across the water (one behind the island, one in open water)
+        repeat(2) { i ->
+            val t = (livePhase * (.30f + i * .22f) + i * .53f) % 1.15f
+            val bx = t * size.width * 1.15f - size.width * .075f
+            val by = size.height * (if (i == 0) .155f else .80f) + sin((livePhase * 4f + i) * PI.toFloat()) * 4f
+            boat(Offset(bx, by), scale = if (i == 0) .75f else 1.1f)
+        }
         // sun (dimmer under clouds/dust)
         val sunAlpha = when (state.weather) { Weather.SUNNY -> 1f; else -> .45f }
         val sunC = Offset(size.width * .85f, topReservePx * .38f)
@@ -130,16 +152,24 @@ fun GardenCanvas(
                 diamond(cx, cy, iso.tileW, iso.tileH, fill)
             }
         }
-        val wallH = iso.tileH * .5f
+        val wallH = iso.tileH * 1.05f                                // chunky FC-style island slab
         for (c in 0 until state.gridCols) {                          // front row (row 0) left-facing walls
             val v = vis(Tile(0, c))
             val cx = iso.tileCenterX(v); val cy = iso.tileCenterY(v)
-            wall(Offset(cx - iso.tileW / 2, cy), Offset(cx, cy + iso.tileH / 2), wallH, GardenPalette.wallLeft)
+            wall(Offset(cx - iso.tileW / 2, cy), Offset(cx, cy + iso.tileH / 2), wallH, GardenPalette.wallLeft, GardenPalette.wallLeftDark)
+            drawLine(GardenPalette.soilLip, Offset(cx - iso.tileW / 2, cy), Offset(cx, cy + iso.tileH / 2), strokeWidth = 5f)
         }
         for (r in 0 until state.gridRows) {                          // right column right-facing walls
             val v = vis(Tile(r, state.gridCols - 1))
             val cx = iso.tileCenterX(v); val cy = iso.tileCenterY(v)
-            wall(Offset(cx, cy + iso.tileH / 2), Offset(cx + iso.tileW / 2, cy), wallH, GardenPalette.wallRight)
+            wall(Offset(cx, cy + iso.tileH / 2), Offset(cx + iso.tileW / 2, cy), wallH, GardenPalette.wallRight, GardenPalette.wallRightDark)
+            drawLine(GardenPalette.soilLip, Offset(cx, cy + iso.tileH / 2), Offset(cx + iso.tileW / 2, cy), strokeWidth = 5f)
+        }
+        // sea mist hugging the island base, FC-style
+        val baseY = iso.tileCenterY(vis(Tile(0, state.gridCols - 1))) + wallH
+        listOf(-.18f, .12f, .38f).forEachIndexed { i, dx ->
+            val mx = size.width * (.5f + dx) + sin((livePhase + i * .3f) * 2f * PI.toFloat()) * 14f
+            drawOval(GardenPalette.mist, topLeft = Offset(mx - 130f, baseY - 34f + i * 10f), size = Size(260f, 68f))
         }
 
         // ---- plants, back to front (max model row = farthest visually, drawn first) ----
@@ -163,7 +193,7 @@ fun GardenCanvas(
             val bx = size.width * .5f + size.width * .32f * sin(2f * PI.toFloat() * t + i)
             val by = topReservePx + (size.height - topReservePx - bottomReservePx) * .3f +
                 60f * sin(4f * PI.toFloat() * t + i * 2f)
-            butterfly(Offset(bx, by), flap = sin(livePhase * 40f * PI.toFloat()))
+            butterfly(Offset(bx, by), flap = sin(livePhase * 40f * PI.toFloat()), sizePx = iso.tileW * .16f)
         }
     }
 }
@@ -176,12 +206,28 @@ private fun DrawScope.diamond(cx: Float, cy: Float, w: Float, h: Float, color: C
     drawPath(p, Color(0x14000000), style = Stroke(1f))
 }
 
-private fun DrawScope.wall(top1: Offset, top2: Offset, depth: Float, color: Color) {
+private fun DrawScope.wall(top1: Offset, top2: Offset, depth: Float, light: Color, dark: Color) {
     val p = Path().apply {
         moveTo(top1.x, top1.y); lineTo(top2.x, top2.y)
         lineTo(top2.x, top2.y + depth); lineTo(top1.x, top1.y + depth); close()
     }
-    drawPath(p, color)
+    val topY = minOf(top1.y, top2.y)
+    drawPath(p, Brush.verticalGradient(listOf(light, dark), startY = topY, endY = maxOf(top1.y, top2.y) + depth))
+}
+
+private fun DrawScope.boat(c: Offset, scale: Float) {
+    val s = 22f * scale
+    val hullPath = Path().apply {
+        moveTo(c.x - s, c.y); lineTo(c.x + s, c.y)
+        quadraticBezierTo(c.x + s * .7f, c.y + s * .5f, c.x, c.y + s * .5f)
+        quadraticBezierTo(c.x - s * .7f, c.y + s * .5f, c.x - s, c.y); close()
+    }
+    drawPath(hullPath, GardenPalette.hullBrown)
+    drawLine(Color(0xFF6B4423), Offset(c.x, c.y - 2f), Offset(c.x, c.y - s * 1.6f), strokeWidth = 3f)
+    val sail = Path().apply {
+        moveTo(c.x + 3f, c.y - s * 1.55f); lineTo(c.x + 3f + s * .9f, c.y - 4f); lineTo(c.x + 3f, c.y - 4f); close()
+    }
+    drawPath(sail, GardenPalette.sailCloth)
 }
 
 private fun DrawScope.cloud(c: Offset, scale: Float) {
@@ -198,9 +244,10 @@ private fun DrawScope.sparkle(c: Offset, r: Float, alpha: Float) {
     drawPath(p, GardenPalette.sparkle.copy(alpha = GardenPalette.sparkle.alpha * alpha))
 }
 
-private fun DrawScope.butterfly(c: Offset, flap: Float) {
-    val wing = 7f * (0.4f + 0.6f * kotlin.math.abs(flap))
-    drawOval(GardenPalette.butterflyA, topLeft = Offset(c.x - wing - 1.5f, c.y - 4.5f), size = Size(wing, 9f))
-    drawOval(GardenPalette.butterflyB, topLeft = Offset(c.x + 1.5f, c.y - 4.5f), size = Size(wing, 9f))
-    drawRoundRect(Color(0xFF3F3B52), topLeft = Offset(c.x - 1.4f, c.y - 5f), size = Size(2.8f, 10f), cornerRadius = CornerRadius(1.4f))
+private fun DrawScope.butterfly(c: Offset, flap: Float, sizePx: Float) {
+    val wing = sizePx * (0.4f + 0.6f * kotlin.math.abs(flap))
+    val h = sizePx * 1.3f
+    drawOval(GardenPalette.butterflyA, topLeft = Offset(c.x - wing - sizePx * .1f, c.y - h / 2), size = Size(wing, h))
+    drawOval(GardenPalette.butterflyB, topLeft = Offset(c.x + sizePx * .1f, c.y - h / 2), size = Size(wing, h))
+    drawRoundRect(Color(0xFF3F3B52), topLeft = Offset(c.x - sizePx * .09f, c.y - h * .55f), size = Size(sizePx * .18f, h * 1.1f), cornerRadius = CornerRadius(sizePx * .09f))
 }

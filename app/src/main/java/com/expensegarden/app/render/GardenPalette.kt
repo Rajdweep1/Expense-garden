@@ -11,9 +11,21 @@ object GardenPalette {
         Weather.DROUGHT -> listOf(Color(0xFFD9B98A), Color(0xFFE8D3A8), Color(0xFFEFE3C2))
     }
     fun grassA(weather: Weather) = if (weather == Weather.DROUGHT) Color(0xFFC2BB6E) else Color(0xFFA7DD7F)
-    fun grassB(weather: Weather) = if (weather == Weather.DROUGHT) Color(0xFFB0A85F) else Color(0xFF8CC968)
+    fun grassB(weather: Weather) = if (weather == Weather.DROUGHT) Color(0xFFB9B167) else Color(0xFF9BD374)
+    fun ocean(weather: Weather): List<Color> = when (weather) {
+        Weather.SUNNY -> listOf(Color(0xFFDDF2FB), Color(0xFF83D0F5), Color(0xFF5FB6E8))
+        Weather.OVERCAST -> listOf(Color(0xFFD3DEE5), Color(0xFFA3B8C6), Color(0xFF8AA3B5))
+        Weather.DROUGHT -> listOf(Color(0xFFEBDFC0), Color(0xFFD8C79E), Color(0xFFC4B183))
+    }
+    val waveGlint = Color(0xB3FFFFFF)
+    val mist = Color(0x66FFFFFF)
+    val sailCloth = Color(0xFFFFF6E3)
+    val hullBrown = Color(0xFF8A5B33)
+    val soilLip = Color(0x40FFFFFF)
     val wallLeft = Color(0xFF7C5233)
+    val wallLeftDark = Color(0xFF5E3D22)
     val wallRight = Color(0xFF63401F)
+    val wallRightDark = Color(0xFF4A2F16)
     val shadow = Color(0x28000000)
     val sun = Color(0xFFFFD54D)
     val sunHalo = Color(0x66FFE37E)
