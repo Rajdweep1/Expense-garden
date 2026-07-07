@@ -99,6 +99,26 @@ interface TransactionDao {
            WHERE status = 'LOGGED' AND occurredAt >= :sinceMillis GROUP BY categoryId"""
     )
     suspend fun categoryUsageSince(sinceMillis: Long): List<CategoryUsage>
+
+    @Query("SELECT * FROM txn WHERE status = 'LOGGED' AND occurredAt BETWEEN :fromMillis AND :toMillis")
+    suspend fun loggedBetween(fromMillis: Long, toMillis: Long): List<TransactionEntity>
+
+    @Query("SELECT * FROM txn WHERE status = 'LOGGED' AND occurredAt BETWEEN :fromMillis AND :toMillis")
+    fun observeLoggedBetween(fromMillis: Long, toMillis: Long): Flow<List<TransactionEntity>>
+
+    @Query(
+        """SELECT t.uuid, t.amountPaise, p.name AS payeeName, c.name AS categoryName,
+                  t.categoryId, t.regret, t.occurredAt
+           FROM txn t JOIN payee p ON p.id = t.payeeId JOIN category c ON c.id = t.categoryId
+           WHERE t.uuid = :uuid"""
+    )
+    suspend fun rowByUuid(uuid: String): TxnRow?
+
+    @Query("SELECT COUNT(*) FROM txn WHERE status = 'LOGGED' AND categoryId IN (:categoryIds)")
+    fun observeLoggedCountIn(categoryIds: List<Long>): Flow<Int>
+
+    @Query("SELECT MIN(occurredAt) FROM txn WHERE status = 'LOGGED'")
+    suspend fun earliestLoggedAt(): Long?
 }
 
 @Dao
@@ -133,6 +153,15 @@ interface GameEventDao {
 
     @Query("SELECT * FROM game_event ORDER BY id")
     suspend fun allByIdAsc(): List<GameEventEntity>
+
+    @Query("SELECT * FROM game_event WHERE createdAt BETWEEN :fromMillis AND :toMillis ORDER BY id")
+    suspend fun eventsBetween(fromMillis: Long, toMillis: Long): List<GameEventEntity>
+
+    @Query("SELECT * FROM game_event WHERE createdAt BETWEEN :fromMillis AND :toMillis ORDER BY id")
+    fun observeEventsBetween(fromMillis: Long, toMillis: Long): Flow<List<GameEventEntity>>
+
+    @Query("SELECT * FROM game_event WHERE type = :type ORDER BY id")
+    suspend fun ofType(type: String): List<GameEventEntity>
 }
 
 @Dao
