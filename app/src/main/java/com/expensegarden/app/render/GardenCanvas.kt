@@ -70,11 +70,16 @@ fun GardenCanvas(
 
     val isoState = remember(state.gridRows, state.gridCols) { mutableListOf<IsoMath>() }
 
+    // Model row 0 = front (nearest viewer); IsoMath projects row 0 topmost (farthest).
+    // Flip rows at the render boundary so the model's front lands at the bottom of the
+    // field. vis is an involution, so it also maps tapped visual tiles back to model tiles.
+    fun vis(t: Tile) = Tile(state.gridRows - 1 - t.row, t.col)
+
     Canvas(
         modifier.pointerInput(state) {
             detectTapGestures { p ->
                 val iso = isoState.lastOrNull() ?: return@detectTapGestures
-                val tile = iso.tileAt(p.x, p.y)
+                val tile = vis(iso.tileAt(p.x, p.y))
                 state.plants.firstOrNull { it.tile == tile }?.let { onPlantTap(it.txnUuid) }
             }
         },
@@ -105,10 +110,10 @@ fun GardenCanvas(
             sparkle(Offset(sx, sy), 9f, a)
         }
 
-        // ---- back-row trees on the horizon ----
+        // ---- back-row trees on the horizon: stand just behind the field's far edge ----
         repeat(state.backRowTreeCount) { i ->
-            val tx = size.width * (.30f + i * .20f)
-            val base = Offset(tx, iso.tileCenterY(Tile(state.gridRows - 1, 0)) - iso.tileH * 1.2f)
+            val backTile = vis(Tile(state.gridRows - 1, i * 2))     // every other col along the back edge
+            val base = Offset(iso.tileCenterX(backTile), iso.tileCenterY(backTile) - iso.tileH * .35f)
             drawOval(GardenPalette.shadow, topLeft = Offset(base.x - 26f, base.y - 8f), size = Size(52f, 16f))
             val treeH = iso.tileH * (2.6f + minOf(state.trunkTier, 15) * .06f)
             val sway = sin((livePhase * 2f + i * .8f) * PI.toFloat()) * 1.2f
@@ -119,24 +124,28 @@ fun GardenCanvas(
         // ---- tile field + front walls ----
         for (r in state.gridRows - 1 downTo 0) {
             for (c in 0 until state.gridCols) {
-                val cx = iso.tileCenterX(Tile(r, c)); val cy = iso.tileCenterY(Tile(r, c))
+                val v = vis(Tile(r, c))
+                val cx = iso.tileCenterX(v); val cy = iso.tileCenterY(v)
                 val fill = if ((r + c) % 2 == 0) GardenPalette.grassA(state.weather) else GardenPalette.grassB(state.weather)
                 diamond(cx, cy, iso.tileW, iso.tileH, fill)
             }
         }
         val wallH = iso.tileH * .5f
         for (c in 0 until state.gridCols) {                          // front row (row 0) left-facing walls
-            val cx = iso.tileCenterX(Tile(0, c)); val cy = iso.tileCenterY(Tile(0, c))
+            val v = vis(Tile(0, c))
+            val cx = iso.tileCenterX(v); val cy = iso.tileCenterY(v)
             wall(Offset(cx - iso.tileW / 2, cy), Offset(cx, cy + iso.tileH / 2), wallH, GardenPalette.wallLeft)
         }
         for (r in 0 until state.gridRows) {                          // right column right-facing walls
-            val cx = iso.tileCenterX(Tile(r, state.gridCols - 1)); val cy = iso.tileCenterY(Tile(r, state.gridCols - 1))
+            val v = vis(Tile(r, state.gridCols - 1))
+            val cx = iso.tileCenterX(v); val cy = iso.tileCenterY(v)
             wall(Offset(cx, cy + iso.tileH / 2), Offset(cx + iso.tileW / 2, cy), wallH, GardenPalette.wallRight)
         }
 
-        // ---- plants, back to front ----
+        // ---- plants, back to front (max model row = farthest visually, drawn first) ----
         state.plants.sortedByDescending { iso.depth(it.tile) }.forEach { plant ->
-            val ax = iso.tileCenterX(plant.tile); val ay = iso.tileCenterY(plant.tile) + iso.tileH * .18f
+            val v = vis(plant.tile)
+            val ax = iso.tileCenterX(v); val ay = iso.tileCenterY(v) + iso.tileH * .18f
             val anchor = Offset(ax, ay)
             val popScale = pop[plant.txnUuid]?.value ?: 1f
             if (popScale < 1f) {                                     // soil poof while springing in
