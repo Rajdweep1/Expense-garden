@@ -79,7 +79,11 @@ private fun GardenNav(vm: MainViewModel, dashVm: DashboardViewModel, gardenVm: G
             GardenHomeScreen(
                 gardenVm = gardenVm,
                 vm = vm,
-                painter = remember { com.expensegarden.app.render.ProceduralPainter() },
+                painter = remember {
+                    val container = (context.applicationContext as GardenApp).container
+                    if (container.sprites.isEmpty()) com.expensegarden.app.render.ProceduralPainter()
+                    else com.expensegarden.app.render.SpritePainter(container.sprites)
+                },
                 onScan = {
                     scanLauncher.launch(
                         ScanOptions()
@@ -95,7 +99,16 @@ private fun GardenNav(vm: MainViewModel, dashVm: DashboardViewModel, gardenVm: G
             )
         }
         composable("dashboard") { DashboardScreen(vm = dashVm) }
-        composable("greenhouse") { GreenhouseScreen(gardenVm = gardenVm, painter = remember { com.expensegarden.app.render.ProceduralPainter() }) }
+        composable("greenhouse") {
+            GreenhouseScreen(
+                gardenVm = gardenVm,
+                painter = remember {
+                    val container = (context.applicationContext as GardenApp).container
+                    if (container.sprites.isEmpty()) com.expensegarden.app.render.ProceduralPainter()
+                    else com.expensegarden.app.render.SpritePainter(container.sprites)
+                },
+            )
+        }
         composable(
             "entry",
             // Entry rises like a payment sheet: springy in, brisk non-bouncy out.
