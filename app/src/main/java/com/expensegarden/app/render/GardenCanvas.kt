@@ -23,9 +23,11 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.input.pointer.pointerInput
 import com.expensegarden.app.game.Archetype
 import com.expensegarden.app.game.GardenState
@@ -94,6 +96,10 @@ fun GardenCanvas(
             Brush.verticalGradient(GardenPalette.ocean(state.weather), startY = size.height * .22f, endY = size.height),
             topLeft = Offset(0f, size.height * .22f), size = Size(size.width, size.height * .78f),
         )
+        // broad light patches on the water (FC stills show these, not just glints)
+        listOf(.25f to .38f, .70f to .62f, .45f to .88f).forEach { (fx, fy) ->
+            drawOval(Color.White.copy(alpha = .06f), topLeft = Offset(size.width * fx - 180f, size.height * fy - 60f), size = Size(360f, 120f))
+        }
         // wave glints — deterministic scatter, twinkling on the clock
         repeat(18) { i ->
             val gx = ((i * 61) % 97) / 97f * size.width
@@ -158,18 +164,49 @@ fun GardenCanvas(
             val cx = iso.tileCenterX(v); val cy = iso.tileCenterY(v)
             wall(Offset(cx - iso.tileW / 2, cy), Offset(cx, cy + iso.tileH / 2), wallH, GardenPalette.wallLeft, GardenPalette.wallLeftDark)
             drawLine(GardenPalette.soilLip, Offset(cx - iso.tileW / 2, cy), Offset(cx, cy + iso.tileH / 2), strokeWidth = 5f)
+            for (t in listOf(.33f, .66f)) {                          // plank seams, like FC's wooden edging
+                val px = cx - iso.tileW / 2 + (iso.tileW / 2) * t
+                val py = cy + (iso.tileH / 2) * t
+                drawLine(Color(0x1F000000), Offset(px, py), Offset(px, py + wallH), strokeWidth = 2.5f)
+            }
         }
         for (r in 0 until state.gridRows) {                          // right column right-facing walls
             val v = vis(Tile(r, state.gridCols - 1))
             val cx = iso.tileCenterX(v); val cy = iso.tileCenterY(v)
             wall(Offset(cx, cy + iso.tileH / 2), Offset(cx + iso.tileW / 2, cy), wallH, GardenPalette.wallRight, GardenPalette.wallRightDark)
             drawLine(GardenPalette.soilLip, Offset(cx, cy + iso.tileH / 2), Offset(cx + iso.tileW / 2, cy), strokeWidth = 5f)
+            for (t in listOf(.33f, .66f)) {
+                val px = cx + (iso.tileW / 2) * t
+                val py = cy + iso.tileH / 2 - (iso.tileH / 2) * t
+                drawLine(Color(0x1F000000), Offset(px, py), Offset(px, py + wallH), strokeWidth = 2.5f)
+            }
         }
         // sea mist hugging the island base, FC-style
         val baseY = iso.tileCenterY(vis(Tile(0, state.gridCols - 1))) + wallH
         listOf(-.18f, .12f, .38f).forEachIndexed { i, dx ->
             val mx = size.width * (.5f + dx) + sin((livePhase + i * .3f) * 2f * PI.toFloat()) * 14f
             drawOval(GardenPalette.mist, topLeft = Offset(mx - 130f, baseY - 34f + i * 10f), size = Size(260f, 68f))
+        }
+
+        // ---- quiet props on empty tiles (FC's empty plots are never bare) ----
+        val occupied = state.plants.map { it.tile }.toSet()
+        for (r in 0 until state.gridRows) for (c in 0 until state.gridCols) {
+            val t = Tile(r, c)
+            if (t in occupied) continue
+            val h = (r * 31 + c * 17 + 7) * 1103515245
+            val v = vis(t)
+            val cx = iso.tileCenterX(v); val cy = iso.tileCenterY(v)
+            when (kotlin.math.abs(h) % 5) {
+                0 -> listOf(-14f, 0f, 13f).forEach { deg ->      // small grass tuft
+                    rotate(degrees = deg, pivot = Offset(cx, cy)) {
+                        drawLine(GardenPalette.leaf.copy(alpha = .55f), Offset(cx, cy), Offset(cx, cy - iso.tileH * .3f), strokeWidth = 3f, cap = StrokeCap.Round)
+                    }
+                }
+                1 -> {                                            // pale pebbles
+                    drawCircle(Color(0x66FFFFFF), radius = iso.tileW * .03f, center = Offset(cx - iso.tileW * .08f, cy + iso.tileH * .08f))
+                    drawCircle(Color(0x4DFFFFFF), radius = iso.tileW * .022f, center = Offset(cx + iso.tileW * .07f, cy + iso.tileH * .04f))
+                }
+            }
         }
 
         // ---- plants, back to front (max model row = farthest visually, drawn first) ----
@@ -203,7 +240,8 @@ private fun DrawScope.diamond(cx: Float, cy: Float, w: Float, h: Float, color: C
         moveTo(cx, cy - h / 2); lineTo(cx + w / 2, cy); lineTo(cx, cy + h / 2); lineTo(cx - w / 2, cy); close()
     }
     drawPath(p, color)
-    drawPath(p, Color(0x14000000), style = Stroke(1f))
+    // soft dashed borders — FC's plot-path lines, garden flavored
+    drawPath(p, Color(0x33FFFFFF), style = Stroke(2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 9f))))
 }
 
 private fun DrawScope.wall(top1: Offset, top2: Offset, depth: Float, light: Color, dark: Color) {
