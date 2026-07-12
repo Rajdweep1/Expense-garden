@@ -15,6 +15,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
 import androidx.navigation.compose.NavHost
@@ -24,7 +25,8 @@ import com.expensegarden.app.capture.UpiUriParser
 import com.expensegarden.app.ui.DashboardScreen
 import com.expensegarden.app.ui.DashboardViewModel
 import com.expensegarden.app.ui.EntryScreen
-import com.expensegarden.app.ui.HomeScreen
+import com.expensegarden.app.ui.GardenHomeScreen
+import com.expensegarden.app.ui.GardenViewModel
 import com.expensegarden.app.ui.MainViewModel
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
@@ -36,19 +38,22 @@ class MainActivity : ComponentActivity() {
     private val dashVm: DashboardViewModel by viewModels {
         DashboardViewModel.factory((application as GardenApp).container)
     }
+    private val gardenVm: GardenViewModel by viewModels {
+        GardenViewModel.factory((application as GardenApp).container)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme {
-                Surface { GardenNav(vm, dashVm) }
+                Surface { GardenNav(vm, dashVm, gardenVm) }
             }
         }
     }
 }
 
 @Composable
-private fun GardenNav(vm: MainViewModel, dashVm: DashboardViewModel) {
+private fun GardenNav(vm: MainViewModel, dashVm: DashboardViewModel, gardenVm: GardenViewModel) {
     val nav = rememberNavController()
     val context = LocalContext.current
 
@@ -70,8 +75,10 @@ private fun GardenNav(vm: MainViewModel, dashVm: DashboardViewModel) {
         exitTransition = { fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMedium)) },
     ) {
         composable("home") {
-            HomeScreen(
+            GardenHomeScreen(
+                gardenVm = gardenVm,
                 vm = vm,
+                painter = remember { com.expensegarden.app.render.ProceduralPainter() },
                 onScan = {
                     scanLauncher.launch(
                         ScanOptions()
@@ -81,14 +88,13 @@ private fun GardenNav(vm: MainViewModel, dashVm: DashboardViewModel) {
                             .setOrientationLocked(true)
                     )
                 },
-                onManual = {
-                    vm.startManualDraft()
-                    nav.navigate("entry")
-                },
+                onManual = { vm.startManualDraft(); nav.navigate("entry") },
                 onOpenDashboard = { nav.navigate("dashboard") },
+                onOpenGreenhouse = { nav.navigate("greenhouse") },
             )
         }
         composable("dashboard") { DashboardScreen(vm = dashVm) }
+        composable("greenhouse") { androidx.compose.material3.Text("🏡 soon") }
         composable(
             "entry",
             // Entry rises like a payment sheet: springy in, brisk non-bouncy out.
