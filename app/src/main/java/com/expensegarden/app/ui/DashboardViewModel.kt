@@ -6,8 +6,11 @@ import androidx.lifecycle.viewModelScope
 import androidx.room.withTransaction
 import com.expensegarden.app.AppContainer
 import com.expensegarden.app.data.BudgetEntity
+import com.expensegarden.app.data.Regret
+import com.expensegarden.app.data.TxnRow
 import com.expensegarden.app.stats.MonthStats
 import com.expensegarden.app.stats.MonthStatsFolder
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -35,6 +38,10 @@ class DashboardViewModel(private val container: AppContainer) : ViewModel() {
                 }
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    val recent: Flow<List<TxnRow>> = ledger.observeRecent()
+
+    fun setRegret(uuid: String, value: Regret) = viewModelScope.launch { ledger.setRegret(uuid, value) }
 
     /** amountPaise null = clear. categoryId null = overall. Same delete+insert idiom as 1A. */
     fun setBudget(categoryId: Long?, amountPaise: Long?) {

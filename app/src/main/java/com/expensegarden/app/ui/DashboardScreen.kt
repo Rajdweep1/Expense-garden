@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -37,8 +38,13 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.expensegarden.app.core.Money
+import com.expensegarden.app.data.Regret
+import com.expensegarden.app.data.TxnRow
 import com.expensegarden.app.gate.Severity
 import com.expensegarden.app.stats.ScopeStat
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 /** Which budget the dialog edits: overall (null) or a category. */
 private data class BudgetTarget(val categoryId: Long?, val name: String, val currentPaise: Long?)
@@ -47,6 +53,9 @@ private data class BudgetTarget(val categoryId: Long?, val name: String, val cur
 fun DashboardScreen(vm: DashboardViewModel) {
     val stats by vm.stats.collectAsState()
     var target by remember { mutableStateOf<BudgetTarget?>(null) }
+    val recent by vm.recent.collectAsState(initial = emptyList())
+    var regretTarget by remember { mutableStateOf<TxnRow?>(null) }
+    val dateFmt = remember { DateTimeFormatter.ofPattern("dd MMM") }
 
     Column(Modifier.statusBarsPadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("This month", style = MaterialTheme.typography.headlineSmall)
@@ -93,6 +102,27 @@ fun DashboardScreen(vm: DashboardViewModel) {
                 items(s.rows, key = { it.categoryId ?: -1L }) { row ->
                     CategoryRow(row) { target = BudgetTarget(row.categoryId, row.name, row.budgetPaise) }
                 }
+                item { Text("Recent", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 12.dp)) }
+                items(recent, key = { "txn-" + it.uuid }) { row ->
+                    Row(
+                        Modifier.fillMaxWidth().animateItem().clickable { regretTarget = row },
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Column {
+                            Text(row.payeeName, style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                "${row.categoryName} · ${dateFmt.format(Instant.ofEpochMilli(row.occurredAt).atZone(ZoneId.systemDefault()))}" +
+                                    when (row.regret) {
+                                        Regret.REGRET -> " · regret"
+                                        Regret.WORTH_IT -> " · worth it"
+                                        Regret.UNRATED -> ""
+                                    },
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                        Text(Money.display(row.amountPaise), style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
             }
         }
     }
@@ -117,6 +147,24 @@ fun DashboardScreen(vm: DashboardViewModel) {
                     TextButton(onClick = { target = null }) { Text("Cancel") }
                 }
             },
+        )
+    }
+
+    regretTarget?.let { row ->
+        AlertDialog(
+            onDismissRequest = { regretTarget = null },
+            title = { Text("${Money.display(row.amountPaise)} — ${row.payeeName}") },
+            text = {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(selected = row.regret == Regret.WORTH_IT,
+                        onClick = { vm.setRegret(row.uuid, Regret.WORTH_IT); regretTarget = null },
+                        label = { Text("Worth it") })
+                    FilterChip(selected = row.regret == Regret.REGRET,
+                        onClick = { vm.setRegret(row.uuid, Regret.REGRET); regretTarget = null },
+                        label = { Text("Regret") })
+                }
+            },
+            confirmButton = { TextButton(onClick = { regretTarget = null }) { Text("Close") } },
         )
     }
 }
