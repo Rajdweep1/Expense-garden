@@ -43,7 +43,7 @@ fun GardenCanvas(
     state: GardenState,
     painter: PlantPainter,
     modifier: Modifier = Modifier,
-    onPlantTap: (String) -> Unit = {},
+    onPlantTap: ((String) -> Unit)? = null,
     topReservePx: Float = 300f,
     bottomReservePx: Float = 320f,
     animated: Boolean = true,
@@ -79,7 +79,9 @@ fun GardenCanvas(
     fun vis(t: Tile) = Tile(state.gridRows - 1 - t.row, t.col)
 
     Canvas(
-        modifier.pointerInput(state) {
+        // No handler → no gesture consumer, so a parent's clickable (greenhouse cards) gets the tap.
+        if (onPlantTap == null) modifier
+        else modifier.pointerInput(state) {
             detectTapGestures { p ->
                 val iso = isoState.lastOrNull() ?: return@detectTapGestures
                 val tile = vis(iso.tileAt(p.x, p.y))

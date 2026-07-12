@@ -27,6 +27,7 @@ import com.expensegarden.app.ui.DashboardViewModel
 import com.expensegarden.app.ui.EntryScreen
 import com.expensegarden.app.ui.GardenHomeScreen
 import com.expensegarden.app.ui.GardenViewModel
+import com.expensegarden.app.ui.GreenhouseScreen
 import com.expensegarden.app.ui.MainViewModel
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
@@ -94,7 +95,7 @@ private fun GardenNav(vm: MainViewModel, dashVm: DashboardViewModel, gardenVm: G
             )
         }
         composable("dashboard") { DashboardScreen(vm = dashVm) }
-        composable("greenhouse") { androidx.compose.material3.Text("🏡 soon") }
+        composable("greenhouse") { GreenhouseScreen(gardenVm = gardenVm, painter = remember { com.expensegarden.app.render.ProceduralPainter() }) }
         composable(
             "entry",
             // Entry rises like a payment sheet: springy in, brisk non-bouncy out.
