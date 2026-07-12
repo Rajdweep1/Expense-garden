@@ -64,7 +64,7 @@ app/src/androidTest/java/com/expensegarden/app/data/
 **Files:**
 - Create: `docs/assets/garden-sprite-brief.md`
 
-- [ ] **Step 1: Write the brief**
+- [x] **Step 1: Write the brief**
 
 ```markdown
 # Garden Sprite Pack — Asset Brief (Phase 1C)
@@ -108,14 +108,14 @@ accent yellow #ffd54d · petal pink #ff9bb0 · weed plum #8a5fa0 · soil #7c5233
   same preamble; regenerate any sprite that breaks the set's coherence).
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add docs/assets/garden-sprite-brief.md
 git commit -m "docs: garden sprite pack asset brief for 1c"
 ```
 
-- [ ] **Step 3: HAND-OFF — remind Rajdweep (he asked for this reminder)**
+- [x] **Step 3: HAND-OFF — remind Rajdweep (he asked for this reminder)**
 
 Tell him, verbatim enough: *"The sprite brief is ready at `docs/assets/garden-sprite-brief.md` — whenever you have 20 minutes, run the 10 prompts through any free image AI and drop the PNGs into `app/src/main/assets/garden/` with the exact filenames. Everything else proceeds in parallel; the sprites get wired in Task 16, and anything missing just renders procedurally."* Do NOT block — continue to Task 1 immediately.
 
@@ -128,7 +128,7 @@ Tell him, verbatim enough: *"The sprite brief is ready at `docs/assets/garden-sp
 - Create: `app/src/main/java/com/expensegarden/app/game/PlantMapper.kt`
 - Create: `app/src/test/java/com/expensegarden/app/game/PlantMapperTest.kt`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```kotlin
 package com.expensegarden.app.game
@@ -209,12 +209,12 @@ class PlantMapperTest {
 }
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" && ./gradlew testDebugUnitTest --tests "com.expensegarden.app.game.PlantMapperTest"`
 Expected: FAILED — `unresolved reference: Archetype`
 
-- [ ] **Step 3: Implement GardenModel.kt**
+- [x] **Step 3: Implement GardenModel.kt**
 
 ```kotlin
 package com.expensegarden.app.game
@@ -257,7 +257,7 @@ data class GardenState(
 )
 ```
 
-- [ ] **Step 4: Implement PlantMapper.kt**
+- [x] **Step 4: Implement PlantMapper.kt**
 
 ```kotlin
 package com.expensegarden.app.game
@@ -312,9 +312,9 @@ object PlantMapper {
 }
 ```
 
-- [ ] **Step 5: Run to verify pass** — same command. Expected: 6 tests passed.
+- [x] **Step 5: Run to verify pass** — same command. Expected: 6 tests passed.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add app/src/main/java/com/expensegarden/app/game/GardenModel.kt app/src/main/java/com/expensegarden/app/game/PlantMapper.kt app/src/test/java/com/expensegarden/app/game/PlantMapperTest.kt
@@ -329,7 +329,7 @@ git commit -m "feat: garden model and plant mapper - archetypes, weed rule, size
 - Create: `app/src/main/java/com/expensegarden/app/game/SerpentineTiler.kt`
 - Create: `app/src/test/java/com/expensegarden/app/game/SerpentineTilerTest.kt`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```kotlin
 package com.expensegarden.app.game
@@ -358,12 +358,12 @@ class SerpentineTilerTest {
 }
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" && ./gradlew testDebugUnitTest --tests "com.expensegarden.app.game.SerpentineTilerTest"`
 Expected: FAILED — `unresolved reference: SerpentineTiler`
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 ```kotlin
 package com.expensegarden.app.game
@@ -384,9 +384,9 @@ object SerpentineTiler {
 }
 ```
 
-- [ ] **Step 4: Run to verify pass** — same command. Expected: 3 tests passed.
+- [x] **Step 4: Run to verify pass** — same command. Expected: 3 tests passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/src/main/java/com/expensegarden/app/game/SerpentineTiler.kt app/src/test/java/com/expensegarden/app/game/SerpentineTilerTest.kt
@@ -401,7 +401,7 @@ git commit -m "feat: serpentine tiler - chronological front-to-back tile assignm
 - Create: `app/src/main/java/com/expensegarden/app/game/StreakMath.kt`
 - Create: `app/src/test/java/com/expensegarden/app/game/StreakMathTest.kt`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```kotlin
 package com.expensegarden.app.game
@@ -438,12 +438,12 @@ class StreakMathTest {
 }
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" && ./gradlew testDebugUnitTest --tests "com.expensegarden.app.game.StreakMathTest"`
 Expected: FAILED — `unresolved reference: StreakMath`
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 ```kotlin
 package com.expensegarden.app.game
@@ -468,9 +468,9 @@ object StreakMath {
 }
 ```
 
-- [ ] **Step 4: Run to verify pass** — same command. Expected: 4 tests passed.
+- [x] **Step 4: Run to verify pass** — same command. Expected: 4 tests passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/src/main/java/com/expensegarden/app/game/StreakMath.kt app/src/test/java/com/expensegarden/app/game/StreakMathTest.kt
@@ -485,7 +485,7 @@ git commit -m "feat: streak math - no-spend days and under-pace streak"
 - Create: `app/src/main/java/com/expensegarden/app/game/GardenFolder.kt`
 - Create: `app/src/test/java/com/expensegarden/app/game/GardenFolderTest.kt`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```kotlin
 package com.expensegarden.app.game
@@ -583,12 +583,12 @@ class GardenFolderTest {
 }
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" && ./gradlew testDebugUnitTest --tests "com.expensegarden.app.game.GardenFolderTest"`
 Expected: FAILED — `unresolved reference: GardenFolder`
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 ```kotlin
 package com.expensegarden.app.game
@@ -670,9 +670,9 @@ object GardenFolder {
 }
 ```
 
-- [ ] **Step 4: Run to verify pass** — same command. Expected: 7 tests passed.
+- [x] **Step 4: Run to verify pass** — same command. Expected: 7 tests passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/src/main/java/com/expensegarden/app/game/GardenFolder.kt app/src/test/java/com/expensegarden/app/game/GardenFolderTest.kt
@@ -687,7 +687,7 @@ git commit -m "feat: garden folder - pure fold from ledger history to garden sta
 - Create: `app/src/main/java/com/expensegarden/app/game/Reconciler.kt`
 - Create: `app/src/test/java/com/expensegarden/app/game/ReconcilerTest.kt`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```kotlin
 package com.expensegarden.app.game
@@ -735,12 +735,12 @@ class ReconcilerTest {
 }
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" && ./gradlew testDebugUnitTest --tests "com.expensegarden.app.game.ReconcilerTest"`
 Expected: FAILED — `unresolved reference: Reconciler`
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 ```kotlin
 package com.expensegarden.app.game
@@ -770,9 +770,9 @@ object Reconciler {
 }
 ```
 
-- [ ] **Step 4: Run to verify pass** — same command. Expected: 3 tests passed.
+- [x] **Step 4: Run to verify pass** — same command. Expected: 3 tests passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/src/main/java/com/expensegarden/app/game/Reconciler.kt app/src/test/java/com/expensegarden/app/game/ReconcilerTest.kt
@@ -787,7 +787,7 @@ git commit -m "feat: reconciler decisions - idempotent month close and streak hi
 - Modify: `app/src/main/java/com/expensegarden/app/data/Daos.kt`
 - Create: `app/src/androidTest/java/com/expensegarden/app/data/GardenDaoTest.kt`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```kotlin
 package com.expensegarden.app.data
@@ -859,12 +859,12 @@ class GardenDaoTest {
 }
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" && ./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.expensegarden.app.data.GardenDaoTest`
 Expected: compile FAILED — `unresolved reference: loggedBetween` (and friends).
 
-- [ ] **Step 3: Implement — append to `TransactionDao` in Daos.kt**
+- [x] **Step 3: Implement — append to `TransactionDao` in Daos.kt**
 
 ```kotlin
     @Query("SELECT * FROM txn WHERE status = 'LOGGED' AND occurredAt BETWEEN :fromMillis AND :toMillis")
@@ -901,9 +901,9 @@ And to `GameEventDao`:
     suspend fun ofType(type: String): List<GameEventEntity>
 ```
 
-- [ ] **Step 4: Run to verify pass** — the Step 2 command. Expected: 4 tests passed. Then `./gradlew connectedDebugAndroidTest` — all 24 instrumented green.
+- [x] **Step 4: Run to verify pass** — the Step 2 command. Expected: 4 tests passed. Then `./gradlew connectedDebugAndroidTest` — all 24 instrumented green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/src/main/java/com/expensegarden/app/data/Daos.kt app/src/androidTest/java/com/expensegarden/app/data/GardenDaoTest.kt
@@ -919,7 +919,7 @@ git commit -m "feat: garden dao reads - logged rows, events windows, row by uuid
 - Modify: `app/src/main/java/com/expensegarden/app/GardenApp.kt`
 - Create: `app/src/androidTest/java/com/expensegarden/app/data/GardenRepositoryTest.kt`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```kotlin
 package com.expensegarden.app.data
@@ -994,12 +994,12 @@ class GardenRepositoryTest {
 }
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" && ./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.expensegarden.app.data.GardenRepositoryTest`
 Expected: compile FAILED — `unresolved reference: GardenRepository`
 
-- [ ] **Step 3: Implement GardenRepository.kt**
+- [x] **Step 3: Implement GardenRepository.kt**
 
 ```kotlin
 package com.expensegarden.app.data
@@ -1118,7 +1118,7 @@ class GardenRepository(private val db: AppDatabase, private val ledger: LedgerRe
 }
 ```
 
-- [ ] **Step 4: Wire the container in GardenApp.kt**
+- [x] **Step 4: Wire the container in GardenApp.kt**
 
 ```kotlin
 class AppContainer(app: Application) {
@@ -1131,9 +1131,9 @@ class AppContainer(app: Application) {
 
 (Import `com.expensegarden.app.data.GardenRepository`.)
 
-- [ ] **Step 5: Run to verify pass** — the Step 2 command. Expected: 4 tests passed. Then full suites: `./gradlew testDebugUnitTest && ./gradlew connectedDebugAndroidTest` — green.
+- [x] **Step 5: Run to verify pass** — the Step 2 command. Expected: 4 tests passed. Then full suites: `./gradlew testDebugUnitTest && ./gradlew connectedDebugAndroidTest` — green.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add app/src/main/java/com/expensegarden/app/data/GardenRepository.kt app/src/main/java/com/expensegarden/app/GardenApp.kt app/src/androidTest/java/com/expensegarden/app/data/GardenRepositoryTest.kt
@@ -1148,7 +1148,7 @@ git commit -m "feat: garden repository - live fold flow, month folds, on-open re
 - Create: `app/src/main/java/com/expensegarden/app/render/IsoMath.kt`
 - Create: `app/src/test/java/com/expensegarden/app/render/IsoMathTest.kt`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```kotlin
 package com.expensegarden.app.render
@@ -1189,12 +1189,12 @@ class IsoMathTest {
 }
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" && ./gradlew testDebugUnitTest --tests "com.expensegarden.app.render.IsoMathTest"`
 Expected: FAILED — `unresolved reference: IsoMath`
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 ```kotlin
 package com.expensegarden.app.render
@@ -1238,10 +1238,10 @@ class IsoMath(val tileW: Float, val tileH: Float, val originX: Float, val origin
 }
 ```
 
-- [ ] **Step 4: Run to verify pass** — same command. Expected: 4 tests passed.
+- [x] **Step 4: Run to verify pass** — same command. Expected: 4 tests passed.
 If `fit`'s clamping makes the bounds assertion fail: adjust the `.92f` margins in `fit`, not the test.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/src/main/java/com/expensegarden/app/render/IsoMath.kt app/src/test/java/com/expensegarden/app/render/IsoMathTest.kt
@@ -1258,7 +1258,7 @@ No unit tests here (draw code); the check is compilation now and eyes at Task 11
 - Create: `app/src/main/java/com/expensegarden/app/render/GardenPalette.kt`
 - Create: `app/src/main/java/com/expensegarden/app/render/PlantPainter.kt`
 
-- [ ] **Step 1: GardenPalette.kt**
+- [x] **Step 1: GardenPalette.kt**
 
 ```kotlin
 package com.expensegarden.app.render
@@ -1304,7 +1304,7 @@ object GardenPalette {
 }
 ```
 
-- [ ] **Step 2: PlantPainter.kt — the seam + the procedural implementation**
+- [x] **Step 2: PlantPainter.kt — the seam + the procedural implementation**
 
 ```kotlin
 package com.expensegarden.app.render
@@ -1466,12 +1466,12 @@ fun tierHeight(tileH: Float, tier: SizeTier): Float = when (tier) {
 }
 ```
 
-- [ ] **Step 3: Compile**
+- [x] **Step 3: Compile**
 
 Run: `export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" && ./gradlew :app:compileDebugKotlin 2>&1 | tail -2`
 Expected: BUILD SUCCESSFUL. (If `quadraticBezierTo` is flagged deprecated in this BOM, it still compiles — do NOT chase the replacement.)
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add app/src/main/java/com/expensegarden/app/render/GardenPalette.kt app/src/main/java/com/expensegarden/app/render/PlantPainter.kt
@@ -1485,7 +1485,7 @@ git commit -m "feat: garden palette and plant painter seam with procedural arche
 **Files:**
 - Create: `app/src/main/java/com/expensegarden/app/render/GardenCanvas.kt`
 
-- [ ] **Step 1: Implement**
+- [x] **Step 1: Implement**
 
 ```kotlin
 package com.expensegarden.app.render
@@ -1683,12 +1683,12 @@ private fun DrawScope.butterfly(c: Offset, flap: Float) {
 }
 ```
 
-- [ ] **Step 2: Compile**
+- [x] **Step 2: Compile**
 
 Run: `export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" && ./gradlew :app:compileDebugKotlin 2>&1 | tail -2`
 Expected: BUILD SUCCESSFUL.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add app/src/main/java/com/expensegarden/app/render/GardenCanvas.kt
@@ -1703,7 +1703,7 @@ git commit -m "feat: garden canvas - sky, iso field, plants, clouds, butterflies
 - Create: `app/src/main/java/com/expensegarden/app/render/SyntheticGarden.kt`
 - Modify (TEMPORARILY, uncommitted): `app/src/main/java/com/expensegarden/app/MainActivity.kt`
 
-- [ ] **Step 1: SyntheticGarden.kt (committed — stays useful for art tuning)**
+- [x] **Step 1: SyntheticGarden.kt (committed — stays useful for art tuning)**
 
 ```kotlin
 package com.expensegarden.app.render
@@ -1739,7 +1739,7 @@ object SyntheticGarden {
 }
 ```
 
-- [ ] **Step 2: Temporary preview wiring (do NOT commit this part)**
+- [x] **Step 2: Temporary preview wiring (do NOT commit this part)**
 
 In `MainActivity.kt`, inside the NavHost add a route and flip the start destination:
 
@@ -1755,16 +1755,16 @@ In `MainActivity.kt`, inside the NavHost add a route and flip the start destinat
 
 and `startDestination = "gardenPreview"`.
 
-- [ ] **Step 3: Install, record, screenshot**
+- [x] **Step 3: Install, record, screenshot**
 
 Run: `./gradlew installDebug`, launch, wait 5s, then `adb exec-out screencap -p > <scratchpad>/motion-sunny.png`. Also capture a 6-second screen record (`adb shell screenrecord --time-limit 6 /sdcard/motion.mp4 && adb pull /sdcard/motion.mp4 <scratchpad>/`). Then edit the demo call to `demo(Weather.DROUGHT)`, reinstall, screenshot `motion-drought.png`.
 Expected: full field with all archetypes, sway visible in the recording, clouds drifting, two butterflies, sparkles, drought variant shows dusty sky + dry grass.
 
-- [ ] **Step 4: STOP — user checkpoint**
+- [x] **Step 4: STOP — user checkpoint**
 
 Present the screenshots + recording to Rajdweep. This is the **motion** approval (lively/fluid), not the final art (that's Task 16 with his sprites). Iterate palette/motion constants on his feedback before proceeding. On approval: `git restore app/src/main/java/com/expensegarden/app/MainActivity.kt` (drops the temporary preview wiring).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/src/main/java/com/expensegarden/app/render/SyntheticGarden.kt
@@ -1779,7 +1779,7 @@ git commit -m "feat: synthetic garden state for art and motion tuning"
 - Modify: `app/src/main/java/com/expensegarden/app/ui/DashboardViewModel.kt`
 - Modify: `app/src/main/java/com/expensegarden/app/ui/DashboardScreen.kt`
 
-- [ ] **Step 1: DashboardViewModel additions**
+- [x] **Step 1: DashboardViewModel additions**
 
 ```kotlin
     val recent: Flow<List<TxnRow>> = ledger.observeRecent()
@@ -1789,7 +1789,7 @@ git commit -m "feat: synthetic garden state for art and motion tuning"
 
 (Imports: `com.expensegarden.app.data.Regret`, `com.expensegarden.app.data.TxnRow`, `kotlinx.coroutines.flow.Flow`. `LedgerRepository.observeRecent`/`setRegret` already exist.)
 
-- [ ] **Step 2: DashboardScreen — Recent section inside the existing LazyColumn**
+- [x] **Step 2: DashboardScreen — Recent section inside the existing LazyColumn**
 
 Collect `val recent by vm.recent.collectAsState(initial = emptyList())` and `var regretTarget by remember { mutableStateOf<TxnRow?>(null) }` at the top. After the `items(s.rows, ...)` block inside the same LazyColumn, append:
 
@@ -1841,11 +1841,11 @@ With `val dateFmt = remember { DateTimeFormatter.ofPattern("dd MMM") }` near the
 
 (New imports: `androidx.compose.material3.FilterChip`, `com.expensegarden.app.data.Regret`, `com.expensegarden.app.data.TxnRow`, `java.time.Instant`, `java.time.ZoneId`, `java.time.format.DateTimeFormatter`.)
 
-- [ ] **Step 3: Build + smoke**
+- [x] **Step 3: Build + smoke**
 
 `./gradlew installDebug`; open dashboard → Recent rows appear below budgets; tap a row → regret dialog works.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add app/src/main/java/com/expensegarden/app/ui/DashboardViewModel.kt app/src/main/java/com/expensegarden/app/ui/DashboardScreen.kt
@@ -1862,7 +1862,7 @@ git commit -m "feat: dashboard - recent transactions with regret tagging move in
 - Delete: `app/src/main/java/com/expensegarden/app/ui/HomeScreen.kt`
 - Modify: `app/src/main/java/com/expensegarden/app/MainActivity.kt`
 
-- [ ] **Step 1: GardenViewModel.kt**
+- [x] **Step 1: GardenViewModel.kt**
 
 ```kotlin
 package com.expensegarden.app.ui
@@ -1904,7 +1904,7 @@ class GardenViewModel(private val container: AppContainer) : ViewModel() {
 }
 ```
 
-- [ ] **Step 2: GardenHomeScreen.kt**
+- [x] **Step 2: GardenHomeScreen.kt**
 
 ```kotlin
 package com.expensegarden.app.ui
@@ -2072,7 +2072,7 @@ private fun gardenHint(s: Severity) = when (s) {
 }
 ```
 
-- [ ] **Step 3: MainActivity wiring**
+- [x] **Step 3: MainActivity wiring**
 
 Add the ViewModel next to the others, delete `HomeScreen.kt`, and replace the home route:
 
@@ -2109,11 +2109,11 @@ Add the ViewModel next to the others, delete `HomeScreen.kt`, and replace the ho
 
 (GreenhouseScreen arrives in Task 14 — to keep this task compiling, create it there; in THIS task point the route at a placeholder `Text("greenhouse")` composable and note it, OR do Steps 3 of both tasks together. Preferred: keep this task's route commented out and the greenhouse button hidden until Task 14; simplest compilable choice: `composable("greenhouse") { Text("🏡 soon") }`.)
 
-- [ ] **Step 4: Build + smoke**
+- [x] **Step 4: Build + smoke**
 
 `./gradlew installDebug`; cold-start: garden renders (fresh device data = empty field, sunny), stats strip shows totals, log a manual entry → return home → the new plant **pops in with a poof**; tap it → detail dialog with Worth it/Regret; screenshot for the record.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/src/main/java/com/expensegarden/app/ui/GardenViewModel.kt app/src/main/java/com/expensegarden/app/ui/GardenHomeScreen.kt app/src/main/java/com/expensegarden/app/MainActivity.kt
@@ -2129,7 +2129,7 @@ git commit -m "feat: garden takes home - live fold canvas, stats strip, plant di
 - Create: `app/src/main/java/com/expensegarden/app/ui/GreenhouseScreen.kt`
 - Modify: `app/src/main/java/com/expensegarden/app/MainActivity.kt` (replace the placeholder route)
 
-- [ ] **Step 1: Implement**
+- [x] **Step 1: Implement**
 
 ```kotlin
 package com.expensegarden.app.ui
@@ -2215,12 +2215,12 @@ fun GreenhouseScreen(gardenVm: GardenViewModel, painter: PlantPainter) {
 
 Replace the MainActivity placeholder route with `composable("greenhouse") { GreenhouseScreen(gardenVm = gardenVm, painter = remember { com.expensegarden.app.render.ProceduralPainter() }) }` and un-hide the greenhouse button if it was hidden in Task 13.
 
-- [ ] **Step 2: Build + smoke**
+- [x] **Step 2: Build + smoke**
 
 `./gradlew installDebug`; backdate a manual entry into LAST month via the date picker (arrow to the previous month in the calendar), then: greenhouse shows one archived card (frozen mini garden + month + spent), tap → full frozen view, back works. Also verify the reconciler closed it: `run-as … sqlite3 … "SELECT payloadJson FROM game_event WHERE type='month.closed'"` after reopening the app.
 Expected: card renders; `month.closed` row exists for last month.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add app/src/main/java/com/expensegarden/app/ui/GreenhouseScreen.kt app/src/main/java/com/expensegarden/app/MainActivity.kt
@@ -2239,7 +2239,7 @@ git commit -m "feat: greenhouse album - archived month beds from the same fold"
 
 **FIRST: check `app/src/main/assets/garden/` for Rajdweep's PNGs.** If absent → REMIND HIM (second reminder, he asked): *"Sprites not in yet — the brief is `docs/assets/garden-sprite-brief.md`, drop PNGs into `app/src/main/assets/garden/`. Building the loader anyway; procedural stays on screen until they land."* Then continue — this task is fully buildable without the files.
 
-- [ ] **Step 1: Failing JVM test for the name mapping**
+- [x] **Step 1: Failing JVM test for the name mapping**
 
 ```kotlin
 package com.expensegarden.app.render
@@ -2259,7 +2259,7 @@ class SpriteNamesTest {
 
 Run: `./gradlew testDebugUnitTest --tests "com.expensegarden.app.render.SpriteNamesTest"` → Expected: FAILED — `unresolved reference: SpriteNames`.
 
-- [ ] **Step 2: Implement SpritePainter.kt**
+- [x] **Step 2: Implement SpritePainter.kt**
 
 ```kotlin
 package com.expensegarden.app.render
@@ -2322,7 +2322,7 @@ class SpritePainter(
 }
 ```
 
-- [ ] **Step 3: Wire selection**
+- [x] **Step 3: Wire selection**
 
 `AppContainer` gains `val sprites: Map<Archetype, ImageBitmap> by lazy { SpriteLoader.load(app) }` (imports `com.expensegarden.app.game.Archetype`, `com.expensegarden.app.render.SpriteLoader`, `androidx.compose.ui.graphics.ImageBitmap`; `app` must become a stored `private val app: Application` constructor property). In MainActivity, both painter sites become:
 
@@ -2336,11 +2336,11 @@ class SpritePainter(
 
 (`val context = LocalContext.current` is already in `GardenNav` scope.)
 
-- [ ] **Step 4: Tests + build**
+- [x] **Step 4: Tests + build**
 
 `./gradlew testDebugUnitTest --tests "com.expensegarden.app.render.SpriteNamesTest"` → PASS (1 test). `./gradlew installDebug` → app renders (procedural if assets absent, sprites if present).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/src/main/java/com/expensegarden/app/render/SpritePainter.kt app/src/test/java/com/expensegarden/app/render/SpriteNamesTest.kt app/src/main/java/com/expensegarden/app/GardenApp.kt app/src/main/java/com/expensegarden/app/MainActivity.kt
@@ -2366,12 +2366,12 @@ git commit -m "feat: sprite painter - asset pack loader with per-archetype proce
 - Modify: `docs/superpowers/plans/2026-07-07-phase1c-garden.md` (tick checkboxes, amendments)
 - Modify: memory `expense-garden-phase1a-status.md`
 
-- [ ] **Step 1: Full suites**
+- [x] **Step 1: Full suites**
 
 Run: `./gradlew testDebugUnitTest && ./gradlew connectedDebugAndroidTest`
 Expected: JVM **74** (46 existing + 28 new: mapper 6, tiler 3, streak 4, folder 7, reconciler 3, iso 4, sprite names 1). Instrumented **28** (20 existing + 8 new: garden-dao 4, garden-repo 4). Zero failures. (Count drift → fix the arithmetic here as an amendment, not the tests.)
 
-- [ ] **Step 2: Emulator E2E sweep** (remember: the connected run just wiped the app — `./gradlew installDebug` first)
+- [x] **Step 2: Emulator E2E sweep** (remember: the connected run just wiped the app — `./gradlew installDebug` first)
 
 1. Cold start → garden home renders (empty sunny field), stats strip live, no ₹0.00 flash.
 2. Log ₹50 chai (chips) → back home → plant pops in with poof; tap it → dialog; tag Regret → plant re-folds to a weed on the spot.
@@ -2381,9 +2381,9 @@ Expected: JVM **74** (46 existing + 28 new: mapper 6, tiler 3, streak 4, folder 
 6. Butterfly + gate-title live checks stay parked with the 1A Task-12 scan leg (dodge requires the QR gate) — verified synthetically at Task 11; note in amendments.
 7. Screen-record 8s of the live garden for the record.
 
-- [ ] **Step 3: Tick all checkboxes, log amendments, update memory** (1C status: shipped/checkpoints state, sprite-pack status, what rides Task-12 resume).
+- [x] **Step 3: Tick all checkboxes, log amendments, update memory** (1C status: shipped/checkpoints state, sprite-pack status, what rides Task-12 resume).
 
-- [ ] **Step 4: Final commit**
+- [x] **Step 4: Final commit**
 
 ```bash
 git add docs/superpowers/plans/2026-07-07-phase1c-garden.md
@@ -2395,6 +2395,56 @@ git commit -m "docs: 1c plan executed - checkboxes ticked, amendments logged"
 ## Execution amendments
 
 (Log deviations here as they happen.)
+
+- **Task 7, `monthsWithData()` compile fix**: the plan's code called the suspend DAO inside
+  `Sequence.filter` (non-inline lambda — doesn't compile). Materialized with `.toList()` before
+  `.filter` (List.filter is inline, suspend calls OK). Semantics unchanged; the sequence is
+  bounded start..now.
+- **Task 7, `monthsWithData()` current-month contract**: plan implementation filtered ALL months
+  by has-data, but the plan's own test (and the doc comment "current month included") requires the
+  live month even when it has no logged txns — the album always shows the current garden.
+  `archived_month_folds_frozen` failed with `[2026-06]` vs expected `[2026-06, 2026-07]`.
+  Fixed with an explicit current-month exemption in the filter. Test suite green after.
+- **Task 11, row-direction fix in GardenCanvas**: IsoMath projects y = (col+row)·h/2, so LARGER
+  rows land LOWER on screen (nearer the viewer) — but the model + plan treat row 0 as the front.
+  First capture showed the three symptoms: front soil wall floating across the UPPER field,
+  horizon trees' bases mid-plot, and inverted occlusion (far plants over near). Fixed at the
+  render boundary only: `vis(t) = Tile(gridRows-1-t.row, col)` (an involution, also used to map
+  taps back to model tiles). IsoMath + its committed test untouched; spec semantics (row 0 = front,
+  serpentine from the viewer) preserved. Also re-anchored horizon trees to actual back-row tiles
+  (`vis(back, col=2i)` minus 0.35·tileH) — the plan's fixed screen-fraction x + `-1.2·tileH` lift
+  was tuned against the inverted anchor and left trees floating in the sky after the flip.
+- **Task 11 checkpoint iteration — FC-style ocean world**: Rajdweep approved motion but judged
+  graphics below the Fortune City bar and supplied an FC screen recording. Frame analysis showed
+  FC's look = chunky island slab on a calm cyan ocean with ambient life, not a field on a sky
+  gradient. Scene uplift within the checkpoint (GardenCanvas + GardenPalette, no arch changes):
+  ocean gradient world with soft horizon (3-stop, near-white seam), deterministic twinkling wave
+  glints, two drifting sailboats (one passes behind the island), sea mist hugging the island base,
+  wall height 0.5→1.05·tileH with vertical light→dark gradient + translucent grass lip line,
+  softened grass checker contrast, butterflies scaled to tileW·0.16 (were invisible 7px). Weather
+  still owns the mood: SUNNY cyan / OVERCAST grey-blue / DROUGHT dusty gold water. Flora quality
+  itself intentionally deferred to the sprite pack (Tasks 15–16).
+- **Task 11 checkpoint iteration 2 — FC still-image polish**: Rajdweep supplied five FC UI stills;
+  four cues absorbed into GardenCanvas (commit faeb7e1): wooden plank seams on the soil walls
+  (two seam lines per face), dashed pale path lines between tiles instead of hard hairlines,
+  seeded quiet props on empty tiles (grass tufts / pebble pairs — FC never leaves a plot bare),
+  and broad soft light patches on the water beneath the glints. Scene approved as the placeholder
+  base 2026-07-12 ("this passes the placeholder base"); HUD chrome lands with Tasks 13–14, flora
+  with the sprite pack.
+- **Task 14, greenhouse card taps were swallowed by the mini canvas**: GardenCanvas installed its
+  tap `pointerInput` unconditionally, so the album cards' `clickable` never fired when tapping the
+  canvas area (most of the card) — `detectTapGestures` consumes the tap even when the plant lookup
+  misses. Made `onPlantTap` nullable (default null) and the gesture modifier conditional: no
+  handler → no consumer → the tap bubbles up to the Card. Home passes its handler; unchanged there.
+- **Task 17 sweep (2026-07-12)**: suites exactly on plan — JVM 74/74, instrumented 28/28, zero
+  failures, no count drift. E2E on a wiped DB: cold start clean; ₹50 chai popped in and re-folded
+  to a thistle weed on Regret; ₹1 budget → DROUGHT across sky/ocean/grass, clear → SUNNY (weather
+  = live health, both directions); June backdate → greenhouse card + `month.closed` re-emitted
+  idempotently on the fresh DB; dashboard Recent shows cross-month rows with regret markers,
+  budget/projection math untouched (1B regression clean). 8s recording in session scratchpad.
+  Butterfly/gate-title live checks stay parked with the 1A Task-12 scan leg. Task 16 LOOK
+  checkpoint left open — sprite PNGs not yet in `app/src/main/assets/garden/` (Rajdweep reminded
+  again); SpritePainter ships dormant behind the empty-map check.
 
 ## Deferred (recorded)
 
