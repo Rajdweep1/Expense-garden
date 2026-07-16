@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -22,6 +23,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.expensegarden.app.core.Money
@@ -33,14 +35,18 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @Composable
-fun GreenhouseScreen(gardenVm: GardenViewModel, painter: PlantPainter) {
+fun GreenhouseScreen(gardenVm: GardenViewModel, painter: PlantPainter, onBack: () -> Unit = {}) {
     var months by remember { mutableStateOf<List<GardenState>?>(null) }
     var selected by remember { mutableStateOf<GardenState?>(null) }
     LaunchedEffect(Unit) { months = gardenVm.archivedGardens() }
     val monthFmt = remember { DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ENGLISH) }
 
     Column(Modifier.statusBarsPadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Greenhouse", style = MaterialTheme.typography.headlineSmall)
+        // Explicit way home — gesture-nav phones hide the system back affordance.
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = onBack, contentPadding = PaddingValues(horizontal = 8.dp)) { Text("← garden") }
+            Text("Greenhouse", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(start = 8.dp))
+        }
         when {
             months == null -> Card(Modifier.fillMaxWidth().height(120.dp)) {}
             months!!.isEmpty() -> Text("No archived months yet — your first bed archives at month end.")

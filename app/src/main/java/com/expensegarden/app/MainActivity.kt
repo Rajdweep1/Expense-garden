@@ -98,7 +98,7 @@ private fun GardenNav(vm: MainViewModel, dashVm: DashboardViewModel, gardenVm: G
                 onOpenGreenhouse = { nav.navigate("greenhouse") },
             )
         }
-        composable("dashboard") { DashboardScreen(vm = dashVm) }
+        composable("dashboard") { DashboardScreen(vm = dashVm, onBack = { nav.popBackStack() }) }
         composable("greenhouse") {
             GreenhouseScreen(
                 gardenVm = gardenVm,
@@ -107,6 +107,7 @@ private fun GardenNav(vm: MainViewModel, dashVm: DashboardViewModel, gardenVm: G
                     if (container.sprites.isEmpty()) com.expensegarden.app.render.ProceduralPainter()
                     else com.expensegarden.app.render.SpritePainter(container.sprites)
                 },
+                onBack = { nav.popBackStack() },
             )
         }
         composable(

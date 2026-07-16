@@ -33,6 +33,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
@@ -50,7 +51,7 @@ import java.time.format.DateTimeFormatter
 private data class BudgetTarget(val categoryId: Long?, val name: String, val currentPaise: Long?)
 
 @Composable
-fun DashboardScreen(vm: DashboardViewModel) {
+fun DashboardScreen(vm: DashboardViewModel, onBack: () -> Unit = {}) {
     val stats by vm.stats.collectAsState()
     var target by remember { mutableStateOf<BudgetTarget?>(null) }
     val recent by vm.recent.collectAsState(initial = emptyList())
@@ -58,7 +59,11 @@ fun DashboardScreen(vm: DashboardViewModel) {
     val dateFmt = remember { DateTimeFormatter.ofPattern("dd MMM") }
 
     Column(Modifier.statusBarsPadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("This month", style = MaterialTheme.typography.headlineSmall)
+        // Explicit way home — gesture-nav phones hide the system back affordance.
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = onBack, contentPadding = PaddingValues(horizontal = 8.dp)) { Text("← garden") }
+            Text("This month", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(start = 8.dp))
+        }
 
         val s = stats
         if (s == null) {
