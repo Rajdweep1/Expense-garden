@@ -2,12 +2,16 @@ package com.expensegarden.app.ui
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.expensegarden.app.core.Money
 import com.expensegarden.app.data.Regret
@@ -78,10 +83,13 @@ fun GardenHomeScreen(
         }
 
         // Translucent stats strip — the same homeHeader the 1B home used.
+        val stripSrc = remember { MutableInteractionSource() }
         Surface(
             color = Color.White.copy(alpha = .82f),
             modifier = Modifier.statusBarsPadding().padding(horizontal = 12.dp, vertical = 6.dp)
-                .fillMaxWidth().align(Alignment.TopCenter).clickable(onClick = onOpenDashboard),
+                .fillMaxWidth().align(Alignment.TopCenter)
+                .then(pressBounce(stripSrc, down = .97f))
+                .clickable(interactionSource = stripSrc, indication = LocalIndication.current, onClick = onOpenDashboard),
             shape = MaterialTheme.shapes.medium,
         ) {
             Row(
@@ -128,8 +136,14 @@ fun GardenHomeScreen(
                 }
             }
             Row(Modifier.align(Alignment.CenterHorizontally), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                ExtendedFloatingActionButton(onClick = onScan) { Text("Scan & pay") }
-                ExtendedFloatingActionButton(onClick = onManual) { Text("Log manually") }
+                val scanSrc = remember { MutableInteractionSource() }
+                val manualSrc = remember { MutableInteractionSource() }
+                ExtendedFloatingActionButton(
+                    onClick = onScan, modifier = pressBounce(scanSrc), interactionSource = scanSrc,
+                ) { Text("Scan & pay") }
+                ExtendedFloatingActionButton(
+                    onClick = onManual, modifier = pressBounce(manualSrc), interactionSource = manualSrc,
+                ) { Text("Log manually") }
             }
         }
     }
@@ -160,4 +174,17 @@ private fun gardenHint(s: Severity) = when (s) {
     Severity.OK -> "on pace"
     Severity.PACE_WARNING -> "ahead of pace"
     Severity.BREACH -> "over budget"
+}
+
+/** Springy press-scale so the chrome acknowledges every touch, FC-style. Share the
+ *  interaction source with the clickable/button so pressed state is observed here. */
+@Composable
+private fun pressBounce(interaction: MutableInteractionSource, down: Float = .93f): Modifier {
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) down else 1f,
+        animationSpec = spring(dampingRatio = .55f, stiffness = 900f),
+        label = "pressBounce",
+    )
+    return Modifier.graphicsLayer { scaleX = scale; scaleY = scale }
 }

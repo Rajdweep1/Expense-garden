@@ -33,4 +33,17 @@ class IsoMathTest {
         val rightMost = fitted.tileCenterX(Tile(0, 4)) + fitted.tileW / 2
         assert(leftMost >= 0f && rightMost <= 1080f)
     }
+
+    @Test fun `fit centers the island in a tall viewport instead of hugging the top`() {
+        // Real home framing: 1080x2400 phone, strip reserve 300, FAB reserve 320.
+        val fitted = IsoMath.fit(gridRows = 5, gridCols = 5, viewportW = 1080f, viewportH = 2400f, topReserve = 300f, bottomReserve = 320f)
+        val islandTop = fitted.tileCenterY(Tile(0, 0)) - fitted.tileH / 2
+        val islandBottom = fitted.tileCenterY(Tile(4, 4)) + fitted.tileH / 2 + fitted.tileH * IsoMath.WALL_UNITS
+        assert(islandTop > 600f) { "island hugs the top: $islandTop" }
+        assert(islandBottom <= 2400f - 320f) { "island spills into the bottom reserve: $islandBottom" }
+        // slight sky bias: a bit more slack below the slab than above the field
+        val above = islandTop - 300f
+        val below = (2400f - 320f) - islandBottom
+        assert(above < below) { "expected sky bias, above=$above below=$below" }
+    }
 }

@@ -21,6 +21,10 @@ class IsoMath(val tileW: Float, val tileH: Float, val originX: Float, val origin
     }
 
     companion object {
+        /** Slab wall height in tileH units — shared by fit() and the canvas so framing math
+         *  and the drawn island agree on the island block's true height. */
+        const val WALL_UNITS = 1.05f
+
         /** Scale + center a rows×cols field into the viewport between the reserved bands. */
         fun fit(gridRows: Int, gridCols: Int, viewportW: Float, viewportH: Float, topReserve: Float, bottomReserve: Float): IsoMath {
             val unitsW = (gridCols + gridRows) / 2f          // field width in tileW units
@@ -32,7 +36,12 @@ class IsoMath(val tileW: Float, val tileH: Float, val originX: Float, val origin
             val fieldLeftUnits = (gridRows - 1) * .5f
             val fieldRightUnits = (gridCols - 1) * .5f
             val originX = viewportW / 2f + (fieldLeftUnits - fieldRightUnits) * tileW / 2f
-            val originY = topReserve + tileH
+            // Center the island block (field diamond + slab wall) inside the band with a
+            // slight sky bias — FC frames its city mid-screen; water is a margin, not the
+            // subject. Tight bands (greenhouse cards) get slack 0 = old top-aligned fit.
+            val islandH = unitsH * tileH + tileH * WALL_UNITS
+            val slack = (availH - islandH).coerceAtLeast(0f)
+            val originY = topReserve + slack * .42f + tileH / 2f
             return IsoMath(tileW, tileH, originX, originY)
         }
     }
