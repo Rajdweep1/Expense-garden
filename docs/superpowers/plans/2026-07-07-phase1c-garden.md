@@ -2456,6 +2456,35 @@ git commit -m "docs: 1c plan executed - checkboxes ticked, amendments logged"
   uplift proposal (camera pan/zoom + parallax and default framing, tap feedback, ambient clock
   de-sync, sprite grounding, tile relief, weather particles, HUD chrome) presented for approval;
   checkpoint stays open until the feel passes.
+- **Task 16 round 2 — motion/depth uplift executed (2026-07-16, approved "yes go ahead with A and B")**:
+  commit ccb6b07. Batch A: single 8s linear phase replaced by a master seconds clock (1h tween);
+  every motion now derives its own period (sway 3.1–4.9s seeded, boats 34/47s, clouds 51–85s,
+  glints 5.3s, mist 6.7s) — this also fixed a latent bug where boats/clouds teleported backward at
+  every 8s wrap (`livePhase*speed % span` snaps when the phase resets). Plants breathe via seeded
+  squash-stretch (amplitude by size tier) around the base anchor — applied at the call site with
+  `withTransform(scale)`, so the PlantPainter seam is untouched; tap → springy jiggle (Animatable
+  snapTo(0)→spring damping .35) + dialog, empty-tile tap → dust puff; sprites grounded with
+  two-layer contact shadows + 3 seeded grass blades overlapping each base; tiles got pillow relief
+  (per-tile vertical gradient + far-edge highlight); ambient events on long timers (bird flock
+  ~37s, falling leaves from trees/bushes ~11-17s, plant glint ~9s). HUD press-bounce on strip +
+  both FABs via shared InteractionSource + graphicsLayer scale. Batch B: camera — pinch-zoom
+  (0.85–2.2, default 1.12 after 1.25 cropped corners) + single-finger pan via Modifier.transformable,
+  rubber-band edges (40% resistance) with spring settle-back on release, slow idle drift (31/47s),
+  five parallax layers (sky .12 / sun+clouds+birds .22 / ocean .45 / island 1.0 / mist .9; zoom on
+  world layers only); tap hit-testing inverts the camera transform. New pure-math seam:
+  `render/CameraMath.kt` (floats-only like IsoMath) TDD'd with 5 tests; `IsoMath.fit` now centers
+  the island block (field + `WALL_UNITS` slab) in the band with a .42 sky bias — encoded in a new
+  fit test (old fit glued the island under the top reserve; the home screen was ~55% dead water).
+  Suites: **JVM 80** (74 + 5 CameraMath + 1 fit centering), **instrumented 28**, zero failures.
+  Emulator-verified: default framing, single-finger pan with visible layer parallax, tap→dialog
+  through the inverse mapping at default zoom, dust puff caught mid-animation, greenhouse cards
+  still static + clickable (camera/gestures gate on `animated && onPlantTap != null`). Demo data
+  reseeded after the connected-test wipe (₹50 Chai + Regret, ₹120 BigBasket groceries hedge).
+  NOT-A-BUG note for future sessions: weeds have TWO species picked by uuid-seed parity
+  (PlantMapper: THISTLE_WEED vs ODD_MUSHROOM) — this seed's chai regret renders as the pink
+  crooked mushroom, round 1's rendered as the thistle. Both are correct. 11s capture
+  `garden-r2.mp4` in the session scratchpad. Checkpoint remains open on Rajdweep's feel verdict;
+  weather particles + deeper HUD gamification parked as round 3 candidates.
 
 ## Deferred (recorded)
 
