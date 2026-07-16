@@ -37,3 +37,10 @@ accent yellow #ffd54d · petal pink #ff9bb0 · weed plum #8a5fa0 · soil #7c5233
   and draws its own ground shadow. NO baked-in shadow or ground patch.
 - Same camera angle and light direction across all 10 (batch-generate with the
   same preamble; regenerate any sprite that breaks the set's coherence).
+
+---
+
+**Checkpoint note (2026-07-16):** pack v1 (hand-authored SVGs, sources in
+`docs/assets/sprite-src/`) approved as-is — no art corrections needed. The Task 16
+shortfall was scene motion/depth (fluidity, 3D-ness, liveliness), tracked in the
+1C plan's Execution amendments, not in this brief.

@@ -2355,7 +2355,7 @@ git commit -m "feat: sprite painter - asset pack loader with per-archetype proce
 
 **Requires:** PNGs in `app/src/main/assets/garden/`. If they're still missing: STOP, remind Rajdweep a final time, and proceed to Task 17 — this checkpoint stays open until the pack lands (the app ships procedural meanwhile; that's the designed fallback, not a failure).
 
-- [ ] **Step 1: Reinstall with the pack, screenshot the live garden + a synthetic full field (temporary preview wiring from Task 11, again uncommitted), plus one greenhouse card.**
+- [x] **Step 1: Reinstall with the pack, screenshot the live garden + a synthetic full field (temporary preview wiring from Task 11, again uncommitted), plus one greenhouse card.**
 - [ ] **Step 2: STOP — present to Rajdweep: "Is this at or above the Fortune City bar?"** On yes: commit the assets if not already committed. On no: capture what specifically falls short (silhouette? shading? palette? coherence?), update `docs/assets/garden-sprite-brief.md` with the correction notes, and hand back for regeneration — iterate this checkpoint. Log each round in Execution amendments.
 
 ---
@@ -2445,6 +2445,17 @@ git commit -m "docs: 1c plan executed - checkboxes ticked, amendments logged"
   Butterfly/gate-title live checks stay parked with the 1A Task-12 scan leg. Task 16 LOOK
   checkpoint left open — sprite PNGs not yet in `app/src/main/assets/garden/` (Rajdweep reminded
   again); SpritePainter ships dormant behind the empty-map check.
+- **Task 16 round 1 — sprite art approved, scene feel below bar (2026-07-16)**: Rajdweep delegated
+  sprite creation back ("can u do this also?"). Chose hand-authored SVGs over internet CC0
+  scavenging for style coherence: 10 sources at `docs/assets/sprite-src/`, rasterized to 512×512
+  PNGs with resvg (host tooling only, no project deps), bases validated mechanically against the
+  brief, one art iteration (hedge v1 read as a dark barrel → wider/lighter, lit scalloped top).
+  Verdict: art passes ("the svgs r fine") → assets committed (d5c1124). Overall scene judged short
+  of Fortune City on *fluidity, 3D-ness, liveliness* — a renderer/motion shortfall, not sprite art,
+  so the brief carries only a pointer note instead of correction prompts. Round 2 = motion/depth
+  uplift proposal (camera pan/zoom + parallax and default framing, tap feedback, ambient clock
+  de-sync, sprite grounding, tile relief, weather particles, HUD chrome) presented for approval;
+  checkpoint stays open until the feel passes.
 
 ## Deferred (recorded)
 
