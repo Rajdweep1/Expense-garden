@@ -2485,6 +2485,21 @@ git commit -m "docs: 1c plan executed - checkboxes ticked, amendments logged"
   crooked mushroom, round 1's rendered as the thistle. Both are correct. 11s capture
   `garden-r2.mp4` in the session scratchpad. Checkpoint remains open on Rajdweep's feel verdict;
   weather particles + deeper HUD gamification parked as round 3 candidates.
+- **Task 16 round 2 feedback fixes (2026-07-16, "ok it looks better now")**: (1) *No way back from
+  dashboard* — reproduced with keyevent 4: system back DOES pop dashboard→home correctly; his
+  dead-back experience coincided with the emulator dying of RAM pressure mid-session (input events
+  were being dropped, then the process exited — emulator-r2.log). UX gap is real regardless on
+  gesture-nav devices, so DashboardScreen and GreenhouseScreen gained a "← garden" TextButton
+  header row (`onBack: () -> Unit = {}` param, MainActivity passes `nav.popBackStack()`);
+  emulator-verified both. (2) *Trackpad pinch* — emulator limitation, not code: macOS trackpad
+  pinch isn't forwarded; multi-touch = hold ⌘ and drag (two-dot cursor). Real pinch works on
+  the phone (Task 12 leg). (3) *Top/bottom "bounce"* = the rubber-band + spring settle working as
+  designed, amplified by the dying emulator's jank; unchanged. (4) *Dense-garden demo request*:
+  seeded 12 more real txns through the entry UI (chips re-dumped per entry — ChipOrder reorders by
+  usage) across all 8 categories, ₹35–₹999 for tier spread, then tagged PVR + Juice as Regret via
+  dashboard Recent rows. Field now 14 plants / ₹3912: 8 archetypes visible, 3 weeds (chai mushroom
+  + two thistles), L-tier Rent hedge vs S-tier thistles, occlusion correct. Captures r3-dense.png +
+  garden-dense.mp4 (13.7s) in scratchpad. Suites re-ran green before install (JVM 80).
 
 ## Deferred (recorded)
 
