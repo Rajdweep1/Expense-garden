@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="clump" cx="0.35" cy="0.3" r="0.9">
+      <stop offset="0" stop-color="#9bd478"/><stop offset="1" stop-color="#57993c"/>
+    </radialGradient>
+    <linearGradient id="wood" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#9a6c42"/><stop offset="1" stop-color="#6b4526"/>
+    </linearGradient>
+  </defs>
+  <path d="M256 506 C252 468 250 440 248 412" stroke="url(#wood)" stroke-width="20" fill="none" stroke-linecap="round"/>
+  <path d="M248 412 C220 378 206 344 208 310" stroke="url(#wood)" stroke-width="14" fill="none" stroke-linecap="round"/>
+  <path d="M248 412 C282 382 298 350 298 318" stroke="url(#wood)" stroke-width="14" fill="none" stroke-linecap="round"/>
+  <path d="M250 470 C249 448 248 430 247 416" stroke="#b98a5a" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.8"/>
+  <path d="M142 296 C120 268 136 228 172 224 C170 184 212 156 250 172 C282 144 336 158 344 198 C382 204 396 250 372 278 C388 310 362 348 326 344 C318 378 270 392 240 370 C200 388 158 366 160 330 C144 322 136 308 142 296 Z"
+        fill="url(#clump)" stroke="#3f7c2c" stroke-width="8" stroke-linejoin="round"/>
+  <ellipse cx="196" cy="222" rx="40" ry="24" fill="#ffffff" opacity="0.3"/>
+  <ellipse cx="298" cy="196" rx="26" ry="16" fill="#ffffff" opacity="0.25"/>
+  <ellipse cx="290" cy="310" rx="56" ry="36" fill="#4f9140" opacity="0.45"/>
+  <g>
+    <g transform="translate(206 258)">
+      <circle r="13" fill="#ece5fa" stroke="#cfc2ee" stroke-width="3"/><circle r="5" fill="#ffd54d"/>
+    </g>
+    <g transform="translate(286 232)">
+      <circle r="12" fill="#ece5fa" stroke="#cfc2ee" stroke-width="3"/><circle r="4.5" fill="#ffd54d"/>
+    </g>
+    <g transform="translate(246 320)">
+      <circle r="12" fill="#ece5fa" stroke="#cfc2ee" stroke-width="3"/><circle r="4.5" fill="#ffd54d"/>
+    </g>
+    <g transform="translate(330 290)">
+      <circle r="10" fill="#ece5fa" stroke="#cfc2ee" stroke-width="3"/><circle r="4" fill="#ffd54d"/>
+    </g>
+    <g transform="translate(172 316)">
+      <circle r="10" fill="#ece5fa" stroke="#cfc2ee" stroke-width="3"/><circle r="4" fill="#ffd54d"/>
+    </g>
+  </g>
+</svg>
