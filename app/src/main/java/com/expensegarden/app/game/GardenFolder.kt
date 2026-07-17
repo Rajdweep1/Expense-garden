@@ -40,11 +40,7 @@ object GardenFolder {
 
         val leafSums = ordered.groupBy { it.categoryId }.mapValues { (_, l) -> l.sumOf { it.amountPaise } }
         val severity = MonthStatsFolder.fold(categories, leafSums, budgets, effectiveDay, daysInMonth).overallSeverity
-        val weather = when (severity) {
-            Severity.OK -> Weather.SUNNY
-            Severity.PACE_WARNING -> Weather.OVERCAST
-            Severity.BREACH -> Weather.DROUGHT
-        }
+        val weather = weatherOf(severity)
 
         val dayTotals = ordered.groupBy { Instant.ofEpochMilli(it.occurredAt).atZone(zone).dayOfMonth }
             .mapValues { (_, l) -> l.sumOf { it.amountPaise } }
@@ -65,6 +61,65 @@ object GardenFolder {
             gridRows = SerpentineTiler.gridRows(mapped.size),
             gridCols = SerpentineTiler.COLS,
         )
+    }
+
+    /** 1C.5: the persistent island. Every LOGGED txn ever stands in one chronological
+     *  serpentine field that only grows; the sky (weather/spend/streaks/butterflies)
+     *  still reads the CURRENT month, so the land remembers while the mood is live. */
+    fun foldAllTime(
+        allTxns: List<TransactionEntity>,
+        categories: List<CategoryEntity>,
+        currentBudgets: List<BudgetEntity>,                  // current month's rows
+        currentMonthEvents: List<GameEventEntity>,           // createdAt inside the current month
+        allTimeInvestmentCount: Int,
+        today: LocalDate,
+        zone: ZoneId,
+    ): GardenState {
+        val ym = YearMonth.from(today)
+        val daysInMonth = ym.lengthOfMonth()
+
+        val tree = CategoryTree(categories)
+        val ordered = allTxns.sortedWith(compareBy({ it.occurredAt }, { it.uuid }))
+        // Pair each planted txn with its month — markers fall out of the same chronological pass.
+        val mapped = ordered.mapNotNull { t ->
+            PlantMapper.map(t, tree)?.let { m ->
+                m to YearMonth.from(Instant.ofEpochMilli(t.occurredAt).atZone(zone)).toString()
+            }
+        }
+        val tiles = SerpentineTiler.tiles(mapped.size)
+        val plants = mapped.mapIndexed { i, (m, _) -> Plant(m.txnUuid, m.archetype, m.sizeTier, m.isWeed, tiles[i], m.seed) }
+        val markers = mapped.mapIndexedNotNull { i, (_, mk) ->
+            if (i == 0 || mapped[i - 1].second != mk) MonthMarker(mk, tiles[i]) else null
+        }
+
+        val currentTxns = ordered.filter { YearMonth.from(Instant.ofEpochMilli(it.occurredAt).atZone(zone)) == ym }
+        val leafSums = currentTxns.groupBy { it.categoryId }.mapValues { (_, l) -> l.sumOf { it.amountPaise } }
+        val severity = MonthStatsFolder.fold(categories, leafSums, currentBudgets, today.dayOfMonth, daysInMonth).overallSeverity
+        val dayTotals = currentTxns.groupBy { Instant.ofEpochMilli(it.occurredAt).atZone(zone).dayOfMonth }
+            .mapValues { (_, l) -> l.sumOf { it.amountPaise } }
+        val overall = currentBudgets.firstOrNull { it.categoryId == null }?.amountPaise
+
+        return GardenState(
+            monthKey = ym.toString(),
+            weather = weatherOf(severity),
+            plants = plants,
+            spentPaise = leafSums.values.sum(),
+            backRowTreeCount = treeCount(allTimeInvestmentCount),
+            trunkTier = allTimeInvestmentCount,
+            butterflies = minOf(5, currentMonthEvents.count { it.type == "gate.dodged" }),
+            streakDays = StreakMath.underPaceStreak(dayTotals, overall, today.dayOfMonth, daysInMonth),
+            noSpendDays = StreakMath.noSpendDays(dayTotals, today.dayOfMonth),
+            archived = false,
+            gridRows = SerpentineTiler.gridRows(mapped.size),
+            gridCols = SerpentineTiler.COLS,
+            monthMarkers = markers,
+        )
+    }
+
+    private fun weatherOf(severity: Severity) = when (severity) {
+        Severity.OK -> Weather.SUNNY
+        Severity.PACE_WARNING -> Weather.OVERCAST
+        Severity.BREACH -> Weather.DROUGHT
     }
 
     /** Tunable grove growth: 0 SIPs → no trees; then 1, 2 (≥10), 3 (≥25). Trunk thickens with every SIP. */

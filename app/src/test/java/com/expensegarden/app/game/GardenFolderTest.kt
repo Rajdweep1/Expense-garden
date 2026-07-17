@@ -21,13 +21,13 @@ class GardenFolderTest {
         CategoryEntity(2, "Groceries", null, true),
         CategoryEntity(10, "Investments", null, true),
     )
-    private fun at(day: Int) = LocalDate.of(2026, 7, day).atTime(12, 0).atZone(zone).toInstant().toEpochMilli()
+    private fun at(day: Int, month: Int = 7) = LocalDate.of(2026, month, day).atTime(12, 0).atZone(zone).toInstant().toEpochMilli()
     private var n = 0
-    private fun txn(cat: Long, day: Int, paise: Long = 5_000, breached: Boolean = false, regret: Regret = Regret.UNRATED) =
+    private fun txn(cat: Long, day: Int, paise: Long = 5_000, breached: Boolean = false, regret: Regret = Regret.UNRATED, month: Int = 7) =
         TransactionEntity(
             uuid = "u${n++}", amountPaise = paise, payeeId = 1, categoryId = cat,
             source = TxnSource.MANUAL, status = TxnStatus.LOGGED, breachedAtLogging = breached,
-            regret = regret, note = null, occurredAt = at(day), createdAt = at(day),
+            regret = regret, note = null, occurredAt = at(day, month), createdAt = at(day, month),
         )
     private fun dodge(day: Int) = GameEventEntity(
         id = n++.toLong(), type = "gate.dodged", payloadJson = "{}", transactionUuid = null, createdAt = at(day),
@@ -89,5 +89,50 @@ class GardenFolderTest {
     @Test fun `identical inputs fold to identical state`() {
         val txns = listOf(txn(103, 2), txn(2, 3))
         assertEquals(fold(txns), fold(txns))
+    }
+
+    // ---- 1C.5: the persistent all-time island ----
+
+    private fun foldAll(
+        txns: List<TransactionEntity>,
+        budgets: List<BudgetEntity> = emptyList(),
+        events: List<GameEventEntity> = emptyList(),
+        allTimeInvestmentCount: Int = 0,
+        today: LocalDate = LocalDate.of(2026, 7, 10),
+    ) = GardenFolder.foldAllTime(txns, categories, budgets, events, allTimeInvestmentCount, today, zone)
+
+    @Test fun `all-time fold plants every month on one island in chronological order`() {
+        val g = foldAll(listOf(txn(103, day = 5, month = 7), txn(2, day = 2, month = 5), txn(103, day = 10, month = 6)))
+        assertEquals(3, g.plants.size)
+        assertEquals(Tile(0, 0), g.plants.first { it.archetype == Archetype.HEDGE }.tile)   // May groceries planted first
+        assertEquals("2026-07", g.monthKey)
+        assertEquals(4, g.gridRows)                                                          // min rows still applies
+        assertTrue(!g.archived)
+    }
+
+    @Test fun `month markers sit at each month's first plant and skip investment-only months`() {
+        val g = foldAll(listOf(
+            txn(2, day = 1, month = 5), txn(103, day = 9, month = 5),   // May: plants 0,1
+            txn(10, day = 3, month = 6, paise = 200_000),               // June: investment only — no plant
+            txn(103, day = 4, month = 7),                               // July: plant 2
+        ))
+        assertEquals(
+            listOf(MonthMarker("2026-05", Tile(0, 0)), MonthMarker("2026-07", Tile(0, 2))),
+            g.monthMarkers,
+        )
+    }
+
+    @Test fun `all-time stats come from the current month only`() {
+        val budget = listOf(BudgetEntity(categoryId = null, month = "2026-07", amountPaise = 100_000))
+        val g = foldAll(listOf(txn(103, day = 2, month = 5, paise = 900_000), txn(103, day = 2, month = 7, paise = 1_000)), budget)
+        assertEquals(Weather.SUNNY, g.weather)          // May's blowout must not drought today's sky
+        assertEquals(1_000L, g.spentPaise)              // the strip stays a monthly figure
+        assertEquals(2, g.plants.size)                  // but every txn still stands in the field
+    }
+
+    @Test fun `grid grows with total plant count across months`() {
+        val txns = (1..12).map { txn(103, day = it, month = 5) } + (1..11).map { txn(103, day = it, month = 7) }
+        val g = foldAll(txns)
+        assertEquals(5, g.gridRows)                     // 23 plants → ceil(23/5) = 5 rows
     }
 }

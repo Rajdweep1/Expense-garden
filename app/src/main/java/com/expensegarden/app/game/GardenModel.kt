@@ -22,6 +22,9 @@ data class Plant(
     val seed: Int,                                           // uuid hash — all jitter derives from this
 )
 
+/** Where a month's first plant stands — the all-time island renders a signpost here. */
+data class MonthMarker(val monthKey: String, val tile: Tile)
+
 data class GardenState(
     val monthKey: String,
     val weather: Weather,
@@ -35,4 +38,5 @@ data class GardenState(
     val archived: Boolean,
     val gridRows: Int,
     val gridCols: Int,
+    val monthMarkers: List<MonthMarker> = emptyList(),       // all-time fold only; monthly folds leave it empty
 )
