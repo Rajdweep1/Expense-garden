@@ -55,6 +55,7 @@ import com.expensegarden.app.game.Tile
 import com.expensegarden.app.game.Weather
 import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.sin
 import kotlinx.coroutines.launch
@@ -267,11 +268,12 @@ fun GardenCanvas(
                 val cyp = topReservePx * (.25f + i * .16f)
                 cloud(Offset(cxp, cyp), 1f - i * .18f)
             }
-            // a small flock crosses the sky every ~37s — seeded per crossing, alternating direction
+            // a small flock crosses the sky every ~13s — seeded per crossing, alternating
+            // direction; every third cycle the sky stays quiet while one bird visits the grove
             if (animated) {
-                val cycle = floor(t / 37f).toInt()
-                val progress = (t % 37f) / 6.5f
-                if (progress < 1f) {
+                val cycle = floor(t / 13f).toInt()
+                val progress = (t % 13f) / 6.5f
+                if (cycle % 3 != 2 && progress < 1f) {
                     val h = abs(cycle * 1103515245 + 12345)
                     val dir = if (h % 2 == 0) 1f else -1f
                     val flightY = size.height * (.06f + (h % 13) / 13f * .12f)
@@ -470,10 +472,84 @@ fun GardenCanvas(
                 drawText(layout, topLeft = Offset(plateTL.x + (plateW - layout.size.width) / 2f, plateTL.y + (plateH - layout.size.height) / 2f))
             }
 
+            // ---- bees: orbit a flower head, then hop to the next (stable plant list, so
+            // ---- panning never teleports a bee; it just goes off-screen with its flower) ----
+            if (animated) {
+                val flowers = state.plants.filter {
+                    it.archetype == Archetype.PETAL_FLOWER || it.archetype == Archetype.TULIP || it.archetype == Archetype.BELL_FLOWER
+                }
+                if (flowers.isNotEmpty()) {
+                    val beeCount = minOf(3, 1 + flowers.size / 8)
+                    repeat(beeCount) { i ->
+                        val cycleLen = 8.5f + i * 2.3f
+                        val cycleIdx = floor((t + i * 13f) / cycleLen).toInt()
+                        val u = ((t + i * 13f) % cycleLen) / cycleLen
+                        fun flowerAt(k: Int) = flowers[abs(k * 31 + i * 17) % flowers.size]
+                        val cur = flowerAt(cycleIdx); val next = flowerAt(cycleIdx + 1)
+                        fun head(pl: Plant): Offset {
+                            val v = vis(pl.tile)
+                            return Offset(
+                                iso.tileCenterX(v),
+                                iso.tileCenterY(v) + iso.tileH * .18f - tierHeight(iso.tileH, pl.sizeTier) * .62f,
+                            )
+                        }
+                        val travel = .86f
+                        val orbit = Offset(
+                            cos((t / 1.05f + i * .7f) * TAU) * iso.tileW * .17f,
+                            sin((t / 1.05f + i * .7f) * TAU) * iso.tileH * .13f,
+                        )
+                        val pos = if (u < travel) head(cur) + orbit
+                        else {
+                            val f = (u - travel) / (1f - travel)
+                            lerp(head(cur) + orbit, head(next), f * f * (3f - 2f * f))
+                        }
+                        val onScreenFlower = if (u < travel) cur else next
+                        if (rowVisible(onScreenFlower.tile.row)) bee(pos, iso.tileW * .055f, flap = sin(t * 11f * TAU))
+                    }
+                }
+
+                // ---- one dragonfly darting between hover points off the frontier's shore ----
+                if (rowVisible(state.gridRows - 1)) {
+                    val fr = vis(Tile(state.gridRows - 1, state.gridCols - 1))
+                    val base = Offset(iso.tileCenterX(fr) + iso.tileW * 1.1f, iso.tileCenterY(fr) + iso.tileH * .6f)
+                    fun hover(k: Int) = base + Offset(sin(k * 3.7f) * iso.tileW * .9f, cos(k * 2.3f) * iso.tileH * .8f)
+                    val seg = floor(t / 2.4f).toInt()
+                    val du = (t % 2.4f) / 2.4f
+                    val dPos = if (du < .78f)
+                        hover(seg) + Offset(sin(t * 9f * TAU) * 2.2f, cos(t * 7.3f * TAU) * 2.2f)
+                    else {
+                        val f = (du - .78f) / .22f
+                        lerp(hover(seg), hover(seg + 1), f * f * (3f - 2f * f))
+                    }
+                    dragonfly(dPos, iso.tileW * .075f, wingPhase = sin(t * 23f * TAU))
+                }
+
+                // ---- every third bird cycle, one bird visits the grove tree instead ----
+                if (state.backRowTreeCount > 0 && rowVisible(state.gridRows - 1)) {
+                    val bCycle = floor(t / 13f).toInt()
+                    if (bCycle % 3 == 2) {
+                        val bu = (t % 13f) / 13f
+                        val backTile = vis(Tile(state.gridRows - 1, 0))
+                        val treeBase = Offset(iso.tileCenterX(backTile), iso.tileCenterY(backTile) - iso.tileH * .35f)
+                        val treeH = iso.tileH * (2.6f + minOf(state.trunkTier, 15) * .06f)
+                        val crown = Offset(treeBase.x + iso.tileW * .08f, treeBase.y - treeH * .80f)
+                        val inFrom = crown + Offset(-iso.tileW * 4.5f, -iso.tileH * 2.5f)
+                        val outTo = crown + Offset(iso.tileW * 4.5f, -iso.tileH * 3f)
+                        val bPos: Offset; val bFlap: Float
+                        when {
+                            bu < .16f -> { val f = bu / .16f; bPos = lerp(inFrom, crown, f * f * (3f - 2f * f)); bFlap = sin(t * 5.2f * TAU) }
+                            bu < .84f -> { bPos = crown + Offset(0f, sin((t / 2.6f) * TAU) * 1.6f); bFlap = .15f }
+                            else -> { val f = (bu - .84f) / .16f; bPos = lerp(crown, outTo, f * f); bFlap = sin(t * 5.2f * TAU) }
+                        }
+                        bird(bPos, flap = bFlap)
+                    }
+                }
+            }
+
             // ---- occasional falling leaf from trees and bushes (every ~11-17s per plant) ----
             if (animated) {
                 visPlants.filter { it.archetype == Archetype.TREE || it.archetype == Archetype.BUSH }.forEach { pl ->
-                    val period = 11f + pl.seed.mod(7)
+                    val period = 8f + pl.seed.mod(5)
                     val lt = (t + pl.seed.mod(100)) % period
                     if (lt < 2.4f) {
                         val p = lt / 2.4f
@@ -488,8 +564,8 @@ fun GardenCanvas(
                 }
                 // every ~9s one plant glints, so even a quiet garden offers a small surprise
                 if (visPlants.isNotEmpty()) {
-                    val cycle = floor(t / 9f).toInt()
-                    val sp = (t % 9f) / .9f
+                    val cycle = floor(t / 6.5f).toInt()
+                    val sp = (t % 6.5f) / .9f
                     if (sp < 1f) {
                         val pl = visPlants[abs(cycle * 31) % visPlants.size]
                         val v = vis(pl.tile)
@@ -500,8 +576,8 @@ fun GardenCanvas(
                 }
             }
 
-            // ---- butterflies (dodge rewards) on lissajous loops over the field ----
-            repeat(state.butterflies) { i ->
+            // ---- butterflies: two ambient residents + dodge rewards, on lissajous loops ----
+            repeat(if (animated) 2 + state.butterflies else state.butterflies) { i ->
                 val tb = (t / 12f + i * .19f) % 1f
                 val bx = size.width * .5f + size.width * .32f * sin(TAU * tb + i)
                 val by = topReservePx + (size.height - topReservePx - bottomReservePx) * .3f +
@@ -588,6 +664,27 @@ private fun DrawScope.bird(c: Offset, flap: Float) {
         quadraticBezierTo(c.x + w / 2, c.y - lift, c.x + w, c.y)
     }
     drawPath(p, Color(0x99455A64), style = Stroke(3f, cap = StrokeCap.Round))
+}
+
+private fun DrawScope.bee(c: Offset, s: Float, flap: Float) {
+    // wings first (behind), flickering with the flap
+    val wa = .35f + .35f * abs(flap)
+    drawOval(Color(0xB3FFFFFF).copy(alpha = wa), topLeft = Offset(c.x - s * 1.1f, c.y - s * 1.6f), size = Size(s * 1.0f, s * 1.2f))
+    drawOval(Color(0xB3FFFFFF).copy(alpha = wa), topLeft = Offset(c.x + s * .1f, c.y - s * 1.6f), size = Size(s * 1.0f, s * 1.2f))
+    // plump little body with two stripes
+    drawOval(Color(0xFFF2B01F), topLeft = Offset(c.x - s, c.y - s * .7f), size = Size(s * 2f, s * 1.4f))
+    drawLine(Color(0xFF44341B), Offset(c.x - s * .35f, c.y - s * .6f), Offset(c.x - s * .35f, c.y + s * .6f), strokeWidth = s * .38f)
+    drawLine(Color(0xFF44341B), Offset(c.x + s * .3f, c.y - s * .55f), Offset(c.x + s * .3f, c.y + s * .55f), strokeWidth = s * .34f)
+}
+
+private fun DrawScope.dragonfly(c: Offset, s: Float, wingPhase: Float) {
+    val stretch = .55f + .45f * abs(wingPhase)
+    listOf(-1f, 1f).forEach { side ->
+        drawOval(Color(0x8CBFEFFF), topLeft = Offset(c.x + side * s * .3f - s * 1.4f * stretch * (if (side < 0) 1f else 0f), c.y - s * .95f), size = Size(s * 1.4f * stretch, s * .5f))
+        drawOval(Color(0x73BFEFFF), topLeft = Offset(c.x + side * s * .3f - s * 1.2f * stretch * (if (side < 0) 1f else 0f), c.y - s * .35f), size = Size(s * 1.2f * stretch, s * .45f))
+    }
+    drawLine(Color(0xFF2E8B9A), Offset(c.x - s * .2f, c.y), Offset(c.x + s * 1.9f, c.y + s * .12f), strokeWidth = s * .34f, cap = StrokeCap.Round)
+    drawCircle(Color(0xFF236F7C), radius = s * .34f, center = Offset(c.x - s * .25f, c.y))
 }
 
 private fun DrawScope.sparkle(c: Offset, r: Float, alpha: Float) {
