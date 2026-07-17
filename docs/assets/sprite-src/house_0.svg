@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs></defs>
+  <ellipse cx="256" cy="498" rx="150" ry="18" fill="#6d4a2a" opacity="0.50"/><ellipse cx="256" cy="494" rx="112" ry="13" fill="#8a5f38" opacity="0.55"/><ellipse cx="242" cy="490" rx="62" ry="8" fill="#a4794e" opacity="0.45"/>
+  <!-- walls: lit front face + shaded right side -->
+  <path d="M150 322 L360 322 L360 488 L150 488 Z" fill="#E8D5A8" stroke="#3A2A1E" stroke-width="10" stroke-linejoin="round"/>
+  <path d="M360 322 L426 300 L426 462 L360 488 Z" fill="#CBB07E" stroke="#3A2A1E" stroke-width="10" stroke-linejoin="round"/>
+  <!-- plank hints on the front wall -->
+  <path d="M150 380 L360 380 M150 436 L360 436" stroke="#D9C28E" stroke-width="5"/>
+  <!-- thatch roof: two cel tones + big friendly overhang -->
+  <path d="M118 330 C150 230 210 178 262 172 C330 166 402 214 442 306 L400 322 C360 250 306 214 260 216 C216 218 172 258 152 330 Z"
+        fill="#C98A4B" stroke="#3A2A1E" stroke-width="10" stroke-linejoin="round"/>
+  <path d="M152 330 C172 258 216 218 260 216 C306 214 360 250 400 322 L442 306 L442 318 L118 342 L118 330 Z"
+        fill="#A96B33" stroke="#3A2A1E" stroke-width="10" stroke-linejoin="round"/>
+  <!-- thatch strands + stitched thatch patch -->
+  <path d="M204 236 C214 252 218 268 218 284 M300 224 C312 242 320 262 324 282 M256 214 C258 232 258 250 256 266" stroke="#8F5A2B" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <g transform="rotate(8 358 254)">
+    <rect x="336" y="234" width="46" height="38" rx="7" fill="#B97E42" stroke="#7B4E22" stroke-width="5"/>
+    <path d="M336 244 L328 240 M336 262 L328 266 M382 244 L390 240 M382 262 L390 266" stroke="#7B4E22" stroke-width="5" stroke-linecap="round"/>
+  </g>
+  <!-- rim light along the top-left of the roof -->
+  <path d="M154 296 C186 226 226 192 262 186" stroke="#E8B877" stroke-width="9" fill="none" stroke-linecap="round" opacity="0.85"/>
+  <!-- door with a rounded top, frame, knob and a stone step -->
+  <path d="M196 488 L196 396 C196 368 224 356 240 356 C256 356 284 368 284 396 L284 488 Z" fill="#7B5233" stroke="#3A2A1E" stroke-width="10" stroke-linejoin="round"/>
+  <path d="M240 366 L240 480 M204 400 L276 400" stroke="#5E3D24" stroke-width="5"/>
+  <circle cx="264" cy="432" r="7" fill="#E8B877" stroke="#3A2A1E" stroke-width="4"/>
+  <ellipse cx="240" cy="492" rx="58" ry="10" fill="#B9B0A0" stroke="#3A2A1E" stroke-width="6"/>
+  <!-- round window with cross frame -->
+  <circle cx="330" cy="398" r="27" fill="#F8E9C8" stroke="#3A2A1E" stroke-width="9"/>
+  <path d="M330 374 L330 422 M306 398 L354 398" stroke="#3A2A1E" stroke-width="6"/>
+  <circle cx="322" cy="388" r="7" fill="#FFFFFF" opacity="0.8"/>
+  <!-- tiny potted friend by the door -->
+  <path d="M158 462 L182 462 L178 488 L162 488 Z" fill="#B96A3F" stroke="#3A2A1E" stroke-width="7" stroke-linejoin="round"/>
+  <path d="M170 460 L170 442" stroke="#3A2A1E" stroke-width="7" stroke-linecap="round"/>
+  <g fill="#FFD44D" stroke="#3A2A1E" stroke-width="5">
+    <ellipse cx="170" cy="428" rx="7" ry="10" transform="rotate(0 170 436)"/>
+    <ellipse cx="170" cy="428" rx="7" ry="10" transform="rotate(72 170 436)"/>
+    <ellipse cx="170" cy="428" rx="7" ry="10" transform="rotate(144 170 436)"/>
+    <ellipse cx="170" cy="428" rx="7" ry="10" transform="rotate(216 170 436)"/>
+    <ellipse cx="170" cy="428" rx="7" ry="10" transform="rotate(288 170 436)"/>
+  </g>
+  <circle cx="170" cy="436" r="6" fill="#8A5A2B" stroke="#3A2A1E" stroke-width="4"/>
+</svg>
