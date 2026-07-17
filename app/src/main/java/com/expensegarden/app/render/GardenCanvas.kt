@@ -305,6 +305,12 @@ fun GardenCanvas(
                 topLeft = Offset(-size.width * .5f, size.height * .22f),
                 size = Size(size.width * 2f, size.height * 1.3f),
             )
+            // depth: the water darkens away from the island
+            drawRect(
+                Brush.verticalGradient(listOf(Color.Transparent, Color(0x3D1F5E8F)), startY = size.height * .55f, endY = size.height * 1.4f),
+                topLeft = Offset(-size.width * .5f, size.height * .55f),
+                size = Size(size.width * 2f, size.height * .95f),
+            )
             // broad light patches on the water (FC stills show these, not just glints)
             listOf(.25f to .38f, .70f to .62f, .45f to .88f).forEach { (fx, fy) ->
                 drawOval(Color.White.copy(alpha = .06f), topLeft = Offset(size.width * fx - 180f, size.height * fy - 60f), size = Size(360f, 120f))
@@ -353,6 +359,19 @@ fun GardenCanvas(
                     val cx = iso.tileCenterX(v); val cy = iso.tileCenterY(v)
                     val fill = if ((r + c) % 2 == 0) GardenPalette.grassA(state.weather) else GardenPalette.grassB(state.weather)
                     diamond(cx, cy, iso.tileW, iso.tileH, fill)
+                    // seeded speckle texture — FC tiles are never flat color
+                    val th = abs((r * 53 + c * 29 + 11) * 1103515245)
+                    repeat(3) { k ->
+                        val hx = abs(th / (k + 1) + k * 7919)
+                        val sx = cx + ((hx % 97) / 97f - .5f) * iso.tileW * .52f
+                        val sy = cy + (((hx / 97) % 89) / 89f - .5f) * iso.tileH * .52f
+                        drawCircle(Color(0x142E5B25), radius = 2.2f + (hx % 3), center = Offset(sx, sy))
+                    }
+                    if (th % 3 == 0) {
+                        val gx = cx + ((th % 61) / 61f - .5f) * iso.tileW * .4f
+                        val gy = cy + (((th / 61) % 53) / 53f - .5f) * iso.tileH * .4f
+                        drawLine(Color(0x2ECDEBA4), Offset(gx - 4f, gy), Offset(gx + 4f, gy - 2f), strokeWidth = 2f, cap = StrokeCap.Round)
+                    }
                 }
             }
             val wallH = iso.tileH * IsoMath.WALL_UNITS                   // chunky FC-style island slab
@@ -377,6 +396,21 @@ fun GardenCanvas(
                     val px = cx + (iso.tileW / 2) * s
                     val py = cy + iso.tileH / 2 - (iso.tileH / 2) * s
                     drawLine(Color(0x1F000000), Offset(px, py), Offset(px, py + wallH), strokeWidth = 2.5f)
+                }
+            }
+
+            // ---- shore foam: soft contours breathing along the waterline ----
+            if (rowVisible(0)) {
+                val lc = vis(Tile(0, 0)); val bcT = vis(Tile(0, state.gridCols - 1))
+                val rcT = vis(Tile(2.coerceAtMost(state.gridRows - 1), state.gridCols - 1))
+                repeat(2) { i ->
+                    val off = wallH + 8f + i * 10f + sin((t / (3.1f + i * 1.3f)) * TAU + i) * 3.5f
+                    val foam = Path().apply {
+                        moveTo(iso.tileCenterX(lc) - iso.tileW / 2f, iso.tileCenterY(lc) + off)
+                        lineTo(iso.tileCenterX(bcT), iso.tileCenterY(bcT) + iso.tileH / 2f + off)
+                        lineTo(iso.tileCenterX(rcT) + iso.tileW / 2f, iso.tileCenterY(rcT) + off)
+                    }
+                    drawPath(foam, Color.White.copy(alpha = .15f - i * .05f), style = Stroke(4.5f - i * 1.5f, cap = StrokeCap.Round))
                 }
             }
 
@@ -585,6 +619,21 @@ fun GardenCanvas(
                 butterfly(Offset(bx, by), flap = sin(t * 5f * TAU), sizePx = iso.tileW * .16f)
             }
         }
+
+        // ================= GRADE: warm sunlight + cool depth, in screen space =================
+        drawRect(
+            Brush.radialGradient(
+                listOf(Color(0x24FFDFA0), Color.Transparent),
+                center = Offset(size.width * .85f, topReservePx * .38f),
+                radius = size.width * .95f,
+            )
+        )
+        drawRect(
+            Brush.verticalGradient(
+                listOf(Color.Transparent, Color(0x12103A5C)),
+                startY = size.height * .55f, endY = size.height,
+            )
+        )
 
         // ================= LAYER: sea mist hugging the island base (nearest water, almost full parallax) =================
         withTransform({
