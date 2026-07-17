@@ -57,11 +57,12 @@ class GardenFolderTest {
         assertEquals(Weather.SUNNY, fold(listOf(txn(103, 2, paise = 1_000)), emptyList()).weather)  // no budget = sunny
     }
 
-    @Test fun `regret flip re-folds a flower into a weed and back`() {
+    @Test fun `regret flip re-folds a flower into a zombie and back`() {
         val flower = fold(listOf(txn(103, 2)))
-        assertTrue(flower.plants.single().archetype != Archetype.THISTLE_WEED)
-        val weed = fold(listOf(txn(103, 2, regret = Regret.REGRET)))
-        assertTrue(weed.plants.single().isWeed)
+        assertTrue(flower.plants.single().archetype != Archetype.ZOMBIE)
+        val zombie = fold(listOf(txn(103, 2, regret = Regret.REGRET)))
+        assertEquals(Archetype.ZOMBIE, zombie.plants.single().archetype)
+        assertTrue(!zombie.plants.single().isWeed)
     }
 
     @Test fun `investments feed the back row not the plot`() {

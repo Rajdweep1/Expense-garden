@@ -54,10 +54,10 @@ class PlantMapperTest {
         assertEquals(Archetype.PERENNIAL_SHRUB, transport.archetype)
     }
 
-    @Test fun `weed rule needs discretionary AND breach or regret`() {
+    @Test fun `weed rule needs discretionary AND breach without regret`() {
         assertFalse(PlantMapper.map(txn(103), tree)!!.isWeed)
         assertTrue(PlantMapper.map(txn(103, breached = true), tree)!!.isWeed)
-        assertTrue(PlantMapper.map(txn(103, regret = Regret.REGRET), tree)!!.isWeed)
+        assertFalse(PlantMapper.map(txn(103, regret = Regret.REGRET), tree)!!.isWeed)  // regret rises as a zombie, not a weed
         // discretionary child under a necessity parent: own flag decides
         assertTrue(PlantMapper.map(txn(302, breached = true), tree)!!.isWeed)
     }
@@ -95,7 +95,35 @@ class PlantMapperTest {
     }
 
     @Test fun `weeds stay single-variant`() {
-        assertEquals(0, PlantMapper.map(txn(103, regret = Regret.REGRET), tree)!!.variant)
+        assertEquals(0, PlantMapper.map(txn(103, breached = true), tree)!!.variant)
         assertEquals(1, PlantMapper.variantCount(Archetype.THISTLE_WEED))
+    }
+
+    // ---- 1C.6 zombies: a regretted purchase rises on its own tile ----
+
+    @Test fun `regret raises a zombie and beats both the category archetype and the weed rule`() {
+        val z = PlantMapper.map(txn(103, regret = Regret.REGRET), tree)!!
+        assertEquals(Archetype.ZOMBIE, z.archetype)
+        assertFalse(z.isWeed)                                 // zombies are their own state, not weeds
+        val zb = PlantMapper.map(txn(103, breached = true, regret = Regret.REGRET), tree)!!
+        assertEquals(Archetype.ZOMBIE, zb.archetype)          // regret wins over breach
+    }
+
+    @Test fun `zombie size variant follows the tier of what died`() {
+        assertEquals(0, PlantMapper.map(txn(103, paise = 5_000, regret = Regret.REGRET), tree)!!.variant)   // S
+        assertEquals(1, PlantMapper.map(txn(103, paise = 50_000, regret = Regret.REGRET), tree)!!.variant)  // M
+        assertEquals(2, PlantMapper.map(txn(103, paise = 500_000, regret = Regret.REGRET), tree)!!.variant) // L
+        assertEquals(3, PlantMapper.variantCount(Archetype.ZOMBIE))
+    }
+
+    @Test fun `necessities can never zombify`() {
+        val g = PlantMapper.map(txn(2, regret = Regret.REGRET), tree)!!
+        assertEquals(Archetype.HEDGE, g.archetype)
+    }
+
+    @Test fun `breach without regret still weeds exactly as before`() {
+        val w = PlantMapper.map(txn(103, breached = true), tree)!!
+        assertTrue(w.isWeed)
+        assertTrue(w.archetype == Archetype.THISTLE_WEED || w.archetype == Archetype.ODD_MUSHROOM)
     }
 }

@@ -22,7 +22,7 @@ object PlantMapper {
     private val variantCounts = mapOf(
         Archetype.PETAL_FLOWER to 3, Archetype.TULIP to 3, Archetype.BELL_FLOWER to 2,
         Archetype.HERB_TUFT to 2, Archetype.BUSH to 2, Archetype.HEDGE to 3,
-        Archetype.PERENNIAL_SHRUB to 2, Archetype.TREE to 2,
+        Archetype.PERENNIAL_SHRUB to 2, Archetype.TREE to 2, Archetype.ZOMBIE to 3,
     )
 
     fun variantCount(archetype: Archetype): Int = variantCounts[archetype] ?: 1
@@ -46,9 +46,13 @@ object PlantMapper {
 
         val seed = txn.uuid.hashCode()
         val ownNecessity = tree.byId(txn.categoryId)?.isNecessity ?: false
-        val isWeed = !ownNecessity && (txn.breachedAtLogging || txn.regret == Regret.REGRET)
+        // 1C.6: the old weed rule split in two — a regret VERDICT rises as a zombie on its
+        // tile; a breach at logging (circumstance) still grows a weed. Necessities do neither.
+        val isZombie = !ownNecessity && txn.regret == Regret.REGRET
+        val isWeed = !ownNecessity && !isZombie && txn.breachedAtLogging
 
         val archetype = when {
+            isZombie -> Archetype.ZOMBIE
             isWeed -> if (abs(seed) % 2 == 0) Archetype.THISTLE_WEED else Archetype.ODD_MUSHROOM
             ownNecessity -> necessityByRoot[root] ?: Archetype.HEDGE
             else -> discretionaryByRoot[root] ?: Archetype.BUSH
@@ -59,6 +63,7 @@ object PlantMapper {
             else -> SizeTier.L
         }
         val variant = when {
+            isZombie -> tier.ordinal                     // zombie size = the tier of what died
             isWeed -> 0
             else -> variantBySubcat[txn.categoryId] ?: (abs(seed / 31) % variantCount(archetype))
         }

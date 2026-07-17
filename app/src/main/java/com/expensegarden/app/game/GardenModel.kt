@@ -6,7 +6,8 @@ enum class Archetype {
     PETAL_FLOWER, TULIP, BELL_FLOWER, HERB_TUFT, BUSH,      // discretionary families
     HEDGE, PERENNIAL_SHRUB,                                  // necessities — dignified
     TREE,                                                    // investments, back row
-    THISTLE_WEED, ODD_MUSHROOM,                              // weeds — distinct, mildly embarrassing
+    THISTLE_WEED, ODD_MUSHROOM,                              // weeds — grew during a breach
+    ZOMBIE,                                                  // a regretted purchase, risen; revives when marked worth-it
 }
 
 enum class SizeTier { S, M, L }

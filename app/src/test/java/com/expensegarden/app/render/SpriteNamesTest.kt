@@ -9,6 +9,7 @@ class SpriteNamesTest {
         assertEquals("petal_flower_0.png", SpriteNames.fileFor(Archetype.PETAL_FLOWER))
         assertEquals("petal_flower_2.png", SpriteNames.fileFor(Archetype.PETAL_FLOWER, 2))
         assertEquals("odd_mushroom_0.png", SpriteNames.fileFor(Archetype.ODD_MUSHROOM))
+        assertEquals("zombie_2.png", SpriteNames.fileFor(Archetype.ZOMBIE, 2))
         assertEquals(
             Archetype.entries.size,
             Archetype.entries.map { SpriteNames.fileFor(it) }.toSet().size,

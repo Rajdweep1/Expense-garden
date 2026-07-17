@@ -36,6 +36,7 @@ class ProceduralPainter : PlantPainter {
                 Archetype.TREE -> tree(anchor, h * jitter)
                 Archetype.THISTLE_WEED -> thistle(anchor, h * jitter)
                 Archetype.ODD_MUSHROOM -> mushroom(anchor, h * jitter)
+                Archetype.ZOMBIE -> zombie(anchor, h * jitter)
             }
         }
     }
@@ -146,6 +147,25 @@ class ProceduralPainter : PlantPainter {
         drawPath(cap, GardenPalette.mushroomCap)
         drawCircle(Color(0xFFF6DFE7), radius = h * .045f, center = Offset(a.x - h * .09f, a.y - h * .40f))
         drawCircle(Color(0xFFF6DFE7), radius = h * .035f, center = Offset(a.x + h * .08f, a.y - h * .36f))
+    }
+
+    /** Fallback zombie: grey-green riser with X eyes and a receipt hat — the sprite does it better. */
+    private fun DrawScope.zombie(a: Offset, h: Float) {
+        drawOval(Color(0xFF7E9464), topLeft = Offset(a.x - h * .16f, a.y - h * .52f), size = Size(h * .32f, h * .52f))
+        drawCircle(Color(0xFF9DB07C), radius = h * .15f, center = Offset(a.x, a.y - h * .60f))
+        listOf(-1f, 1f).forEach { s ->                       // drooping arms
+            drawLine(Color(0xFF7E9464), Offset(a.x + s * h * .14f, a.y - h * .40f),
+                Offset(a.x + s * h * .26f, a.y - h * .22f), strokeWidth = h * .07f, cap = StrokeCap.Round)
+        }
+        listOf(-.06f, .06f).forEach { dx ->                  // X eyes
+            val e = Offset(a.x + h * dx, a.y - h * .62f)
+            drawLine(Color(0xFF3A2A1E), Offset(e.x - h * .025f, e.y - h * .025f), Offset(e.x + h * .025f, e.y + h * .025f), strokeWidth = h * .018f)
+            drawLine(Color(0xFF3A2A1E), Offset(e.x - h * .025f, e.y + h * .025f), Offset(e.x + h * .025f, e.y - h * .025f), strokeWidth = h * .018f)
+        }
+        rotate(degrees = -14f, pivot = Offset(a.x, a.y - h * .72f)) {  // receipt hat
+            drawRoundRect(Color(0xFFF4EFE2), topLeft = Offset(a.x - h * .09f, a.y - h * .84f), size = Size(h * .18f, h * .13f), cornerRadius = CornerRadius(h * .015f))
+            drawLine(Color(0xFFC64545), Offset(a.x - h * .05f, a.y - h * .78f), Offset(a.x + h * .05f, a.y - h * .78f), strokeWidth = h * .015f)
+        }
     }
 }
 
