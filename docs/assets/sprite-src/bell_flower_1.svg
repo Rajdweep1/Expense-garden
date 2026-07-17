@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
   <defs>
     <linearGradient id="bell" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#c3b2ef"/><stop offset="1" stop-color="#6f5cba"/>
+      <stop offset="0" stop-color="#aacdf5"/><stop offset="1" stop-color="#4f7ec2"/>
     </linearGradient>
     <linearGradient id="stem" x1="0" y1="0" x2="1" y2="0">
       <stop offset="0" stop-color="#6fb54a"/><stop offset="1" stop-color="#4e8f35"/>
@@ -21,13 +21,13 @@
         fill="url(#leaf)" stroke="#3f7c2c" stroke-width="7" stroke-linejoin="round"/>
   <g transform="translate(310 190) rotate(6)">
     <path d="M0 0 C-32 4 -37 36 -32 64 C-21 70 -13 66 -8 73 C-2 66 2 66 8 73 C13 66 21 70 32 64 C37 36 32 4 0 0 Z"
-          fill="url(#bell)" stroke="#63519f" stroke-width="7" stroke-linejoin="round"/>
+          fill="url(#bell)" stroke="#3f68a8" stroke-width="7" stroke-linejoin="round"/>
     <ellipse cx="-13" cy="22" rx="9" ry="16" fill="#ffffff" opacity="0.38"/>
     <circle cx="0" cy="74" r="6" fill="#ffd54d" stroke="#e0a52e" stroke-width="3"/>
   </g>
   <g transform="translate(196 316) rotate(-8)">
     <path d="M0 0 C-29 4 -33 32 -29 58 C-19 63 -12 60 -7 66 C-2 60 2 60 7 66 C12 60 19 63 29 58 C33 32 29 4 0 0 Z"
-          fill="url(#bell)" stroke="#63519f" stroke-width="7" stroke-linejoin="round"/>
+          fill="url(#bell)" stroke="#3f68a8" stroke-width="7" stroke-linejoin="round"/>
     <ellipse cx="-11" cy="20" rx="8" ry="14" fill="#ffffff" opacity="0.38"/>
     <circle cx="0" cy="67" r="5" fill="#ffd54d" stroke="#e0a52e" stroke-width="3"/>
   </g>

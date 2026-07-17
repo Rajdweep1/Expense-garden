@@ -10,6 +10,7 @@
       <stop offset="0" stop-color="#84a45e"/><stop offset="1" stop-color="#597740"/>
     </linearGradient>
   </defs>
+  <ellipse cx="256" cy="500" rx="70" ry="16" fill="#6d4a2a" opacity="0.50"/><ellipse cx="256" cy="497" rx="50" ry="11" fill="#8a5f38" opacity="0.55"/><ellipse cx="248" cy="494" rx="28" ry="7" fill="#a4794e" opacity="0.45"/>
   <path d="M256 506 C248 458 270 430 258 392 C246 352 272 326 262 288"
         stroke="url(#wstem)" stroke-width="14" fill="none" stroke-linecap="round"/>
   <path d="M254 434 C216 428 186 404 176 368 C186 358 200 356 210 364 C230 386 246 412 258 428 Z"
