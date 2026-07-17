@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <clipPath id="h1"><circle cx="258" cy="230" r="78"/></clipPath>
+  </defs>
+  <ellipse cx="256" cy="500" rx="78" ry="16" fill="#6d4a2a" opacity="0.50"/><ellipse cx="256" cy="497" rx="56" ry="11" fill="#8a5f38" opacity="0.55"/><ellipse cx="248" cy="494" rx="31" ry="7" fill="#a4794e" opacity="0.45"/>
+  <g transform="rotate(-7 256 490)">
+    <!-- soil clods -->
+    <circle cx="206" cy="486" r="10" fill="#6d4a2a"/>
+    <circle cx="304" cy="488" r="8" fill="#8a5f38"/>
+    <circle cx="274" cy="496" r="6" fill="#6d4a2a"/>
+    <!-- hunched torso -->
+    <path d="M216 470 C206 404 216 336 246 310 C284 296 308 338 302 402 C298 442 290 466 278 476 C254 488 228 482 216 470 Z"
+          fill="#9DB07C" stroke="#3A2A1E" stroke-width="10" stroke-linejoin="round"/>
+    <path d="M284 326 C300 354 304 388 299 418 C295 448 288 464 278 473 C290 450 295 402 288 358 C286 342 285 334 284 326 Z" fill="#7E9464"/>
+    <!-- stitched belly patch -->
+    <rect x="240" y="400" width="36" height="30" rx="5" fill="#8FA671" stroke="#62784A" stroke-width="4"/>
+    <path d="M240 408 L232 404 M240 422 L232 426 M276 408 L284 404 M276 422 L284 426" stroke="#62784A" stroke-width="4" stroke-linecap="round"/>
+    <!-- reaching arm + droop arm at the shoulders -->
+    <path d="M230 344 C194 338 164 350 146 376 C166 388 204 382 232 364 Z" fill="#7A8F5C" stroke="#3A2A1E" stroke-width="9" stroke-linejoin="round"/>
+    <path d="M298 360 C318 370 330 390 332 412 C314 408 300 390 294 372 Z" fill="#7A8F5C" stroke="#3A2A1E" stroke-width="9" stroke-linejoin="round"/>
+    <!-- head, sunk into the shoulders -->
+    <g transform="translate(0 24)">
+      <circle cx="258" cy="230" r="78" fill="#9DB07C" stroke="#3A2A1E" stroke-width="10"/>
+      <ellipse cx="264" cy="292" rx="74" ry="32" fill="#7E9464" clip-path="url(#h1)"/>
+      <ellipse cx="228" cy="186" rx="28" ry="16" fill="#B8C79A"/>
+      <circle cx="258" cy="230" r="78" fill="none" stroke="#3A2A1E" stroke-width="10"/>
+      <!-- X eyes, one lower for the dazed tilt -->
+      <g stroke="#2B2118" stroke-width="9" stroke-linecap="round">
+        <path d="M212 206 L238 230"/><path d="M212 230 L238 206"/>
+        <path d="M280 214 L306 238"/><path d="M280 238 L306 214"/>
+      </g>
+      <!-- mouth with one square tooth -->
+      <path d="M228 274 Q256 282 292 270" stroke="#2B2118" stroke-width="8" fill="none" stroke-linecap="round"/>
+      <rect x="256" y="275" width="13" height="13" rx="2" transform="rotate(4 262 281)" fill="#F4EFE2" stroke="#3A2A1E" stroke-width="4"/>
+      <!-- cheek stitch -->
+      <g stroke="#62784A" stroke-width="5" stroke-linecap="round">
+        <path d="M296 252 L314 264"/><path d="M301 260 L306 252"/><path d="M308 265 L313 257"/>
+      </g>
+      <!-- receipt hat -->
+      <g transform="rotate(-16 250 148)">
+        <path d="M206 118 L302 118 L302 164 L294 176 L286 164 L278 176 L270 164 L262 176 L254 164 L246 176 L238 164 L230 176 L222 164 L214 176 L206 164 Z"
+              fill="#F4EFE2" stroke="#3A2A1E" stroke-width="8" stroke-linejoin="round"/>
+        <path d="M216 132 L292 132" stroke="#D8CFB8" stroke-width="4"/>
+        <path d="M216 142 L276 142" stroke="#D8CFB8" stroke-width="4"/>
+        <path d="M240 156 q8 -6 16 0 q8 6 16 0" stroke="#C64545" stroke-width="5" fill="none" stroke-linecap="round"/>
+      </g>
+      <!-- one loyal fly -->
+      <path d="M330 150 a26 18 0 1 1 -6 -28" stroke="#3A2A1E" stroke-width="2.5" stroke-dasharray="4 7" fill="none" opacity="0.5"/>
+      <circle cx="332" cy="148" r="5.5" fill="#3A2A1E"/>
+      <circle cx="328" cy="142" r="3" fill="#B8C79A" opacity="0.9"/>
+    </g>
+  </g>
+</svg>

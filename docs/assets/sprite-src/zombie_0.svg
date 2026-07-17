@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <clipPath id="h0"><circle cx="256" cy="306" r="62"/></clipPath>
+  </defs>
+  <ellipse cx="256" cy="500" rx="70" ry="15" fill="#6d4a2a" opacity="0.50"/><ellipse cx="256" cy="497" rx="50" ry="10" fill="#8a5f38" opacity="0.55"/><ellipse cx="248" cy="494" rx="28" ry="6" fill="#a4794e" opacity="0.45"/>
+  <g transform="rotate(-6 256 490)">
+    <!-- soil clods where it broke through -->
+    <circle cx="216" cy="488" r="9" fill="#6d4a2a"/>
+    <circle cx="296" cy="490" r="7" fill="#8a5f38"/>
+    <circle cx="268" cy="496" r="6" fill="#6d4a2a"/>
+    <!-- squat torso rising straight out of the tile -->
+    <path d="M226 490 C220 448 228 412 250 398 C276 388 294 408 290 448 C288 472 280 486 268 490 C254 496 236 496 226 490 Z"
+          fill="#9DB07C" stroke="#3A2A1E" stroke-width="10" stroke-linejoin="round"/>
+    <path d="M278 414 C288 434 290 458 284 476 C290 460 292 434 284 416 Z" fill="#7E9464"/>
+    <!-- nub leaf-arms at the shoulders -->
+    <path d="M228 428 C206 424 190 432 180 446 C192 454 212 450 228 440 Z" fill="#7A8F5C" stroke="#3A2A1E" stroke-width="8" stroke-linejoin="round"/>
+    <path d="M288 436 C306 438 318 448 322 462 C308 464 294 456 286 446 Z" fill="#7A8F5C" stroke="#3A2A1E" stroke-width="8" stroke-linejoin="round"/>
+    <!-- oversized head, sunk into the shoulders -->
+    <g transform="translate(0 42)">
+      <circle cx="256" cy="306" r="62" fill="#9DB07C" stroke="#3A2A1E" stroke-width="10"/>
+      <ellipse cx="260" cy="356" rx="58" ry="26" fill="#7E9464" clip-path="url(#h0)"/>
+      <ellipse cx="232" cy="272" rx="22" ry="13" fill="#B8C79A"/>
+      <circle cx="256" cy="306" r="62" fill="none" stroke="#3A2A1E" stroke-width="10"/>
+      <!-- X eyes -->
+      <g stroke="#2B2118" stroke-width="8" stroke-linecap="round">
+        <path d="M222 288 L242 306"/><path d="M222 306 L242 288"/>
+        <path d="M272 292 L292 310"/><path d="M272 310 L292 292"/>
+      </g>
+      <!-- dazed mouth + cheek stitch -->
+      <path d="M234 336 Q256 342 280 334" stroke="#2B2118" stroke-width="7" fill="none" stroke-linecap="round"/>
+      <g stroke="#62784A" stroke-width="5" stroke-linecap="round">
+        <path d="M292 320 L306 330"/><path d="M296 328 L300 321"/><path d="M302 332 L306 325"/>
+      </g>
+      <!-- receipt hat, tilted -->
+      <g transform="rotate(-14 252 222)">
+        <path d="M216 200 L288 200 L288 236 L282 244 L276 236 L270 244 L264 236 L258 244 L252 236 L246 244 L240 236 L234 244 L228 236 L222 244 L216 236 Z"
+              fill="#F4EFE2" stroke="#3A2A1E" stroke-width="8" stroke-linejoin="round"/>
+        <path d="M224 212 L280 212" stroke="#D8CFB8" stroke-width="4"/>
+        <path d="M224 220 L268 220" stroke="#D8CFB8" stroke-width="4"/>
+        <path d="M242 230 q6 -5 12 0 q6 5 12 0" stroke="#C64545" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+      </g>
+    </g>
+  </g>
+</svg>
