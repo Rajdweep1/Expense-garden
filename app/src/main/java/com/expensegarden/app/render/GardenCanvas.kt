@@ -99,6 +99,22 @@ fun GardenCanvas(
     val jiggle = remember { mutableStateMapOf<String, Animatable<Float, *>>() }
     val puffs = remember { mutableStateListOf<TapPuff>() }
     val scope = rememberCoroutineScope()
+    // 1C.6 revival: when a zombie tile re-folds into a living plant, celebrate loudly.
+    val revive = remember { mutableStateMapOf<String, Animatable<Float, *>>() }
+    val prevArch = remember { mutableStateMapOf<String, Archetype>() }
+    LaunchedEffect(state.plants) {
+        state.plants.forEach { p ->
+            val old = prevArch[p.txnUuid]
+            if (animated && old == Archetype.ZOMBIE && p.archetype != Archetype.ZOMBIE) {
+                val a = Animatable(0f)
+                revive[p.txnUuid] = a
+                // 1.4s: long enough to still catch the tail after the txn sheet slides away
+                launch { a.animateTo(1f, tween(1400)); revive.remove(p.txnUuid) }
+            }
+            prevArch[p.txnUuid] = p.archetype
+        }
+        prevArch.keys.retainAll(state.plants.map { it.txnUuid }.toSet())
+    }
     LaunchedEffect(state.plants.map { it.txnUuid }) {
         val known = pop.keys.toSet()
         val current = state.plants.map { it.txnUuid }.toSet()
@@ -464,19 +480,33 @@ fun GardenCanvas(
                 // grounded contact shadow: a broad soft pool + a tight dark core
                 drawOval(GardenPalette.shadow.copy(alpha = .12f), topLeft = Offset(ax - iso.tileW * .22f, ay - iso.tileH * .13f), size = Size(iso.tileW * .44f, iso.tileH * .26f))
                 drawOval(GardenPalette.shadow.copy(alpha = .20f), topLeft = Offset(ax - iso.tileW * .13f, ay - iso.tileH * .08f), size = Size(iso.tileW * .26f, iso.tileH * .16f))
+                revive[plant.txnUuid]?.value?.let { r ->      // expanding ring + sparkles as color returns
+                    drawCircle(Color(0xFFFFF3C0).copy(alpha = (1f - r) * .55f), radius = iso.tileW * (.15f + .55f * r), center = anchor, style = Stroke(5f * (1f - r) + 1f))
+                    repeat(5) { k ->
+                        val ang = k / 5f * TAU + r * 2f
+                        sparkle(Offset(anchor.x + cos(ang) * iso.tileW * .34f * r, anchor.y - iso.tileH * .3f - sin(ang) * iso.tileH * .5f * r), 7f, 1f - r)
+                    }
+                }
 
                 // each plant breathes and leans on its own seeded rhythm; weeds fidget faster
                 val swayPeriod = 3.1f + plant.seed.mod(7) * .3f
                 val speedMul = if (plant.isWeed) 1.6f else 1f
                 val ph = plant.seed.mod(628) / 100f
-                val lean = sin(t / swayPeriod * speedMul * TAU + ph) * (2.2f + plant.seed.mod(5) * .3f) * (if (plant.isWeed) 1.25f else 1f)
+                val isZombie = plant.archetype == Archetype.ZOMBIE
+                // zombies shamble: a slow heavy lean with an occasional lurch-dip, never a happy breath
+                val lean =
+                    if (isZombie) sin(t / 1.9f * TAU + ph) * 1.1f + sin(t / 7.3f * TAU + ph * 2f) * 2.4f
+                    else sin(t / swayPeriod * speedMul * TAU + ph) * (2.2f + plant.seed.mod(5) * .3f) * (if (plant.isWeed) 1.25f else 1f)
                 val breathAmp = when (plant.sizeTier) { SizeTier.S -> .026f; SizeTier.M -> .020f; SizeTier.L -> .013f }
-                val breath = sin(t / (swayPeriod * .618f) * TAU + ph * 1.7f) * breathAmp
+                val breath =
+                    if (isZombie) .035f * maxOf(0f, sin(t / 3.7f * TAU + ph)) - .01f
+                    else sin(t / (swayPeriod * .618f) * TAU + ph * 1.7f) * breathAmp
                 val j = jiggle[plant.txnUuid]?.value ?: 1f               // tap wobble: squash then springy stretch
                 val squashY = 1f + breath - (1f - j) * .16f
                 val squashX = 1f - breath * .6f + (1f - j) * .11f
                 withTransform({ scale(squashX, squashY, pivot = anchor) }) {
-                    with(painter) { drawPlant(plant, anchor, tierHeight(iso.tileH, plant.sizeTier) * popScale, lean) }
+                    val revivePop = revive[plant.txnUuid]?.value?.let { .22f * sin(it * PI.toFloat()) } ?: 0f
+                    with(painter) { drawPlant(plant, anchor, tierHeight(iso.tileH, plant.sizeTier) * popScale * (1f + revivePop), lean) }
                 }
                 // a few grass blades overlap the base so the sprite sits IN the ground, not on it
                 repeat(3) { b ->
