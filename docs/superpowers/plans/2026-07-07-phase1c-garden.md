@@ -2594,6 +2594,25 @@ Files: render/GardenCanvas.kt, render/GardenPalette.kt
 - Full JVM + instrumented suites; E2E on the seeded 3-month device DB (renders as ONE
   ~13-row island with two signposts); tour video; checkpoint round-4 report.
 
+**1C.5 execution log (2026-07-17, all six tasks same-day):** commits 997070f (Task 18
+fold), 7e38f34 (Task 19 camera), 5fcc88a (Task 20 fauna), 7e5ba04 (Task 21 plumbing),
+3b8dac3 (Tasks 21/22 art — 21-sprite pack), scene-grade commit (Task 23). Suites:
+**JVM 94 / instrumented 28, zero failures, fresh XMLs parsed.** Decisions made in
+flight: (a) fitWidth gained a middle regime — frozen tile size but whole-field
+centering while the island still fits vertically (first cut pinned a 13-row island
+under the strip and hung it left by centering the frontier row); (b) world-mode
+positive-y pan capped at .15×viewport so pulling the island down can't expose the
+sky/ocean parallax seam; (c) Chai/Streaming were dropped from the forced-variant
+table — high-frequency spends must stay seed-varied, landmarks are Rent/Utilities/Fuel
+only; (d) SpriteNamesTest updated to the `_<variant>.png` contract (deliberate rename,
+assets git-mv'd to `_0`). Demo-DB lore: connectedDebugAndroidTest wipes app data —
+back up `garden.db` (+`-wal`!) before the suite and push it back after installDebug
+(scratchpad `backup.db`, restore recipe in session log). Artifacts (scratchpad):
+r4-frontier/r4-history/r4-greenhouse.png, variety-live.png, final-scene.png,
+contact-sheet-v2.png (21 sprites), living-world.mp4 (32s: history pan → plant dialog →
+greenhouse postcards → home). Greenhouse verified intact as monthly postcards.
+**Task 16 checkpoint remains OPEN → round-4 verdict pending.**
+
 ## Deferred (recorded)
 
 - Roaster character sprite + voice → 1D. Compost/fertilizer, rare species, collections → Phase 4. Camera pan/zoom, rain particles → polish backlog.
