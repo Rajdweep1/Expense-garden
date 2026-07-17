@@ -2501,6 +2501,31 @@ git commit -m "docs: 1c plan executed - checkboxes ticked, amendments logged"
   + two thistles), L-tier Rent hedge vs S-tier thistles, occlusion correct. Captures r3-dense.png +
   garden-dense.mp4 (13.7s) in scratchpad. Suites re-ran green before install (JVM 80).
 
+- **2026-07-17 — Task 16 round 3 (months-of-usage demo; NO code changes).** User asked whether the
+  garden grows per entry like Fortune City and for a multi-month fill. Mechanic confirmed in code:
+  one LOGGED txn = one plant, `SerpentineTiler.gridRows = max(4, ceil(n/5))` — the island grows a
+  row toward the horizon every 5 entries, unbounded; investments plant no tile but grow the
+  all-time back-row grove (`treeCount` 1/2/3 at 1/10/25 SIPs, trunk thickens per SIP); weather =
+  overall severity; strip streak chip from StreakMath. Seeding: first attempt drove the real entry
+  UI (scratchpad `seed_growth.py`) — abandoned after silent failures (M3 date-picker day cells
+  expose full-date text, not day numbers; chip/sheet taps raced IME + dialog-exit animations; 6
+  entries landed before a stall and were later deduped). Pivot per user: direct SQLite seed
+  (scratchpad `seed_db.py`) mirroring `LedgerRepository` write shapes exactly — payee
+  get-or-create + defaultCategoryId learn, txn (uuid4, MANUAL, LOGGED, breachedAtLogging=0), and
+  `transaction.logged` event in the same transaction; regrets = regret column +
+  `transaction.regretted` event a day later; `createdAt ≈ occurredAt + 5min` so per-month event
+  windows stay coherent; July budgets (₹32k overall / ₹7k Food / ₹3k Entertainment) inserted
+  AFTER all txns so breach-at-logging flags stay honest. `month.closed` deliberately NOT
+  hand-written — the on-open reconciler emitted 2026-05 + 2026-06 closes and 2 organic
+  `streak.hit`s (verified on device). **WAL lesson:** `adb pull` of `garden.db` alone misses
+  committed WAL frames — pull `-wal`/`-shm` too or the read is stale (this hid 7 txns and the 6
+  UI strays). Final device state: May 11/₹22,552 (1 regret weed, 1 SIP), June 15/₹26,389 (2
+  regret weeds, 1 SIP), July 38/₹16,189 (2 SIPs; 36 tile plants → 8 rows; on pace, SUNNY,
+  🌱13d streak). 4 SIPs → 1 grove tree, trunkTier 4, visible behind every month's bed.
+  Artifacts (scratchpad): garden-before.png, growth-july1..4.png, growth-timelapse.mp4,
+  growth-tour.mp4 (28s: breathe → pan → plant-dialog ₹560 BookMyShow → greenhouse → June →
+  home), greenhouse-album.png, june-open.png, dashboard-dense.png. Checkpoint still OPEN.
+
 ## Deferred (recorded)
 
 - Roaster character sprite + voice → 1D. Compost/fertilizer, rare species, collections → Phase 4. Camera pan/zoom, rain particles → polish backlog.
