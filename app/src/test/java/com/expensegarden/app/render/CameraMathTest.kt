@@ -45,4 +45,35 @@ class CameraMathTest {
         assertEquals(worldX, CameraMath.screenToWorldX(screenX, panX, zoom, cX), 1e-3f)
         assertEquals(worldY, CameraMath.screenToWorldY(screenY, panY, zoom, cY), 1e-3f)
     }
+
+    // ---- 1C.5 world mode: range-based pan bounds over an island bigger than the screen ----
+
+    @Test
+    fun `panRange can center both island extremes and scales with zoom`() {
+        // Island spans world y 400..4800, viewport center 1200: centering the bottom needs
+        // pan = -(4800-1200)*zoom, centering the top needs pan = -(400-1200)*zoom.
+        val r1 = CameraMath.panRange(extentMin = 400f, extentMax = 4800f, center = 1200f, zoom = 1f)
+        assertEquals(-3600f, r1.start, 1e-3f)
+        assertEquals(800f, r1.endInclusive, 1e-3f)
+        val r2 = CameraMath.panRange(400f, 4800f, 1200f, zoom = 2f)
+        assertEquals(-7200f, r2.start, 1e-3f)
+    }
+
+    @Test
+    fun `panRange always contains zero so the default framing is legal`() {
+        // A short island sitting above center would otherwise demand a positive-only range.
+        val r = CameraMath.panRange(extentMin = 300f, extentMax = 900f, center = 1200f, zoom = 1f)
+        assert(r.start <= 0f && r.endInclusive >= 0f)
+    }
+
+    @Test
+    fun `range clamp and rubber band mirror the symmetric versions`() {
+        val r = CameraMath.panRange(400f, 4800f, 1200f, 1f)     // -3600..800
+        assertEquals(800f, CameraMath.clampPan(2000f, r), 1e-3f)
+        assertEquals(-3600f, CameraMath.clampPan(-9999f, r), 1e-3f)
+        assertEquals(-100f, CameraMath.clampPan(-100f, r), 1e-3f)
+        assertEquals(800f + 40f, CameraMath.rubberBand(900f, r), 1e-3f)
+        assertEquals(-3600f - 40f, CameraMath.rubberBand(-3700f, r), 1e-3f)
+        assertEquals(-3599f, CameraMath.rubberBand(-3599f, r), 1e-3f)
+    }
 }

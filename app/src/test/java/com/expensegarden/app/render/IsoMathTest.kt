@@ -46,4 +46,46 @@ class IsoMathTest {
         val below = (2400f - 320f) - islandBottom
         assert(above < below) { "expected sky bias, above=$above below=$below" }
     }
+
+    // ---- 1C.5 world mode: width-driven fit for the endless island ----
+
+    @Test fun `fitWidth matches fit exactly while the island is small`() {
+        val a = IsoMath.fit(gridRows = 6, gridCols = 5, viewportW = 1080f, viewportH = 2400f, topReserve = 300f, bottomReserve = 320f)
+        val b = IsoMath.fitWidth(gridRows = 6, gridCols = 5, viewportW = 1080f, viewportH = 2400f, topReserve = 300f, bottomReserve = 320f)
+        assertEquals(a.tileW, b.tileW, 1e-3f)
+        assertEquals(a.originX, b.originX, 1e-3f)
+        assertEquals(a.originY, b.originY, 1e-3f)
+    }
+
+    @Test fun `fitWidth freezes tile size once history outgrows the frame`() {
+        val atFrame = IsoMath.fitWidth(gridRows = IsoMath.FRAME_ROWS, gridCols = 5, viewportW = 1080f, viewportH = 2400f, topReserve = 300f, bottomReserve = 320f)
+        val deep = IsoMath.fitWidth(gridRows = 60, gridCols = 5, viewportW = 1080f, viewportH = 2400f, topReserve = 300f, bottomReserve = 320f)
+        assertEquals(atFrame.tileW, deep.tileW, 1e-3f)          // history never shrinks the world
+        // frontier (visual row 0) pinned near the top band, its 5 cols centered
+        val frontierMid = (deep.tileCenterX(Tile(0, 0)) + deep.tileCenterX(Tile(0, 4))) / 2f
+        assertEquals(540f, frontierMid, 1e-2f)
+        assert(deep.tileCenterY(Tile(0, 0)) < 700f) { "frontier not pinned high: ${deep.tileCenterY(Tile(0, 0))}" }
+        // ...while the island's tail runs far past the viewport for the camera to explore
+        assert(deep.tileCenterY(Tile(59, 4)) > 2400f)
+    }
+
+    @Test fun `fitWidth keeps a mid-size island centered even past the frame`() {
+        // 13 rows: tile size is frozen, but the island still fits vertically -> whole-field centering.
+        val f = IsoMath.fitWidth(gridRows = 13, gridCols = 5, viewportW = 1080f, viewportH = 2400f, topReserve = 300f, bottomReserve = 320f)
+        assert(f.tileCenterY(Tile(0, 0)) > 700f) { "island still pinned high: ${f.tileCenterY(Tile(0, 0))}" }
+        val fieldMidX = (f.tileCenterX(Tile(12, 0)) + f.tileCenterX(Tile(0, 4))) / 2f
+        assertEquals(540f, fieldMidX, 1f)
+        val bottom = f.tileCenterY(Tile(12, 4)) + f.tileH / 2f + f.tileH * IsoMath.WALL_UNITS
+        assert(bottom <= 2400f - 320f) { "island spills into the FAB band: $bottom" }
+    }
+
+    @Test fun `islandRect encloses every tile of the field plus the slab wall`() {
+        val fitted = IsoMath.fitWidth(gridRows = 20, gridCols = 5, viewportW = 1080f, viewportH = 2400f, topReserve = 300f, bottomReserve = 320f)
+        val r = fitted.islandRect(gridRows = 20, gridCols = 5)
+        for (row in listOf(0, 10, 19)) for (col in listOf(0, 4)) {
+            val x = fitted.tileCenterX(Tile(row, col)); val y = fitted.tileCenterY(Tile(row, col))
+            assert(x in r.left..r.right && y in r.top..r.bottom) { "tile ($row,$col) at ($x,$y) outside $r" }
+        }
+        assert(r.bottom >= fitted.tileCenterY(Tile(19, 4)) + fitted.tileH * IsoMath.WALL_UNITS)
+    }
 }

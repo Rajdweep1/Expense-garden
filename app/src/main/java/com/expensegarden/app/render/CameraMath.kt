@@ -5,9 +5,10 @@ package com.expensegarden.app.render
  *  the gesture state inside bounds and map touches back through that transform. */
 object CameraMath {
     const val MIN_ZOOM = 0.85f
+    const val WORLD_MIN_ZOOM = 0.7f      // the endless island earns a wider survey zoom
     const val MAX_ZOOM = 2.2f
 
-    fun clampZoom(zoom: Float): Float = zoom.coerceIn(MIN_ZOOM, MAX_ZOOM)
+    fun clampZoom(zoom: Float, min: Float = MIN_ZOOM): Float = zoom.coerceIn(min, MAX_ZOOM)
 
     /** How far the world may pan from center, per axis. Grows with zoom so a
      *  zoomed-in garden can still reach its far corners. */
@@ -31,4 +32,23 @@ object CameraMath {
 
     fun screenToWorldY(y: Float, panY: Float, zoom: Float, centerY: Float): Float =
         (y - panY - centerY) / zoom + centerY
+
+    // ---- 1C.5 world mode: the island can outgrow the screen, so bounds come from its
+    // ---- extent, not the viewport. pan = -(worldPoint - center) * zoom centers a point;
+    // ---- the range lets either extreme reach center and ALWAYS contains 0 so the
+    // ---- default frontier framing is a legal resting state.
+    fun panRange(extentMin: Float, extentMax: Float, center: Float, zoom: Float): ClosedFloatingPointRange<Float> {
+        val lo = minOf(-(extentMax - center) * zoom, 0f)
+        val hi = maxOf(-(extentMin - center) * zoom, 0f)
+        return lo..hi
+    }
+
+    fun clampPan(v: Float, range: ClosedFloatingPointRange<Float>): Float =
+        v.coerceIn(range.start, range.endInclusive)
+
+    fun rubberBand(v: Float, range: ClosedFloatingPointRange<Float>): Float = when {
+        v > range.endInclusive -> range.endInclusive + (v - range.endInclusive) * .4f
+        v < range.start -> range.start + (v - range.start) * .4f
+        else -> v
+    }
 }

@@ -31,6 +31,21 @@ class GardenRepository(private val db: AppDatabase, private val ledger: LedgerRe
         }
     }
 
+    /** 1C.5: the persistent island — every LOGGED txn ever, with the current month's sky. */
+    fun observeAllTimeGarden(): Flow<GardenState> {
+        val monthKey = ledger.currentMonthKey()
+        val (from, to) = ledger.boundsOfMonth(monthKey)
+        return combine(
+            db.transactionDao().observeLoggedBetween(0L, Long.MAX_VALUE),
+            db.categoryDao().observeAll(),
+            db.budgetDao().observeAllForMonth(monthKey),
+            db.gameEventDao().observeEventsBetween(from, to),
+            db.transactionDao().observeLoggedCountIn(investmentIds()),
+        ) { txns, cats, budgets, events, sips ->
+            GardenFolder.foldAllTime(txns, cats, budgets, events, sips, LocalDate.now(zone), zone)
+        }
+    }
+
     suspend fun foldMonth(monthKey: String): GardenState {
         val (from, to) = ledger.boundsOfMonth(monthKey)
         val cats = db.categoryDao().all()

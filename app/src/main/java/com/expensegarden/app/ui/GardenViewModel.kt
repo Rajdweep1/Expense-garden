@@ -14,9 +14,10 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class GardenViewModel(private val container: AppContainer) : ViewModel() {
-    /** null = loading skeleton. flow{} wrapper re-derives the month on re-subscription (house idiom). */
+    /** null = loading skeleton. flow{} wrapper re-derives the month on re-subscription (house idiom).
+     *  1C.5: home shows the persistent all-time island; the greenhouse keeps monthly folds. */
     val garden: StateFlow<GardenState?> =
-        flow { emitAll(container.garden.observeCurrentGarden()) }
+        flow { emitAll(container.garden.observeAllTimeGarden()) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     init {

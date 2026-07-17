@@ -42,6 +42,10 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.lerp as lerpColor
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.toSize
 import com.expensegarden.app.game.Archetype
 import com.expensegarden.app.game.GardenState
@@ -56,6 +60,7 @@ import kotlin.math.sin
 import kotlinx.coroutines.launch
 
 private const val TAU = 2f * PI.toFloat()
+private val MONTH_ABBR = listOf("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")
 
 /** A transient dust/leaf puff where an empty tile was tapped. */
 private class TapPuff(val tile: Tile) {
@@ -71,6 +76,7 @@ fun GardenCanvas(
     topReservePx: Float = 300f,
     bottomReservePx: Float = 320f,
     animated: Boolean = true,
+    worldMode: Boolean = false,   // 1C.5: endless island — width-fit tiles, frontier-pinned, camera roams
 ) {
     // One master clock in SECONDS; every motion derives its own period from it, so no
     // two ambient rhythms share a phase and drifting objects never snap on a loop seam.
@@ -110,20 +116,42 @@ fun GardenCanvas(
     var zoom by remember { mutableFloatStateOf(if (cameraEnabled) 1.12f else 1f) }
     var pan by remember { mutableStateOf(Offset.Zero) }
     var viewport by remember { mutableStateOf(Size.Zero) }
+
+    // One iso for gestures, glide, and drawing alike. Null only before the first layout.
+    val iso = remember(state.gridRows, state.gridCols, viewport, worldMode) {
+        if (viewport == Size.Zero) null
+        else if (worldMode) IsoMath.fitWidth(state.gridRows, state.gridCols, viewport.width, viewport.height, topReservePx, bottomReservePx)
+        else IsoMath.fit(state.gridRows, state.gridCols, viewport.width, viewport.height, topReservePx, bottomReservePx)
+    }
+
+    // World mode pans over the island's true extent; classic mode keeps the viewport-relative feel.
+    fun panRanges(z: Float): Pair<ClosedFloatingPointRange<Float>, ClosedFloatingPointRange<Float>> {
+        val rect = iso?.islandRect(state.gridRows, state.gridCols)
+        return if (worldMode && rect != null) {
+            // Cap the positive-y reach: pulling the island far down only exposes the
+            // sky/ocean parallax seam above the frontier — history lives the other way.
+            val ry = CameraMath.panRange(rect.top, rect.bottom, viewport.height / 2f, z)
+            CameraMath.panRange(rect.left, rect.right, viewport.width / 2f, z) to
+                ry.start..minOf(ry.endInclusive, viewport.height * .15f)
+        } else {
+            val bx = CameraMath.panBoundX(z, viewport.width)
+            val by = CameraMath.panBoundY(z, viewport.height)
+            (-bx..bx) to (-by..by)
+        }
+    }
+
     val transformState = rememberTransformableState { zoomChange, panChange, _ ->
-        zoom = CameraMath.clampZoom(zoom * zoomChange)
-        val bx = CameraMath.panBoundX(zoom, viewport.width)
-        val by = CameraMath.panBoundY(zoom, viewport.height)
-        pan = Offset(CameraMath.rubberBand(pan.x + panChange.x, bx), CameraMath.rubberBand(pan.y + panChange.y, by))
+        zoom = CameraMath.clampZoom(zoom * zoomChange, if (worldMode) CameraMath.WORLD_MIN_ZOOM else CameraMath.MIN_ZOOM)
+        val (rx, ry) = panRanges(zoom)
+        pan = Offset(CameraMath.rubberBand(pan.x + panChange.x, rx), CameraMath.rubberBand(pan.y + panChange.y, ry))
     }
     if (cameraEnabled) {
         LaunchedEffect(Unit) {
             // When the fingers lift, spring any rubber-band overshoot back inside bounds.
             snapshotFlow { transformState.isTransformInProgress }.collect { moving ->
                 if (!moving) {
-                    val bx = CameraMath.panBoundX(zoom, viewport.width)
-                    val by = CameraMath.panBoundY(zoom, viewport.height)
-                    val target = Offset(CameraMath.clampPan(pan.x, bx), CameraMath.clampPan(pan.y, by))
+                    val (rx, ry) = panRanges(zoom)
+                    val target = Offset(CameraMath.clampPan(pan.x, rx), CameraMath.clampPan(pan.y, ry))
                     if (target != pan) {
                         val start = pan
                         Animatable(0f).animateTo(1f, spring(dampingRatio = 0.8f, stiffness = 380f)) {
@@ -135,7 +163,26 @@ fun GardenCanvas(
         }
     }
 
-    val isoState = remember(state.gridRows, state.gridCols) { mutableListOf<IsoMath>() }
+    // Growth glide: a new serpentine row shifts every visual row down-left half a tile.
+    // Cancel the shift instantly so the view holds still, then — if the user is sitting
+    // at the frontier — spring back to reveal the new row scrolling in from the horizon.
+    var prevRows by remember { mutableStateOf(state.gridRows) }
+    LaunchedEffect(state.gridRows, iso != null) {
+        val theIso = iso ?: return@LaunchedEffect
+        val delta = state.gridRows - prevRows
+        prevRows = state.gridRows
+        if (worldMode && cameraEnabled && delta > 0 && state.gridRows > IsoMath.FRAME_ROWS) {
+            val wasNearFrontier = abs(pan.y) < theIso.tileH && abs(pan.x) < theIso.tileW
+            val before = pan
+            pan += Offset(delta * theIso.tileW / 2f, -delta * theIso.tileH / 2f)
+            if (wasNearFrontier) {
+                val start = pan
+                Animatable(0f).animateTo(1f, spring(dampingRatio = 0.85f, stiffness = 170f)) {
+                    pan = lerp(start, before, value)
+                }
+            }
+        }
+    }
 
     // Model row 0 = front (nearest viewer); IsoMath projects row 0 topmost (farthest).
     // Flip rows at the render boundary so the model's front lands at the bottom of the
@@ -147,14 +194,14 @@ fun GardenCanvas(
     if (onPlantTap != null) {
         canvasModifier = canvasModifier.pointerInput(state) {
             detectTapGestures { p ->
-                val iso = isoState.lastOrNull() ?: return@detectTapGestures
+                val isoNow = iso ?: return@detectTapGestures
                 // Undo the camera before hit-testing: island layer = translate(cam) → scale(zoom @ center).
                 val cx = viewport.width / 2f
                 val cy = viewport.height / 2f
                 val drift = idleDrift(timeState.value, cameraEnabled)
                 val wx = CameraMath.screenToWorldX(p.x, pan.x + drift.x, zoom, cx)
                 val wy = CameraMath.screenToWorldY(p.y, pan.y + drift.y, zoom, cy)
-                val tile = vis(iso.tileAt(wx, wy))
+                val tile = vis(isoNow.tileAt(wx, wy))
                 val plant = state.plants.firstOrNull { it.tile == tile }
                 if (plant != null) {
                     scope.launch {
@@ -176,14 +223,28 @@ fun GardenCanvas(
         }
     }
 
+    val textMeasurer = rememberTextMeasurer()
+
     Canvas(canvasModifier) {
         val t = timeState.value
-        val iso = IsoMath.fit(state.gridRows, state.gridCols, size.width, size.height, topReservePx, bottomReservePx)
-        isoState.clear(); isoState.add(iso)
+        val iso = iso ?: if (worldMode)
+            IsoMath.fitWidth(state.gridRows, state.gridCols, size.width, size.height, topReservePx, bottomReservePx)
+        else
+            IsoMath.fit(state.gridRows, state.gridCols, size.width, size.height, topReservePx, bottomReservePx)
 
         val center = Offset(size.width / 2f, size.height / 2f)
         val cam = if (cameraEnabled) pan + idleDrift(t, true) else Offset.Zero
         val zoomNow = if (cameraEnabled) zoom else 1f
+
+        // ---- viewport culling: on a big island only rows that can touch the screen draw.
+        // Margins cover tall sprites poking in from above and the slab wall below.
+        val worldTopY = CameraMath.screenToWorldY(-iso.tileH * 4f, cam.y, zoomNow, center.y)
+        val worldBotY = CameraMath.screenToWorldY(size.height + iso.tileH * 2.5f, cam.y, zoomNow, center.y)
+        val vLo = floor((worldTopY - iso.originY) / (iso.tileH / 2f)).toInt() - (state.gridCols - 1) - 1
+        val vHi = floor((worldBotY - iso.originY) / (iso.tileH / 2f)).toInt() + 2
+        val visRows = maxOf(0, vLo)..minOf(state.gridRows - 1, vHi)
+        fun rowVisible(modelRow: Int) = (state.gridRows - 1 - modelRow) in visRows
+        val visPlants = state.plants.filter { rowVisible(it.tile.row) }
 
         // ================= LAYER: sky (slowest parallax, never zooms — it's atmosphere) =================
         withTransform({ translate(cam.x * .12f, cam.y * .12f) }) {
@@ -272,7 +333,7 @@ fun GardenCanvas(
         }) {
 
             // ---- back-row trees on the horizon: stand just behind the field's far edge ----
-            repeat(state.backRowTreeCount) { i ->
+            if (rowVisible(state.gridRows - 1)) repeat(state.backRowTreeCount) { i ->
                 val backTile = vis(Tile(state.gridRows - 1, i * 2))     // every other col along the back edge
                 val base = Offset(iso.tileCenterX(backTile), iso.tileCenterY(backTile) - iso.tileH * .35f)
                 drawOval(GardenPalette.shadow, topLeft = Offset(base.x - 26f, base.y - 8f), size = Size(52f, 16f))
@@ -284,6 +345,7 @@ fun GardenCanvas(
 
             // ---- tile field: soft pillow relief instead of flat fills ----
             for (r in state.gridRows - 1 downTo 0) {
+                if (!rowVisible(r)) continue
                 for (c in 0 until state.gridCols) {
                     val v = vis(Tile(r, c))
                     val cx = iso.tileCenterX(v); val cy = iso.tileCenterY(v)
@@ -292,7 +354,7 @@ fun GardenCanvas(
                 }
             }
             val wallH = iso.tileH * IsoMath.WALL_UNITS                   // chunky FC-style island slab
-            for (c in 0 until state.gridCols) {                          // front row (row 0) left-facing walls
+            if (rowVisible(0)) for (c in 0 until state.gridCols) {       // front row (row 0) left-facing walls
                 val v = vis(Tile(0, c))
                 val cx = iso.tileCenterX(v); val cy = iso.tileCenterY(v)
                 wall(Offset(cx - iso.tileW / 2, cy), Offset(cx, cy + iso.tileH / 2), wallH, GardenPalette.wallLeft, GardenPalette.wallLeftDark)
@@ -304,6 +366,7 @@ fun GardenCanvas(
                 }
             }
             for (r in 0 until state.gridRows) {                          // right column right-facing walls
+                if (!rowVisible(r)) continue
                 val v = vis(Tile(r, state.gridCols - 1))
                 val cx = iso.tileCenterX(v); val cy = iso.tileCenterY(v)
                 wall(Offset(cx, cy + iso.tileH / 2), Offset(cx + iso.tileW / 2, cy), wallH, GardenPalette.wallRight, GardenPalette.wallRightDark)
@@ -318,6 +381,7 @@ fun GardenCanvas(
             // ---- quiet props on empty tiles (FC's empty plots are never bare) ----
             val occupied = state.plants.map { it.tile }.toSet()
             for (r in 0 until state.gridRows) for (c in 0 until state.gridCols) {
+                if (!rowVisible(r)) continue
                 val tile = Tile(r, c)
                 if (tile in occupied) continue
                 val h = (r * 31 + c * 17 + 7) * 1103515245
@@ -353,7 +417,7 @@ fun GardenCanvas(
             }
 
             // ---- plants, back to front (max model row = farthest visually, drawn first) ----
-            state.plants.sortedByDescending { iso.depth(it.tile) }.forEach { plant ->
+            visPlants.sortedByDescending { iso.depth(it.tile) }.forEach { plant ->
                 val v = vis(plant.tile)
                 val ax = iso.tileCenterX(v); val ay = iso.tileCenterY(v) + iso.tileH * .18f
                 val anchor = Offset(ax, ay)
@@ -389,9 +453,26 @@ fun GardenCanvas(
                 }
             }
 
+            // ---- month signposts: little wooden signs where each month's growth began ----
+            state.monthMarkers.forEach { m ->
+                if (!rowVisible(m.tile.row)) return@forEach
+                val v = vis(m.tile)
+                val px = iso.tileCenterX(v) - iso.tileW * .40f
+                val py = iso.tileCenterY(v) + iso.tileH * .10f
+                val postH = iso.tileH * .62f
+                drawLine(GardenPalette.hullBrown, Offset(px, py), Offset(px, py - postH), strokeWidth = 4.5f, cap = StrokeCap.Round)
+                val plateW = iso.tileW * .34f; val plateH = iso.tileH * .42f
+                val plateTL = Offset(px - plateW / 2f, py - postH - plateH * .55f)
+                drawRoundRect(GardenPalette.hullBrown, topLeft = plateTL, size = Size(plateW, plateH), cornerRadius = CornerRadius(5f))
+                drawRoundRect(Color(0x33000000), topLeft = plateTL, size = Size(plateW, plateH), cornerRadius = CornerRadius(5f), style = Stroke(2f))
+                val label = MONTH_ABBR[m.monthKey.substringAfter("-").toInt() - 1]
+                val layout = textMeasurer.measure(label, TextStyle(fontSize = (plateH * .5f).toSp(), fontWeight = FontWeight.Bold, color = Color(0xFFFFF3DC)))
+                drawText(layout, topLeft = Offset(plateTL.x + (plateW - layout.size.width) / 2f, plateTL.y + (plateH - layout.size.height) / 2f))
+            }
+
             // ---- occasional falling leaf from trees and bushes (every ~11-17s per plant) ----
             if (animated) {
-                state.plants.filter { it.archetype == Archetype.TREE || it.archetype == Archetype.BUSH }.forEach { pl ->
+                visPlants.filter { it.archetype == Archetype.TREE || it.archetype == Archetype.BUSH }.forEach { pl ->
                     val period = 11f + pl.seed.mod(7)
                     val lt = (t + pl.seed.mod(100)) % period
                     if (lt < 2.4f) {
@@ -406,11 +487,11 @@ fun GardenCanvas(
                     }
                 }
                 // every ~9s one plant glints, so even a quiet garden offers a small surprise
-                if (state.plants.isNotEmpty()) {
+                if (visPlants.isNotEmpty()) {
                     val cycle = floor(t / 9f).toInt()
                     val sp = (t % 9f) / .9f
                     if (sp < 1f) {
-                        val pl = state.plants[abs(cycle * 31) % state.plants.size]
+                        val pl = visPlants[abs(cycle * 31) % visPlants.size]
                         val v = vis(pl.tile)
                         val gx = iso.tileCenterX(v) + iso.tileW * .08f
                         val gy = iso.tileCenterY(v) + iso.tileH * .18f - tierHeight(iso.tileH, pl.sizeTier) * .85f
@@ -434,6 +515,7 @@ fun GardenCanvas(
             translate(cam.x * .9f, cam.y * .9f)
             scale(zoomNow, zoomNow, pivot = center)
         }) {
+            if (!rowVisible(0)) return@withTransform
             val baseY = iso.tileCenterY(vis(Tile(0, state.gridCols - 1))) + iso.tileH * IsoMath.WALL_UNITS
             listOf(-.18f, .12f, .38f).forEachIndexed { i, dx ->
                 val mx = size.width * (.5f + dx) + sin((t / 6.7f + i * .3f) * TAU) * 14f

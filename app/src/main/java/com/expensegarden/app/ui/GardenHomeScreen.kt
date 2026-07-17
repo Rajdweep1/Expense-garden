@@ -79,6 +79,7 @@ fun GardenHomeScreen(
                 painter = painter,
                 modifier = Modifier.fillMaxSize(),
                 onPlantTap = { uuid -> scope.launch { plantTarget = gardenVm.plantRow(uuid) } },
+                worldMode = true,   // 1C.5: home is the endless all-time island
             )
         }
 
