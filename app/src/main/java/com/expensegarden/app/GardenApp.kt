@@ -26,5 +26,5 @@ class AppContainer(private val app: Application) {
     val garden: GardenRepository = GardenRepository(db, ledger)
 
     /** Lazy: decoded on first painter selection, not app start. Empty map = pack not installed. */
-    val sprites: Map<Archetype, ImageBitmap> by lazy { SpriteLoader.load(app) }
+    val sprites: Map<Pair<Archetype, Int>, ImageBitmap> by lazy { SpriteLoader.load(app) }
 }

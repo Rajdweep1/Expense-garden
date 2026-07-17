@@ -20,6 +20,10 @@ class PlantMapperTest {
         CategoryEntity(2, "Groceries", null, true),
         CategoryEntity(3, "Transport", null, true),
         CategoryEntity(302, "Cab & Auto", 3, false),
+        CategoryEntity(301, "Fuel", 3, true),
+        CategoryEntity(4, "Housing", null, true),
+        CategoryEntity(401, "Rent", 4, true),
+        CategoryEntity(402, "Utilities", 4, true),
         CategoryEntity(6, "Entertainment", null, false),
         CategoryEntity(7, "Shopping", null, false),
         CategoryEntity(8, "Personal", null, false),
@@ -73,4 +77,25 @@ class PlantMapperTest {
 
     @Test fun `investments are not plot plants`() =
         assertNull(PlantMapper.map(txn(10, paise = 500_000), tree))
+
+    // ---- 1C.5 variants ----
+
+    @Test fun `subcategory-forced variants give landmark bills a fixed look`() {
+        assertEquals(1, PlantMapper.map(txn(401), tree)!!.variant)   // Rent: the grand topiary
+        assertEquals(2, PlantMapper.map(txn(402), tree)!!.variant)   // Utilities: square trim
+        assertEquals(1, PlantMapper.map(txn(301), tree)!!.variant)   // Fuel: shrub variant
+    }
+
+    @Test fun `seed picks a stable variant within the archetype's count`() {
+        val a = PlantMapper.map(txn(103), tree)!!
+        assertEquals(a.variant, PlantMapper.map(txn(103), tree)!!.variant)
+        assertTrue(a.variant in 0 until PlantMapper.variantCount(Archetype.PETAL_FLOWER))
+        val seen = (1..60).map { PlantMapper.map(txn(103, paise = 1_000L + it), tree)!!.variant }.toSet()
+        assertEquals(setOf(0, 1, 2), seen)                            // spread across all three looks
+    }
+
+    @Test fun `weeds stay single-variant`() {
+        assertEquals(0, PlantMapper.map(txn(103, regret = Regret.REGRET), tree)!!.variant)
+        assertEquals(1, PlantMapper.variantCount(Archetype.THISTLE_WEED))
+    }
 }

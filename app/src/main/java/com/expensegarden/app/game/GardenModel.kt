@@ -20,6 +20,7 @@ data class Plant(
     val isWeed: Boolean,
     val tile: Tile,
     val seed: Int,                                           // uuid hash — all jitter derives from this
+    val variant: Int = 0,                                    // which look within the archetype's sprite set
 )
 
 /** Where a month's first plant stands — the all-time island renders a signpost here. */

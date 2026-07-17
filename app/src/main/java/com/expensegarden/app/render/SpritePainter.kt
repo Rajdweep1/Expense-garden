@@ -13,32 +13,38 @@ import com.expensegarden.app.game.Archetype
 import com.expensegarden.app.game.Plant
 
 object SpriteNames {
-    fun fileFor(archetype: Archetype): String = archetype.name.lowercase() + ".png"
+    fun fileFor(archetype: Archetype, variant: Int = 0): String =
+        archetype.name.lowercase() + "_" + variant + ".png"
 }
 
 object SpriteLoader {
+    private const val MAX_VARIANTS = 4
+
     /** Decode whatever is present in assets/garden/. Missing dir or files → empty/partial map. */
-    fun load(context: Context): Map<Archetype, ImageBitmap> {
+    fun load(context: Context): Map<Pair<Archetype, Int>, ImageBitmap> {
         val present = runCatching { context.assets.list("garden")?.toSet() ?: emptySet() }.getOrDefault(emptySet())
-        return Archetype.entries.mapNotNull { arch ->
-            val name = SpriteNames.fileFor(arch)
-            if (name !in present) null
-            else runCatching {
-                context.assets.open("garden/$name").use { s ->
-                    arch to BitmapFactory.decodeStream(s).asImageBitmap()
-                }
-            }.getOrNull()
+        return Archetype.entries.flatMap { arch ->
+            (0 until MAX_VARIANTS).mapNotNull { v ->
+                val name = SpriteNames.fileFor(arch, v)
+                if (name !in present) null
+                else runCatching {
+                    context.assets.open("garden/$name").use { s ->
+                        (arch to v) to BitmapFactory.decodeStream(s).asImageBitmap()
+                    }
+                }.getOrNull()
+            }
         }.toMap()
     }
 }
 
-/** Sprites where available, procedural everywhere else — a partial pack still renders a full garden. */
+/** Sprites where available, procedural everywhere else — a partial pack still renders a full garden.
+ *  Unknown variants fall back to the archetype's base look before giving up on sprites entirely. */
 class SpritePainter(
-    private val sprites: Map<Archetype, ImageBitmap>,
+    private val sprites: Map<Pair<Archetype, Int>, ImageBitmap>,
     private val fallback: PlantPainter = ProceduralPainter(),
 ) : PlantPainter {
     override fun DrawScope.drawPlant(plant: Plant, anchor: Offset, heightPx: Float, swayDegrees: Float) {
-        val bmp = sprites[plant.archetype]
+        val bmp = sprites[plant.archetype to plant.variant] ?: sprites[plant.archetype to 0]
         if (bmp == null) {
             with(fallback) { drawPlant(plant, anchor, heightPx, swayDegrees) }
             return

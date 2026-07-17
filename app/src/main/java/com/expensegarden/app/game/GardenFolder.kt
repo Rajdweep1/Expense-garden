@@ -35,7 +35,7 @@ object GardenFolder {
         val mapped = ordered.mapNotNull { PlantMapper.map(it, tree) }
         val tiles = SerpentineTiler.tiles(mapped.size)
         val plants = mapped.mapIndexed { i, m ->
-            Plant(m.txnUuid, m.archetype, m.sizeTier, m.isWeed, tiles[i], m.seed)
+            Plant(m.txnUuid, m.archetype, m.sizeTier, m.isWeed, tiles[i], m.seed, m.variant)
         }
 
         val leafSums = ordered.groupBy { it.categoryId }.mapValues { (_, l) -> l.sumOf { it.amountPaise } }
@@ -87,7 +87,7 @@ object GardenFolder {
             }
         }
         val tiles = SerpentineTiler.tiles(mapped.size)
-        val plants = mapped.mapIndexed { i, (m, _) -> Plant(m.txnUuid, m.archetype, m.sizeTier, m.isWeed, tiles[i], m.seed) }
+        val plants = mapped.mapIndexed { i, (m, _) -> Plant(m.txnUuid, m.archetype, m.sizeTier, m.isWeed, tiles[i], m.seed, m.variant) }
         val markers = mapped.mapIndexedNotNull { i, (_, mk) ->
             if (i == 0 || mapped[i - 1].second != mk) MonthMarker(mk, tiles[i]) else null
         }
