@@ -2526,6 +2526,74 @@ git commit -m "docs: 1c plan executed - checkboxes ticked, amendments logged"
   growth-tour.mp4 (28s: breathe → pan → plant-dialog ₹560 BookMyShow → greenhouse → June →
   home), greenhouse-album.png, june-open.png, dashboard-dense.png. Checkpoint still OPEN.
 
+## 1C.5 — Living World (Task 16 round 4, approved 2026-07-17)
+
+**Design amendment (supersedes spec's monthly-bed home):** the home garden becomes ONE
+persistent all-time island — every LOGGED transaction ever = one plant, chronological
+serpentine unchanged, so the island only ever grows (FC-style accumulation, no monthly
+reset). What stays monthly: budgets, weather (sky = current month's pace), streaks, the
+strip. The greenhouse album is retained as per-month postcards (existing foldMonth).
+Redemption stays at the plant level (regret cleared → weed un-grows). Approved in-session:
+"yes go ahead with all four" (C1 persistent garden, C2 variety, C3 fauna, C4 art).
+
+### Task 18: all-time fold + month markers (TDD)
+Files: game/GardenModel.kt, game/GardenFolder.kt, test GardenFolderTest.kt
+- `data class MonthMarker(val monthKey: String, val tile: Tile)`; GardenState gains
+  `monthMarkers: List<MonthMarker> = emptyList()`.
+- `GardenFolder.foldAllTime(allTxns, categories, currentBudgets, currentMonthEvents,
+  allTimeInvestmentCount, today, zone)`: plants from ALL txns sorted (occurredAt, uuid);
+  severity/weather/spentPaise/dayTotals/streaks computed from current-month txns only;
+  markers at each month's first plant tile (investment-only months skipped); monthKey =
+  current month, archived = false, gridRows from total plant count.
+- Tests: cross-month plant count + chronology; markers correct + investment-only month
+  skipped; weather/spend from current month only; gridRows math.
+
+### Task 19: world camera — fitWidth, range bounds, culling, frontier default
+Files: render/IsoMath.kt, render/CameraMath.kt (+ tests), data/GardenRepository.kt,
+ui/GardenViewModel.kt, render/GardenCanvas.kt, ui/GardenHomeScreen.kt
+- `IsoMath.fitWidth(gridRows, gridCols, viewportW, viewportH, topReserve, bottomReserve)`:
+  tile size from a fixed FRAME_ROWS≈8 window (matches today's 8-row fit exactly — no
+  visual regression); islands shorter than the window stay centered like fit(); taller
+  islands pin the frontier (newest, visual top) near the top band and extend down-left
+  off-screen for the camera to explore.
+- CameraMath: range-based pan bounds (asymmetric min/max from island bounding box ±
+  slack, zoom-composed), `clampPan(v,min,max)` + `rubberBand(v,min,max)` overloads,
+  MIN_ZOOM 0.7 in world mode. TDD.
+- Repository `observeAllTimeGarden()` (all LOGGED + current-month budgets/events);
+  GardenViewModel.garden switches to it; greenhouse untouched.
+- GardenCanvas `worldMode: Boolean = false` (home passes true): frontier default pan,
+  spring glide when gridRows grows live, row-range culling (tiles, walls, props, plants,
+  ambient), month signposts (post + plate + TextMeasurer 'MAY' label at each marker).
+
+### Task 20: fauna layer
+Files: render/GardenCanvas.kt
+- Bees (1–3, scaling with visible flower count) orbit flower heads and hop between them;
+  dragonfly darting along the shore hover-points; birds every ~13s with every-3rd-cycle
+  grove perch (island layer); 2 ambient butterflies + dodge-earned on the existing loop;
+  leaves 8–13s, glints ~6.5s. All pure functions of the master clock + seeds; `animated`
+  gated; culled.
+
+### Task 21: variant system (TDD) + variant sprites
+Files: game/GardenModel.kt (Plant.variant), game/PlantMapper.kt (+ test),
+render/SpritePainter.kt (SpriteNames/Loader/painter), assets/garden/*, docs/assets/sprite-src/*
+- MappedPlant/Plant gain `variant: Int`; rule: subcat-forced table (Rent→hedge_1 topiary,
+  Utilities→hedge_2, Fuel→shrub_1, …) else `abs(seed/31) % variantCount(archetype)`;
+  weeds stay single-variant. Loader reads `<archetype>_<n>.png`, missing variant falls
+  back to _0 then procedural. Author new-style variant SVGs (petal ×3 colorways, tulip ×3,
+  bell ×2, hedge ×3, bush ×2, shrub ×2, tree ×2, herb ×2) → resvg → 512px PNGs.
+
+### Task 22: 2.5D re-shade of the 10 base sprites
+Re-light originals to the same style the variants ship in: top-light multi-stop gradients,
+darker under-lobes, specular gloss, thin rim light, soil-mound base, +saturation. Rename
+to `<archetype>_0.png`. Contact-sheet verify.
+
+### Task 23: scene art pass + regression + round-4 captures
+Files: render/GardenCanvas.kt, render/GardenPalette.kt
+- Warm radial sunlight tint + cool lower vignette; seeded per-tile speckle texture;
+  water depth gradient + animated two-stroke shore foam at the island base.
+- Full JVM + instrumented suites; E2E on the seeded 3-month device DB (renders as ONE
+  ~13-row island with two signposts); tour video; checkpoint round-4 report.
+
 ## Deferred (recorded)
 
 - Roaster character sprite + voice → 1D. Compost/fertilizer, rare species, collections → Phase 4. Camera pan/zoom, rain particles → polish backlog.
