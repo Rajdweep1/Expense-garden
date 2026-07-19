@@ -1,28 +1,34 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <defs>
-    <linearGradient id="front" x1="0" y1="0" x2="0.6" y2="1">
-      <stop offset="0" stop-color="#8cc968"/><stop offset="1" stop-color="#4b8a3c"/>
-    </linearGradient>
-    <linearGradient id="top" x1="0" y1="0" x2="1" y2="0.8">
-      <stop offset="0" stop-color="#c4ea9e"/><stop offset="1" stop-color="#93d47e"/>
-    </linearGradient>
-  </defs>
+  <defs></defs>
   <ellipse cx="256" cy="500" rx="175" ry="16" fill="#6d4a2a" opacity="0.50"/><ellipse cx="256" cy="497" rx="126" ry="11" fill="#8a5f38" opacity="0.55"/><ellipse cx="248" cy="494" rx="70" ry="7" fill="#a4794e" opacity="0.45"/>
+  <!-- the trimmed block, scalloped crown -->
   <path d="M96 300 C82 288 86 266 104 260 C100 240 118 224 138 230 C142 210 166 202 182 212 C192 194 218 192 230 206 C242 192 270 192 282 206 C294 192 320 194 330 212 C346 202 370 210 374 230 C394 224 412 240 408 260 C426 266 430 288 416 300 L416 448 C416 478 380 496 256 496 C132 496 96 478 96 448 Z"
-        fill="url(#front)" stroke="#3f7c2c" stroke-width="8" stroke-linejoin="round"/>
+        fill="#5FA344" stroke="#3A2A1E" stroke-width="11" stroke-linejoin="round"/>
   <path d="M118 300 C160 322 352 322 394 300 C410 291 406 270 390 264 C356 286 156 286 122 264 C106 270 102 291 118 300 Z"
-        fill="url(#top)" stroke="#57993c" stroke-width="6" stroke-linejoin="round"/>
-  <ellipse cx="182" cy="278" rx="52" ry="13" fill="#ffffff" opacity="0.4"/>
-  <path d="M120 330 C122 372 124 420 130 452" stroke="#b8e594" stroke-width="7" fill="none" stroke-linecap="round" opacity="0.6"/>
-  <g fill="#3f7c2c" opacity="0.45">
-    <circle cx="196" cy="368" r="7"/><circle cx="268" cy="398" r="6"/>
-    <circle cx="338" cy="366" r="7"/><circle cx="230" cy="446" r="6"/>
-    <circle cx="316" cy="440" r="6"/><circle cx="160" cy="416" r="6"/>
+        fill="#9ACB62" stroke="#3A2A1E" stroke-width="8" stroke-linejoin="round"/>
+  <ellipse cx="182" cy="278" rx="52" ry="12" fill="#FFFFFF" opacity="0.4"/>
+  <path d="M104 440 C120 470 170 486 256 486 C342 486 392 470 408 440 L408 456 C396 480 344 492 256 492 C168 492 116 480 104 456 Z" fill="#3F7C2C" opacity="0.5"/>
+  <!-- the dignified face: half-lidded calm + small settled smile -->
+  <ellipse cx="216" cy="366" rx="15" ry="16" fill="#FFFFFF" stroke="#3A2A1E" stroke-width="5.5"/>
+  <ellipse cx="296" cy="366" rx="15" ry="16" fill="#FFFFFF" stroke="#3A2A1E" stroke-width="5.5"/>
+  <path d="M201 362 A15 14 0 0 1 231 361 L231 355 A17 17 0 0 0 201 355 Z" fill="#4B8A3C" stroke="#3A2A1E" stroke-width="4"/>
+  <path d="M281 362 A15 14 0 0 1 311 361 L311 355 A17 17 0 0 0 281 355 Z" fill="#4B8A3C" stroke="#3A2A1E" stroke-width="4"/>
+  <circle cx="219" cy="370" r="5.2" fill="#2B2118"/>
+  <circle cx="293" cy="370" r="5.2" fill="#2B2118"/>
+  <circle cx="217.5" cy="368.5" r="1.7" fill="#FFFFFF"/>
+  <circle cx="291.5" cy="368.5" r="1.7" fill="#FFFFFF"/>
+  <path d="M230 408 Q256 420 282 408" stroke="#2B2118" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <!-- little leaf bowtie: service with dignity -->
+  <path d="M244 432 L226 424 L226 444 Z" fill="#3F7C2C" stroke="#3A2A1E" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M268 432 L286 424 L286 444 Z" fill="#3F7C2C" stroke="#3A2A1E" stroke-width="5" stroke-linejoin="round"/>
+  <circle cx="256" cy="433" r="7" fill="#57993C" stroke="#3A2A1E" stroke-width="5"/>
+  <!-- sprigs, clear of the face -->
+  <g fill="#B8E594" opacity="0.85">
+    <circle cx="150" cy="342" r="6"/><circle cx="352" cy="338" r="5"/>
+    <circle cx="166" cy="428" r="5"/><circle cx="342" cy="430" r="6"/>
   </g>
-  <g fill="#b8e594" opacity="0.85">
-    <circle cx="170" cy="346" r="6"/><circle cx="242" cy="360" r="6"/>
-    <circle cx="308" cy="342" r="5"/><circle cx="196" cy="420" r="5"/>
-    <circle cx="284" cy="428" r="6"/><circle cx="352" cy="406" r="5"/>
+  <g fill="#3F7C2C" opacity="0.45">
+    <circle cx="138" cy="392" r="7"/><circle cx="372" cy="388" r="7"/>
+    <circle cx="316" cy="456" r="6"/><circle cx="196" cy="458" r="6"/>
   </g>
-  <path d="M104 440 C120 470 170 486 256 486 C342 486 392 470 408 440 L408 456 C396 480 344 492 256 492 C168 492 116 480 104 456 Z" fill="#2f6023" opacity="0.30"/>
 </svg>

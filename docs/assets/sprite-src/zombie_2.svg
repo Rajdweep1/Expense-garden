@@ -1,57 +1,87 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <defs>
-    <clipPath id="h2"><circle cx="256" cy="172" r="86"/></clipPath>
-  </defs>
+  <defs></defs>
   <ellipse cx="256" cy="500" rx="92" ry="17" fill="#6d4a2a" opacity="0.50"/><ellipse cx="256" cy="497" rx="66" ry="12" fill="#8a5f38" opacity="0.55"/><ellipse cx="246" cy="494" rx="36" ry="8" fill="#a4794e" opacity="0.45"/>
-  <g transform="rotate(-6 256 490)">
+  <g transform="rotate(-3 256 490)">
     <!-- soil clods: a big one broke loose -->
-    <circle cx="192" cy="486" r="12" fill="#6d4a2a"/>
-    <circle cx="318" cy="488" r="9" fill="#8a5f38"/>
-    <circle cx="284" cy="497" r="7" fill="#6d4a2a"/>
-    <!-- lumbering torso -->
-    <path d="M192 482 C176 386 198 302 252 274 C314 258 344 324 332 414 C326 456 310 480 290 488 C254 498 212 494 192 482 Z"
-          fill="#9DB07C" stroke="#3A2A1E" stroke-width="11" stroke-linejoin="round"/>
-    <path d="M312 296 C332 336 338 390 330 432 C324 462 312 478 292 486 C312 458 322 396 310 340 C307 322 310 306 312 296 Z" fill="#7E9464"/>
-    <!-- stitched belly patch -->
-    <rect x="246" y="392" width="46" height="40" rx="6" fill="#8FA671" stroke="#62784A" stroke-width="5"/>
-    <path d="M246 402 L236 397 M246 422 L236 427 M292 402 L302 397 M292 422 L302 427" stroke="#62784A" stroke-width="5" stroke-linecap="round"/>
-    <!-- both arms hauling forward -->
-    <path d="M212 330 C162 316 116 328 88 360 C118 378 172 374 212 352 Z" fill="#7A8F5C" stroke="#3A2A1E" stroke-width="10" stroke-linejoin="round"/>
-    <path d="M212 376 C176 372 146 384 128 408 C150 420 188 414 214 396 Z" fill="#6E8258" stroke="#3A2A1E" stroke-width="10" stroke-linejoin="round"/>
-    <!-- head, sunk into the shoulders -->
-    <g transform="translate(0 30)">
-      <circle cx="256" cy="172" r="86" fill="#9DB07C" stroke="#3A2A1E" stroke-width="11"/>
-      <ellipse cx="262" cy="240" rx="82" ry="36" fill="#7E9464" clip-path="url(#h2)"/>
-      <ellipse cx="222" cy="122" rx="30" ry="17" fill="#B8C79A"/>
-      <circle cx="256" cy="172" r="86" fill="none" stroke="#3A2A1E" stroke-width="11"/>
-      <!-- big X eyes -->
-      <g stroke="#2B2118" stroke-width="11" stroke-linecap="round">
-        <path d="M204 142 L234 170"/><path d="M204 170 L234 142"/>
-        <path d="M280 150 L310 178"/><path d="M280 178 L310 150"/>
-      </g>
-      <!-- heavy jaw mouth + tooth -->
-      <path d="M222 218 Q260 230 300 214" stroke="#2B2118" stroke-width="9" fill="none" stroke-linecap="round"/>
-      <rect x="264" y="220" width="15" height="15" rx="2" transform="rotate(6 271 227)" fill="#F4EFE2" stroke="#3A2A1E" stroke-width="4.5"/>
-      <!-- brow dent + cheek stitch -->
-      <path d="M240 108 Q256 100 274 106" stroke="#7E9464" stroke-width="7" fill="none" stroke-linecap="round"/>
-      <g stroke="#62784A" stroke-width="6" stroke-linecap="round">
-        <path d="M306 190 L328 204"/><path d="M312 199 L318 190"/><path d="M321 205 L327 196"/>
-      </g>
-      <!-- the big receipt hat -->
-      <g transform="rotate(-18 250 78)">
-        <path d="M186 36 L330 36 L330 96 L320 110 L310 96 L300 110 L290 96 L280 110 L270 96 L260 110 L250 96 L240 110 L230 96 L220 110 L210 96 L200 110 L190 96 L186 92 Z"
-              fill="#F4EFE2" stroke="#3A2A1E" stroke-width="9" stroke-linejoin="round"/>
-        <path d="M198 54 L318 54" stroke="#D8CFB8" stroke-width="5"/>
-        <path d="M198 66 L292 66" stroke="#D8CFB8" stroke-width="5"/>
-        <path d="M198 78 L266 78" stroke="#D8CFB8" stroke-width="5"/>
-        <path d="M240 92 q10 -7 20 0 q10 7 20 0" stroke="#C64545" stroke-width="6" fill="none" stroke-linecap="round"/>
-      </g>
-      <!-- two flies for the big one -->
-      <path d="M352 96 a30 20 0 1 1 -8 -32" stroke="#3A2A1E" stroke-width="2.5" stroke-dasharray="4 7" fill="none" opacity="0.5"/>
-      <circle cx="354" cy="94" r="6" fill="#3A2A1E"/>
-      <circle cx="350" cy="87" r="3.4" fill="#B8C79A" opacity="0.9"/>
-      <circle cx="148" cy="220" r="5" fill="#3A2A1E"/>
-      <circle cx="144" cy="214" r="2.8" fill="#B8C79A" opacity="0.9"/>
+    <circle cx="182" cy="490" r="11" fill="#6d4a2a"/>
+    <circle cx="330" cy="492" r="8" fill="#8a5f38"/>
+    <!-- heavy stride legs -->
+    <path d="M214 402 L166 460 L216 482 L252 410 Z" fill="#77879A" stroke="#3A2A1E" stroke-width="10" stroke-linejoin="round"/>
+    <path d="M166 460 L157 472 L174 468 L178 479 L194 470 L200 481 L216 482" fill="none" stroke="#3A2A1E" stroke-width="8" stroke-linejoin="round"/>
+    <path d="M292 406 L348 462 L306 488 L254 414 Z" fill="#66788A" stroke="#3A2A1E" stroke-width="10" stroke-linejoin="round"/>
+    <path d="M348 462 L359 472 L339 473 L335 486 L319 477 L306 488" fill="none" stroke="#3A2A1E" stroke-width="8" stroke-linejoin="round"/>
+    <ellipse cx="188" cy="486" rx="31" ry="13" fill="#98A98C" stroke="#3A2A1E" stroke-width="9"/>
+    <ellipse cx="326" cy="490" rx="30" ry="12" transform="rotate(10 326 490)" fill="#8DA080" stroke="#3A2A1E" stroke-width="9"/>
+    <!-- neck -->
+    <rect x="244" y="222" width="36" height="60" fill="#75876B"/>
+    <!-- broad ragged tee -->
+    <path d="M192 268 L336 276 C346 312 344 356 332 406 L318 396 L304 412 L290 400 L274 414 L258 402 L242 412 L228 399 L212 408 C198 362 188 314 192 268 Z"
+          fill="#8A7B5E" stroke="#3A2A1E" stroke-width="11" stroke-linejoin="round"/>
+    <path d="M318 286 C330 322 328 366 318 398 C330 366 336 318 324 282 Z" fill="#6E6149"/>
+    <!-- big stitched patch -->
+    <rect x="240" y="322" width="48" height="40" rx="6" fill="#A5926E" stroke="#5E5138" stroke-width="5"/>
+    <path d="M240 332 L230 327 M240 352 L230 357 M288 332 L298 327 M288 352 L298 357" stroke="#5E5138" stroke-width="5" stroke-linecap="round"/>
+    <!-- torn sleeves -->
+    <path d="M198 270 L166 278 L174 310 L204 302 Z" fill="#8A7B5E" stroke="#3A2A1E" stroke-width="10" stroke-linejoin="round"/>
+    <path d="M328 280 L354 292 L342 322 L318 310 Z" fill="#6E6149" stroke="#3A2A1E" stroke-width="10" stroke-linejoin="round"/>
+    <!-- both heavy arms hauling forward -->
+    <path d="M182 288 C150 294 116 302 92 310" stroke="#3A2A1E" stroke-width="30" fill="none" stroke-linecap="round"/>
+    <path d="M182 288 C152 294 120 302 96 309" stroke="#98A98C" stroke-width="20" fill="none" stroke-linecap="round"/>
+    <path d="M88 313 q-2 15 -7 26 M101 317 q0 16 -4 28 M114 319 q2 15 1 27 M125 317 q5 12 6 23"
+          stroke="#3A2A1E" stroke-width="15" fill="none" stroke-linecap="round"/>
+    <path d="M88 313 q-2 15 -7 26 M101 317 q0 16 -4 28 M114 319 q2 15 1 27 M125 317 q5 12 6 23"
+          stroke="#98A98C" stroke-width="8" fill="none" stroke-linecap="round"/>
+    <path d="M334 318 C292 328 226 338 178 346" stroke="#3A2A1E" stroke-width="30" fill="none" stroke-linecap="round"/>
+    <path d="M334 318 C294 328 230 338 182 345" stroke="#8DA080" stroke-width="20" fill="none" stroke-linecap="round"/>
+    <path d="M174 349 q-4 14 -10 24 M187 353 q-1 15 -5 26 M200 354 q1 14 -1 26"
+          stroke="#3A2A1E" stroke-width="15" fill="none" stroke-linecap="round"/>
+    <path d="M174 349 q-4 14 -10 24 M187 353 q-1 15 -5 26 M200 354 q1 14 -1 26"
+          stroke="#8DA080" stroke-width="8" fill="none" stroke-linecap="round"/>
+    <!-- the head: massive skull, heavy brow, dislocated jaw -->
+    <ellipse cx="258" cy="148" rx="92" ry="82" fill="#98A98C" stroke="#3A2A1E" stroke-width="11"/>
+    <ellipse cx="226" cy="90" rx="32" ry="17" fill="#B7C4A8"/>
+    <circle cx="352" cy="162" r="12" fill="#98A98C" stroke="#3A2A1E" stroke-width="8"/>
+    <path d="M184 122 Q222 100 258 105 Q300 100 332 126" fill="none" stroke="#75876B" stroke-width="15" stroke-linecap="round"/>
+    <!-- brow dent -->
+    <path d="M240 74 Q258 66 278 72" stroke="#75876B" stroke-width="7" fill="none" stroke-linecap="round"/>
+    <ellipse cx="222" cy="150" rx="24" ry="26" fill="#EFEDD9" stroke="#3A2A1E" stroke-width="8"/>
+    <ellipse cx="298" cy="154" rx="19" ry="21" fill="#EFEDD9" stroke="#3A2A1E" stroke-width="8"/>
+    <ellipse cx="222" cy="150" rx="24" ry="26" fill="none" stroke="#75876B" stroke-width="4.5" opacity="0.7"/>
+    <circle cx="214" cy="159" r="6" fill="#2B2118"/>
+    <circle cx="305" cy="150" r="5" fill="#2B2118"/>
+    <circle cx="212" cy="156.5" r="2" fill="#FFFFFF"/>
+    <circle cx="303" cy="148" r="1.7" fill="#FFFFFF"/>
+    <path d="M258 172 q8 10 -1 18" fill="none" stroke="#75876B" stroke-width="8" stroke-linecap="round"/>
+    <g stroke="#62784A" stroke-width="6" stroke-linecap="round">
+      <path d="M314 186 L336 200"/><path d="M320 195 L326 186"/><path d="M329 201 L335 192"/>
     </g>
+    <!-- wide open maw + heavy jaw + four crooked teeth -->
+    <path d="M200 204 Q258 222 318 200 C316 230 302 252 282 262 Q258 272 234 262 C216 252 202 230 200 204 Z"
+          fill="#4A3F35" stroke="#3A2A1E" stroke-width="9" stroke-linejoin="round"/>
+    <path d="M234 262 Q258 274 282 262 C280 282 272 294 258 294 C244 294 236 282 234 262 Z"
+          fill="#8DA080" stroke="#3A2A1E" stroke-width="9" stroke-linejoin="round"/>
+    <g fill="#EDE5CE" stroke="#3A2A1E" stroke-width="4.5">
+      <rect x="218" y="210" width="13" height="17" rx="2" transform="rotate(-8 224 218)"/>
+      <rect x="246" y="217" width="12" height="16" rx="2" transform="rotate(3 252 225)"/>
+      <rect x="274" y="215" width="12" height="16" rx="2" transform="rotate(-4 280 223)"/>
+      <rect x="298" y="206" width="13" height="17" rx="2" transform="rotate(10 304 214)"/>
+      <rect x="246" y="256" width="11" height="13" rx="2" transform="rotate(-6 251 262)"/>
+      <rect x="268" y="258" width="11" height="13" rx="2" transform="rotate(7 273 264)"/>
+    </g>
+    <!-- the big receipt -->
+    <g transform="rotate(-18 248 62)">
+      <path d="M182 20 L326 20 L326 80 L316 94 L306 80 L296 94 L286 80 L276 94 L266 80 L256 94 L246 80 L236 94 L226 80 L216 94 L206 80 L196 94 L186 80 L182 76 Z"
+            fill="#F4EFE2" stroke="#3A2A1E" stroke-width="9" stroke-linejoin="round"/>
+      <path d="M194 38 L314 38" stroke="#D8CFB8" stroke-width="5"/>
+      <path d="M194 50 L288 50" stroke="#D8CFB8" stroke-width="5"/>
+      <path d="M194 62 L262 62" stroke="#D8CFB8" stroke-width="5"/>
+      <path d="M236 76 q10 -7 20 0 q10 7 20 0" stroke="#C64545" stroke-width="6" fill="none" stroke-linecap="round"/>
+    </g>
+    <!-- two flies for the big one -->
+    <path d="M372 88 a30 20 0 1 1 -8 -32" stroke="#3A2A1E" stroke-width="2.5" stroke-dasharray="4 7" fill="none" opacity="0.5"/>
+    <circle cx="374" cy="86" r="6" fill="#3A2A1E"/>
+    <circle cx="370" cy="79" r="3.4" fill="#B7C4A8" opacity="0.9"/>
+    <circle cx="130" cy="240" r="5" fill="#3A2A1E"/>
+    <circle cx="126" cy="234" r="2.8" fill="#B7C4A8" opacity="0.9"/>
   </g>
 </svg>

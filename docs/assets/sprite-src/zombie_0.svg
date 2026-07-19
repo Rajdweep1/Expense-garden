@@ -1,44 +1,58 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <defs>
-    <clipPath id="h0"><circle cx="256" cy="306" r="62"/></clipPath>
-  </defs>
+  <defs></defs>
   <ellipse cx="256" cy="500" rx="70" ry="15" fill="#6d4a2a" opacity="0.50"/><ellipse cx="256" cy="497" rx="50" ry="10" fill="#8a5f38" opacity="0.55"/><ellipse cx="248" cy="494" rx="28" ry="6" fill="#a4794e" opacity="0.45"/>
-  <g transform="rotate(-6 256 490)">
-    <!-- soil clods where it broke through -->
-    <circle cx="216" cy="488" r="9" fill="#6d4a2a"/>
-    <circle cx="296" cy="490" r="7" fill="#8a5f38"/>
-    <circle cx="268" cy="496" r="6" fill="#6d4a2a"/>
-    <!-- squat torso rising straight out of the tile -->
-    <path d="M226 490 C220 448 228 412 250 398 C276 388 294 408 290 448 C288 472 280 486 268 490 C254 496 236 496 226 490 Z"
-          fill="#9DB07C" stroke="#3A2A1E" stroke-width="10" stroke-linejoin="round"/>
-    <path d="M278 414 C288 434 290 458 284 476 C290 460 292 434 284 416 Z" fill="#7E9464"/>
-    <!-- nub leaf-arms at the shoulders -->
-    <path d="M228 428 C206 424 190 432 180 446 C192 454 212 450 228 440 Z" fill="#7A8F5C" stroke="#3A2A1E" stroke-width="8" stroke-linejoin="round"/>
-    <path d="M288 436 C306 438 318 448 322 462 C308 464 294 456 286 446 Z" fill="#7A8F5C" stroke="#3A2A1E" stroke-width="8" stroke-linejoin="round"/>
-    <!-- oversized head, sunk into the shoulders -->
-    <g transform="translate(0 42)">
-      <circle cx="256" cy="306" r="62" fill="#9DB07C" stroke="#3A2A1E" stroke-width="10"/>
-      <ellipse cx="260" cy="356" rx="58" ry="26" fill="#7E9464" clip-path="url(#h0)"/>
-      <ellipse cx="232" cy="272" rx="22" ry="13" fill="#B8C79A"/>
-      <circle cx="256" cy="306" r="62" fill="none" stroke="#3A2A1E" stroke-width="10"/>
-      <!-- X eyes -->
-      <g stroke="#2B2118" stroke-width="8" stroke-linecap="round">
-        <path d="M222 288 L242 306"/><path d="M222 306 L242 288"/>
-        <path d="M272 292 L292 310"/><path d="M272 310 L292 292"/>
-      </g>
-      <!-- dazed mouth + cheek stitch -->
-      <path d="M234 336 Q256 342 280 334" stroke="#2B2118" stroke-width="7" fill="none" stroke-linecap="round"/>
-      <g stroke="#62784A" stroke-width="5" stroke-linecap="round">
-        <path d="M292 320 L306 330"/><path d="M296 328 L300 321"/><path d="M302 332 L306 325"/>
-      </g>
-      <!-- receipt hat, tilted -->
-      <g transform="rotate(-14 252 222)">
-        <path d="M216 200 L288 200 L288 236 L282 244 L276 236 L270 244 L264 236 L258 244 L252 236 L246 244 L240 236 L234 244 L228 236 L222 244 L216 236 Z"
-              fill="#F4EFE2" stroke="#3A2A1E" stroke-width="8" stroke-linejoin="round"/>
-        <path d="M224 212 L280 212" stroke="#D8CFB8" stroke-width="4"/>
-        <path d="M224 220 L268 220" stroke="#D8CFB8" stroke-width="4"/>
-        <path d="M242 230 q6 -5 12 0 q6 5 12 0" stroke="#C64545" stroke-width="4.5" fill="none" stroke-linecap="round"/>
-      </g>
+  <g transform="rotate(-4 256 490)">
+    <!-- soil clods -->
+    <circle cx="212" cy="492" r="8" fill="#6d4a2a"/>
+    <circle cx="300" cy="494" r="6" fill="#8a5f38"/>
+    <!-- baby shamble legs -->
+    <path d="M232 442 L214 476 L242 484 L256 448 Z" fill="#77879A" stroke="#3A2A1E" stroke-width="8" stroke-linejoin="round"/>
+    <path d="M272 444 L298 474 L272 486 L252 450 Z" fill="#66788A" stroke="#3A2A1E" stroke-width="8" stroke-linejoin="round"/>
+    <ellipse cx="226" cy="486" rx="20" ry="9" fill="#98A98C" stroke="#3A2A1E" stroke-width="7"/>
+    <ellipse cx="288" cy="488" rx="20" ry="8" transform="rotate(10 288 488)" fill="#8DA080" stroke="#3A2A1E" stroke-width="7"/>
+    <!-- tiny ragged tee -->
+    <path d="M216 388 L300 392 C306 412 304 434 298 450 L286 442 L274 452 L262 444 L250 453 L240 445 C232 448 224 446 222 444 C214 424 212 406 216 388 Z"
+          fill="#8A7B5E" stroke="#3A2A1E" stroke-width="9" stroke-linejoin="round"/>
+    <rect x="242" y="410" width="26" height="22" rx="4" fill="#A5926E" stroke="#5E5138" stroke-width="3.5"/>
+    <path d="M242 416 L236 413 M242 426 L236 429 M268 416 L274 413 M268 426 L274 429" stroke="#5E5138" stroke-width="3.5" stroke-linecap="round"/>
+    <!-- stub arms reaching out -->
+    <path d="M212 398 C190 402 168 408 152 413" stroke="#3A2A1E" stroke-width="22" fill="none" stroke-linecap="round"/>
+    <path d="M212 398 C192 402 170 408 156 412" stroke="#98A98C" stroke-width="14" fill="none" stroke-linecap="round"/>
+    <path d="M148 416 q-2 10 -5 17 M158 419 q0 11 -2 19 M168 420 q2 10 1 18"
+          stroke="#3A2A1E" stroke-width="11" fill="none" stroke-linecap="round"/>
+    <path d="M148 416 q-2 10 -5 17 M158 419 q0 11 -2 19 M168 420 q2 10 1 18"
+          stroke="#98A98C" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <path d="M302 406 C278 412 244 418 218 422" stroke="#3A2A1E" stroke-width="22" fill="none" stroke-linecap="round"/>
+    <path d="M302 406 C280 412 246 418 222 421" stroke="#8DA080" stroke-width="14" fill="none" stroke-linecap="round"/>
+    <path d="M214 425 q-3 10 -7 16 M224 428 q-1 10 -4 18"
+          stroke="#3A2A1E" stroke-width="11" fill="none" stroke-linecap="round"/>
+    <path d="M214 425 q-3 10 -7 16 M224 428 q-1 10 -4 18"
+          stroke="#8DA080" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <!-- the head: outsized on the tiny body -->
+    <ellipse cx="256" cy="322" rx="66" ry="60" fill="#98A98C" stroke="#3A2A1E" stroke-width="9"/>
+    <ellipse cx="232" cy="280" rx="24" ry="13" fill="#B7C4A8"/>
+    <circle cx="324" cy="332" r="9" fill="#98A98C" stroke="#3A2A1E" stroke-width="6"/>
+    <path d="M204 302 Q230 288 256 291 Q286 288 308 305" fill="none" stroke="#75876B" stroke-width="10" stroke-linecap="round"/>
+    <ellipse cx="230" cy="322" rx="17" ry="19" fill="#EFEDD9" stroke="#3A2A1E" stroke-width="6"/>
+    <ellipse cx="284" cy="325" rx="14" ry="16" fill="#EFEDD9" stroke="#3A2A1E" stroke-width="6"/>
+    <circle cx="224" cy="328" r="4.5" fill="#2B2118"/>
+    <circle cx="289" cy="322" r="3.8" fill="#2B2118"/>
+    <circle cx="222.5" cy="326.5" r="1.5" fill="#FFFFFF"/>
+    <circle cx="287.5" cy="320.5" r="1.3" fill="#FFFFFF"/>
+    <path d="M256 336 q5 7 -1 12" fill="none" stroke="#75876B" stroke-width="6" stroke-linecap="round"/>
+    <!-- small open maw, one good tooth -->
+    <path d="M222 360 Q256 372 292 358 C290 376 280 388 268 392 Q256 396 244 392 C232 388 224 376 222 360 Z"
+          fill="#4A3F35" stroke="#3A2A1E" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M244 392 Q256 398 268 392 C266 402 262 408 256 408 C250 408 246 402 244 392 Z"
+          fill="#8DA080" stroke="#3A2A1E" stroke-width="7" stroke-linejoin="round"/>
+    <rect x="240" y="364" width="10" height="12" rx="2" transform="rotate(-6 245 370)" fill="#EDE5CE" stroke="#3A2A1E" stroke-width="3.5"/>
+    <rect x="272" y="362" width="10" height="12" rx="2" transform="rotate(8 277 368)" fill="#EDE5CE" stroke="#3A2A1E" stroke-width="3.5"/>
+    <!-- tiny receipt -->
+    <g transform="rotate(-16 244 254)">
+      <path d="M212 234 L284 234 L284 268 L278 276 L272 268 L266 276 L260 268 L254 276 L248 268 L242 276 L236 268 L230 276 L224 268 L218 276 L212 268 Z"
+            fill="#F4EFE2" stroke="#3A2A1E" stroke-width="7" stroke-linejoin="round"/>
+      <path d="M220 246 L276 246" stroke="#D8CFB8" stroke-width="3.5"/>
+      <path d="M238 258 q6 -5 12 0 q6 5 12 0" stroke="#C64545" stroke-width="4" fill="none" stroke-linecap="round"/>
     </g>
   </g>
 </svg>

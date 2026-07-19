@@ -1,53 +1,83 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <defs>
-    <clipPath id="h1"><circle cx="258" cy="230" r="78"/></clipPath>
-  </defs>
+  <defs></defs>
   <ellipse cx="256" cy="500" rx="78" ry="16" fill="#6d4a2a" opacity="0.50"/><ellipse cx="256" cy="497" rx="56" ry="11" fill="#8a5f38" opacity="0.55"/><ellipse cx="248" cy="494" rx="31" ry="7" fill="#a4794e" opacity="0.45"/>
-  <g transform="rotate(-7 256 490)">
-    <!-- soil clods -->
-    <circle cx="206" cy="486" r="10" fill="#6d4a2a"/>
-    <circle cx="304" cy="488" r="8" fill="#8a5f38"/>
-    <circle cx="274" cy="496" r="6" fill="#6d4a2a"/>
-    <!-- hunched torso -->
-    <path d="M216 470 C206 404 216 336 246 310 C284 296 308 338 302 402 C298 442 290 466 278 476 C254 488 228 482 216 470 Z"
-          fill="#9DB07C" stroke="#3A2A1E" stroke-width="10" stroke-linejoin="round"/>
-    <path d="M284 326 C300 354 304 388 299 418 C295 448 288 464 278 473 C290 450 295 402 288 358 C286 342 285 334 284 326 Z" fill="#7E9464"/>
-    <!-- stitched belly patch -->
-    <rect x="240" y="400" width="36" height="30" rx="5" fill="#8FA671" stroke="#62784A" stroke-width="4"/>
-    <path d="M240 408 L232 404 M240 422 L232 426 M276 408 L284 404 M276 422 L284 426" stroke="#62784A" stroke-width="4" stroke-linecap="round"/>
-    <!-- reaching arm + droop arm at the shoulders -->
-    <path d="M230 344 C194 338 164 350 146 376 C166 388 204 382 232 364 Z" fill="#7A8F5C" stroke="#3A2A1E" stroke-width="9" stroke-linejoin="round"/>
-    <path d="M298 360 C318 370 330 390 332 412 C314 408 300 390 294 372 Z" fill="#7A8F5C" stroke="#3A2A1E" stroke-width="9" stroke-linejoin="round"/>
-    <!-- head, sunk into the shoulders -->
-    <g transform="translate(0 24)">
-      <circle cx="258" cy="230" r="78" fill="#9DB07C" stroke="#3A2A1E" stroke-width="10"/>
-      <ellipse cx="264" cy="292" rx="74" ry="32" fill="#7E9464" clip-path="url(#h1)"/>
-      <ellipse cx="228" cy="186" rx="28" ry="16" fill="#B8C79A"/>
-      <circle cx="258" cy="230" r="78" fill="none" stroke="#3A2A1E" stroke-width="10"/>
-      <!-- X eyes, one lower for the dazed tilt -->
-      <g stroke="#2B2118" stroke-width="9" stroke-linecap="round">
-        <path d="M212 206 L238 230"/><path d="M212 230 L238 206"/>
-        <path d="M280 214 L306 238"/><path d="M280 238 L306 214"/>
-      </g>
-      <!-- mouth with one square tooth -->
-      <path d="M228 274 Q256 282 292 270" stroke="#2B2118" stroke-width="8" fill="none" stroke-linecap="round"/>
-      <rect x="256" y="275" width="13" height="13" rx="2" transform="rotate(4 262 281)" fill="#F4EFE2" stroke="#3A2A1E" stroke-width="4"/>
-      <!-- cheek stitch -->
-      <g stroke="#62784A" stroke-width="5" stroke-linecap="round">
-        <path d="M296 252 L314 264"/><path d="M301 260 L306 252"/><path d="M308 265 L313 257"/>
-      </g>
-      <!-- receipt hat -->
-      <g transform="rotate(-16 250 148)">
-        <path d="M206 118 L302 118 L302 164 L294 176 L286 164 L278 176 L270 164 L262 176 L254 164 L246 176 L238 164 L230 176 L222 164 L214 176 L206 164 Z"
-              fill="#F4EFE2" stroke="#3A2A1E" stroke-width="8" stroke-linejoin="round"/>
-        <path d="M216 132 L292 132" stroke="#D8CFB8" stroke-width="4"/>
-        <path d="M216 142 L276 142" stroke="#D8CFB8" stroke-width="4"/>
-        <path d="M240 156 q8 -6 16 0 q8 6 16 0" stroke="#C64545" stroke-width="5" fill="none" stroke-linecap="round"/>
-      </g>
-      <!-- one loyal fly -->
-      <path d="M330 150 a26 18 0 1 1 -6 -28" stroke="#3A2A1E" stroke-width="2.5" stroke-dasharray="4 7" fill="none" opacity="0.5"/>
-      <circle cx="332" cy="148" r="5.5" fill="#3A2A1E"/>
-      <circle cx="328" cy="142" r="3" fill="#B8C79A" opacity="0.9"/>
+  <g transform="rotate(-3 256 490)">
+    <!-- soil clods it broke out of -->
+    <circle cx="192" cy="492" r="9" fill="#6d4a2a"/>
+    <circle cx="326" cy="494" r="7" fill="#8a5f38"/>
+    <!-- legs: baggy shredded trousers, mid-shamble; back leg drags -->
+    <path d="M222 404 L182 462 L226 480 L256 410 Z" fill="#77879A" stroke="#3A2A1E" stroke-width="9" stroke-linejoin="round"/>
+    <path d="M182 462 L175 473 L190 469 L194 479 L208 471 L214 480 L226 480" fill="none" stroke="#3A2A1E" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M284 408 L334 464 L296 488 L254 414 Z" fill="#66788A" stroke="#3A2A1E" stroke-width="9" stroke-linejoin="round"/>
+    <path d="M334 464 L344 474 L326 474 L322 486 L308 478 L296 488" fill="none" stroke="#3A2A1E" stroke-width="7" stroke-linejoin="round"/>
+    <ellipse cx="204" cy="484" rx="27" ry="12" fill="#98A98C" stroke="#3A2A1E" stroke-width="8"/>
+    <path d="M186 480 L182 474 M196 486 L193 478" stroke="#3A2A1E" stroke-width="4" stroke-linecap="round"/>
+    <ellipse cx="312" cy="490" rx="27" ry="11" transform="rotate(12 312 490)" fill="#8DA080" stroke="#3A2A1E" stroke-width="8"/>
+    <!-- neck (shadowed, tucked behind shirt and jaw) -->
+    <rect x="250" y="252" width="30" height="56" fill="#75876B"/>
+    <!-- ragged tee: wide hunched torso, hem torn to strips -->
+    <path d="M206 298 L322 304 C330 340 328 376 318 408 L304 398 L292 412 L278 402 L264 414 L250 403 L236 412 L224 400 L212 408 C204 372 200 334 206 298 Z"
+          fill="#8A7B5E" stroke="#3A2A1E" stroke-width="10" stroke-linejoin="round"/>
+    <path d="M306 314 C316 344 314 378 306 400 C314 376 318 340 310 312 Z" fill="#6E6149"/>
+    <!-- stitched patch -->
+    <rect x="238" y="340" width="38" height="32" rx="5" fill="#A5926E" stroke="#5E5138" stroke-width="4"/>
+    <path d="M238 348 L230 344 M238 364 L230 368 M276 348 L284 344 M276 364 L284 368" stroke="#5E5138" stroke-width="4" stroke-linecap="round"/>
+    <!-- torn short sleeves at the arm roots -->
+    <path d="M212 300 L184 306 L190 334 L216 330 Z" fill="#8A7B5E" stroke="#3A2A1E" stroke-width="9" stroke-linejoin="round"/>
+    <path d="M312 308 L336 318 L326 346 L304 336 Z" fill="#6E6149" stroke="#3A2A1E" stroke-width="9" stroke-linejoin="round"/>
+    <!-- both arms out front, staggered, hands hanging limp -->
+    <path d="M196 312 C166 316 136 324 114 331" stroke="#3A2A1E" stroke-width="26" fill="none" stroke-linecap="round"/>
+    <path d="M196 312 C166 316 138 324 118 330" stroke="#98A98C" stroke-width="17" fill="none" stroke-linecap="round"/>
+    <path d="M110 333 q-2 14 -6 24 M122 337 q0 15 -3 26 M134 339 q2 14 1 25 M144 337 q5 11 6 21"
+          stroke="#3A2A1E" stroke-width="13" fill="none" stroke-linecap="round"/>
+    <path d="M110 333 q-2 14 -6 24 M122 337 q0 15 -3 26 M134 339 q2 14 1 25 M144 337 q5 11 6 21"
+          stroke="#98A98C" stroke-width="7" fill="none" stroke-linecap="round"/>
+    <path d="M314 338 C276 346 224 354 186 360" stroke="#3A2A1E" stroke-width="26" fill="none" stroke-linecap="round"/>
+    <path d="M314 338 C278 346 226 354 190 359" stroke="#8DA080" stroke-width="17" fill="none" stroke-linecap="round"/>
+    <path d="M182 363 q-4 13 -9 22 M194 367 q-1 14 -5 24 M206 368 q1 13 -1 24"
+          stroke="#3A2A1E" stroke-width="13" fill="none" stroke-linecap="round"/>
+    <path d="M182 363 q-4 13 -9 22 M194 367 q-1 14 -5 24 M206 368 q1 13 -1 24"
+          stroke="#8DA080" stroke-width="7" fill="none" stroke-linecap="round"/>
+    <!-- the head: big skull, heavy brow, wall eyes, dislocated jaw -->
+    <ellipse cx="262" cy="180" rx="82" ry="74" fill="#98A98C" stroke="#3A2A1E" stroke-width="10"/>
+    <ellipse cx="234" cy="128" rx="30" ry="16" fill="#B7C4A8"/>
+    <circle cx="346" cy="192" r="11" fill="#98A98C" stroke="#3A2A1E" stroke-width="7"/>
+    <path d="M196 156 Q230 138 262 142 Q300 138 328 160" fill="none" stroke="#75876B" stroke-width="13" stroke-linecap="round"/>
+    <!-- eye sockets + wall eyes with tiny mismatched pupils -->
+    <ellipse cx="230" cy="182" rx="21" ry="23" fill="#EFEDD9" stroke="#3A2A1E" stroke-width="7"/>
+    <ellipse cx="298" cy="186" rx="17" ry="19" fill="#EFEDD9" stroke="#3A2A1E" stroke-width="7"/>
+    <ellipse cx="230" cy="182" rx="21" ry="23" fill="none" stroke="#75876B" stroke-width="4" opacity="0.7"/>
+    <circle cx="223" cy="190" r="5.5" fill="#2B2118"/>
+    <circle cx="304" cy="183" r="4.5" fill="#2B2118"/>
+    <circle cx="221" cy="188" r="1.8" fill="#FFFFFF"/>
+    <circle cx="302.5" cy="181.5" r="1.5" fill="#FFFFFF"/>
+    <!-- nose nub + cheek stitch -->
+    <path d="M262 200 q7 9 -1 16" fill="none" stroke="#75876B" stroke-width="7" stroke-linecap="round"/>
+    <g stroke="#62784A" stroke-width="5" stroke-linecap="round">
+      <path d="M312 216 L330 226"/><path d="M317 223 L321 215"/><path d="M324 227 L328 219"/>
     </g>
+    <!-- open maw + dropped jaw + crooked teeth -->
+    <path d="M212 230 Q262 246 314 226 C312 250 300 268 284 276 Q262 284 240 276 C226 268 214 250 212 230 Z"
+          fill="#4A3F35" stroke="#3A2A1E" stroke-width="8" stroke-linejoin="round"/>
+    <path d="M240 276 Q262 286 284 276 C282 292 274 302 262 302 C250 302 242 292 240 276 Z"
+          fill="#8DA080" stroke="#3A2A1E" stroke-width="8" stroke-linejoin="round"/>
+    <g fill="#EDE5CE" stroke="#3A2A1E" stroke-width="4">
+      <rect x="230" y="234" width="12" height="15" rx="2" transform="rotate(-7 236 241)"/>
+      <rect x="258" y="240" width="11" height="14" rx="2" transform="rotate(4 263 247)"/>
+      <rect x="286" y="232" width="12" height="15" rx="2" transform="rotate(9 292 239)"/>
+      <rect x="252" y="272" width="10" height="12" rx="2" transform="rotate(-5 257 278)"/>
+    </g>
+    <!-- receipt stuck on the crown -->
+    <g transform="rotate(-20 240 106)">
+      <path d="M198 78 L294 78 L294 124 L286 136 L278 124 L270 136 L262 124 L254 136 L246 124 L238 136 L230 124 L222 136 L214 124 L206 136 L198 124 Z"
+            fill="#F4EFE2" stroke="#3A2A1E" stroke-width="8" stroke-linejoin="round"/>
+      <path d="M208 92 L284 92" stroke="#D8CFB8" stroke-width="4"/>
+      <path d="M208 102 L268 102" stroke="#D8CFB8" stroke-width="4"/>
+      <path d="M232 116 q8 -6 16 0 q8 6 16 0" stroke="#C64545" stroke-width="5" fill="none" stroke-linecap="round"/>
+    </g>
+    <!-- one loyal fly -->
+    <path d="M356 122 a26 18 0 1 1 -6 -28" stroke="#3A2A1E" stroke-width="2.5" stroke-dasharray="4 7" fill="none" opacity="0.5"/>
+    <circle cx="358" cy="120" r="5.5" fill="#3A2A1E"/>
+    <circle cx="354" cy="114" r="3" fill="#B7C4A8" opacity="0.9"/>
   </g>
 </svg>

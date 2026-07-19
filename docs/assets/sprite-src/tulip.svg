@@ -1,28 +1,34 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <defs>
-    <linearGradient id="cup" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#ffc0cf"/><stop offset="1" stop-color="#d94a70"/>
-    </linearGradient>
-    <linearGradient id="cupfront" x1="0" y1="0" x2="0.9" y2="1">
-      <stop offset="0" stop-color="#ff9bb0"/><stop offset="1" stop-color="#c93f63"/>
-    </linearGradient>
-    <linearGradient id="stem" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#6fb54a"/><stop offset="1" stop-color="#4e8f35"/>
-    </linearGradient>
-    <linearGradient id="leaf" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#8ccf63"/><stop offset="1" stop-color="#4e8f35"/>
-    </linearGradient>
-  </defs>
+  <defs></defs>
   <ellipse cx="256" cy="500" rx="78" ry="16" fill="#6d4a2a" opacity="0.50"/><ellipse cx="256" cy="497" rx="56" ry="11" fill="#8a5f38" opacity="0.55"/><ellipse cx="248" cy="494" rx="31" ry="7" fill="#a4794e" opacity="0.45"/>
-  <path d="M256 506 C252 430 254 330 256 270" stroke="url(#stem)" stroke-width="18" fill="none" stroke-linecap="round"/>
+  <!-- stem -->
+  <path d="M256 504 C252 430 254 330 256 268" stroke="#3A2A1E" stroke-width="28" fill="none" stroke-linecap="round"/>
+  <path d="M256 501 C252 430 254 332 256 271" stroke="#5FA940" stroke-width="16" fill="none" stroke-linecap="round"/>
+  <!-- sweeping side leaf -->
   <path d="M250 502 C186 470 150 400 156 316 C200 348 236 412 252 470 C254 482 254 494 250 502 Z"
-        fill="url(#leaf)" stroke="#3f7c2c" stroke-width="7" stroke-linejoin="round"/>
-  <path d="M166 336 C196 372 222 416 240 462" stroke="#c9ef9f" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.65"/>
+        fill="#6FB54A" stroke="#3A2A1E" stroke-width="10" stroke-linejoin="round"/>
+  <path d="M170 340 C198 374 222 416 238 458" stroke="#A8DC7E" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <!-- back petals -->
   <path d="M193 240 C183 168 206 116 233 126 C243 96 269 96 279 126 C306 116 329 168 319 240 C313 286 199 286 193 240 Z"
-        fill="url(#cup)" stroke="#c74e6e" stroke-width="7" stroke-linejoin="round"/>
+        fill="#D94A70" stroke="#3A2A1E" stroke-width="10" stroke-linejoin="round"/>
+  <!-- front cup carrying the face -->
   <path d="M224 134 C210 190 210 240 226 274 C244 282 268 282 286 274 C302 240 302 190 288 134 C278 112 234 112 224 134 Z"
-        fill="url(#cupfront)" stroke="#c74e6e" stroke-width="6" stroke-linejoin="round"/>
-  <ellipse cx="228" cy="160" rx="14" ry="30" transform="rotate(8 228 160)" fill="#ffffff" opacity="0.35"/>
-  <path d="M204 158 C202 196 206 232 216 258" stroke="#b23e60" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.55"/>
-  <path d="M308 158 C310 196 306 232 296 258" stroke="#b23e60" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.55"/>
+        fill="#FF9BB0" stroke="#3A2A1E" stroke-width="10" stroke-linejoin="round"/>
+  <ellipse cx="231" cy="158" rx="12" ry="26" transform="rotate(8 231 158)" fill="#FFFFFF" opacity="0.4"/>
+  <!-- the diva face: heavy lids, sideways glance, smirk, beauty mark -->
+  <ellipse cx="239" cy="196" rx="13" ry="15" fill="#FFFFFF" stroke="#3A2A1E" stroke-width="5.5"/>
+  <ellipse cx="275" cy="196" rx="13" ry="15" fill="#FFFFFF" stroke="#3A2A1E" stroke-width="5.5"/>
+  <path d="M226 192 A13 13 0 0 1 252 191 L252 186 A15 15 0 0 0 226 186 Z" fill="#E86A8C" stroke="#3A2A1E" stroke-width="4"/>
+  <path d="M262 192 A13 13 0 0 1 288 191 L288 186 A15 15 0 0 0 262 186 Z" fill="#E86A8C" stroke="#3A2A1E" stroke-width="4"/>
+  <path d="M226 188 Q239 180 252 188" stroke="#3A2A1E" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M262 188 Q275 180 288 188" stroke="#3A2A1E" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M290 184 l7 -5" stroke="#3A2A1E" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="244" cy="200" r="4.6" fill="#2B2118"/>
+  <circle cx="280" cy="200" r="4.6" fill="#2B2118"/>
+  <circle cx="242.5" cy="198.5" r="1.6" fill="#FFFFFF"/>
+  <circle cx="278.5" cy="198.5" r="1.6" fill="#FFFFFF"/>
+  <path d="M244 240 Q258 248 274 236" stroke="#2B2118" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <circle cx="285" cy="228" r="2.6" fill="#2B2118"/>
+  <ellipse cx="226" cy="222" rx="8" ry="5" fill="#E8607F" opacity="0.55"/>
+  <ellipse cx="290" cy="220" rx="8" ry="5" fill="#E8607F" opacity="0.55"/>
 </svg>
