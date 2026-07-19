@@ -55,10 +55,14 @@ nostalgia, without copying any actual character or asset.
 - 2–3 tone cel shading with a warm rim light; saturated garden palette.
 - Squash-and-stretch idle poses (lean, bob, petal flop).
 
-**Archetype casting — where the nostalgia lives.** Our cast occupies the same
-*niches* the player remembers: a beaming sunflower-ish face on the petal flower, a
-hunched vacant-eyed zombie among the plants, a cheerful suburban house behind a
-lawn of tiles. Niche + style DNA = instant recognition, no copying required.
+**Archetype casting — where the nostalgia lives.** *(Revised at round-5 verdict 3,
+2026-07-18: full creature cast.)* Every planted archetype is a CREATURE-PLANT —
+head-dominant body plans borrowed from the genre's casting sheet (sun-faced flower,
+stout nut-wall sentinel for necessities, bell-chime, dozy mushroom, wise old tree),
+rendered as our own characters. Landscape forms (trimmed hedge blocks, topiary) are
+retired from the planted field; dignity for necessities now reads through posture
+and expression (calm, sturdy, unbothered), not through being furniture. Body plans
+and archetype IDEAS are free; specific characters remain off-limits.
 
 **The twist rule — what keeps it ours.** Every character carries at least one
 signature element PvZ does not have (the zombie's crumpled-receipt hat is the
@@ -71,12 +75,16 @@ PvZ. Pass: "this looks like a PvZ-style game." Fail: "that's Sunflower / that's
 the PvZ zombie, redrawn." Applied at the pilot checkpoint and again on the full
 pack contact sheet.
 
-**Pipeline.** SVG-first: evolve the existing `art_pass.py`-style scripted pipeline
-(sources in `docs/assets/sprite-src/`, resvg → 512 px PNGs in
-`app/src/main/assets/garden/`). All 21 existing sprites are redrawn in the new
-language after the pilot passes; loader contract (`<archetype>_<variant>.png`) is
-unchanged. Escalation path if the hand-drawn ceiling disappoints: the same
-per-sprite briefs feed an AI-generated raster pack that drops into the same files.
+**Pipeline.** *(Revised at round-5 verdict 3: the escalation path is now primary.)*
+Brief-driven AI raster: per-character briefs (shared style block: soft airbrushed
+volume, glossy highlights, casual tower-defense finish; explicit negative: no
+Peashooter/Sunflower/PvZ characters) → Gemini free-tier image generation (₹0 holds;
+same API family already planned for 1D) → chroma-key matting + resize to 512 px
+PNGs in `app/src/main/assets/garden/` — the loader contract
+(`<archetype>_<variant>.png`) is unchanged, so generated art drops in with zero
+code changes. Hand-drawn SVG survives as the spec/reference sheet for each brief
+and the procedural fallback. Three hand-drawn pilot rounds (flat-cel) hit their
+ceiling short of the target finish — logged in the plan's execution amendments.
 
 ## 4. World topology — `SpiralTiler`
 
