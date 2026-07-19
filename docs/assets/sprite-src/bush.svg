@@ -8,18 +8,20 @@
   <path d="M128 396 C100 386 94 348 116 328 C104 288 132 250 174 252 C182 208 236 186 278 206 C270 240 208 262 186 310 C170 348 158 380 128 396 Z" fill="#7FBF64"/>
   <path d="M396 260 C424 286 420 330 392 348 C398 390 364 424 324 416 C346 380 372 330 372 292 C372 278 384 266 396 260 Z" fill="#437F36"/>
   <ellipse cx="180" cy="222" rx="40" ry="22" fill="#B8E594" opacity="0.8"/>
-  <!-- big friendly face -->
-  <ellipse cx="220" cy="278" rx="17" ry="18" fill="#FFFFFF" stroke="#3A2A1E" stroke-width="6"/>
-  <ellipse cx="294" cy="278" rx="17" ry="18" fill="#FFFFFF" stroke="#3A2A1E" stroke-width="6"/>
-  <circle cx="223" cy="284" r="7" fill="#2B2118"/>
-  <circle cx="291" cy="284" r="7" fill="#2B2118"/>
-  <circle cx="220.5" cy="281.5" r="2.3" fill="#FFFFFF"/>
-  <circle cx="288.5" cy="281.5" r="2.3" fill="#FFFFFF"/>
-  <path d="M196 316 Q256 362 318 314 C310 356 288 380 257 380 C226 380 204 356 196 316 Z"
+  <!-- big friendly face at muppet scale -->
+  <ellipse cx="214" cy="272" rx="26" ry="30" fill="#FFFFFF" stroke="#3A2A1E" stroke-width="7"/>
+  <ellipse cx="298" cy="272" rx="26" ry="30" fill="#FFFFFF" stroke="#3A2A1E" stroke-width="7"/>
+  <circle cx="221" cy="282" r="11.5" fill="#2B2118"/>
+  <circle cx="291" cy="282" r="11.5" fill="#2B2118"/>
+  <circle cx="216.5" cy="277.5" r="4" fill="#FFFFFF"/>
+  <circle cx="286.5" cy="277.5" r="4" fill="#FFFFFF"/>
+  <path d="M186 314 Q256 374 328 312 C320 360 294 386 257 386 C220 386 194 360 186 314 Z"
         fill="#2E4A22" stroke="#3A2A1E" stroke-width="8" stroke-linejoin="round"/>
-  <path d="M228 356 Q256 372 286 355 C280 368 269 375 257 375 C245 375 234 368 228 356 Z" fill="#E8956B"/>
-  <ellipse cx="184" cy="310" rx="11" ry="7" fill="#D97B4F" opacity="0.45"/>
-  <ellipse cx="330" cy="308" rx="11" ry="7" fill="#D97B4F" opacity="0.45"/>
+  <path d="M222 360 Q256 380 292 359 C285 374 272 381 257 381 C242 381 229 374 222 360 Z" fill="#E8956B"/>
+  <path d="M180 310 q-6 8 -4 15" stroke="#3F7C2C" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <path d="M334 308 q6 8 4 15" stroke="#3F7C2C" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <ellipse cx="172" cy="300" rx="12" ry="8" fill="#D97B4F" opacity="0.45"/>
+  <ellipse cx="342" cy="298" rx="12" ry="8" fill="#D97B4F" opacity="0.45"/>
   <!-- berries, clear of the face -->
   <g fill="#FFFFFF" stroke="#3A2A1E" stroke-width="4">
     <circle cx="150" cy="330" r="11"/><circle cx="238" cy="212" r="12"/>

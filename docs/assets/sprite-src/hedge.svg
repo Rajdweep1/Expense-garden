@@ -8,20 +8,22 @@
         fill="#9ACB62" stroke="#3A2A1E" stroke-width="8" stroke-linejoin="round"/>
   <ellipse cx="182" cy="278" rx="52" ry="12" fill="#FFFFFF" opacity="0.4"/>
   <path d="M104 440 C120 470 170 486 256 486 C342 486 392 470 408 440 L408 456 C396 480 344 492 256 492 C168 492 116 480 104 456 Z" fill="#3F7C2C" opacity="0.5"/>
-  <!-- the dignified face: half-lidded calm + small settled smile -->
-  <ellipse cx="216" cy="366" rx="15" ry="16" fill="#FFFFFF" stroke="#3A2A1E" stroke-width="5.5"/>
-  <ellipse cx="296" cy="366" rx="15" ry="16" fill="#FFFFFF" stroke="#3A2A1E" stroke-width="5.5"/>
-  <path d="M201 362 A15 14 0 0 1 231 361 L231 355 A17 17 0 0 0 201 355 Z" fill="#4B8A3C" stroke="#3A2A1E" stroke-width="4"/>
-  <path d="M281 362 A15 14 0 0 1 311 361 L311 355 A17 17 0 0 0 281 355 Z" fill="#4B8A3C" stroke="#3A2A1E" stroke-width="4"/>
-  <circle cx="219" cy="370" r="5.2" fill="#2B2118"/>
-  <circle cx="293" cy="370" r="5.2" fill="#2B2118"/>
-  <circle cx="217.5" cy="368.5" r="1.7" fill="#FFFFFF"/>
-  <circle cx="291.5" cy="368.5" r="1.7" fill="#FFFFFF"/>
-  <path d="M230 408 Q256 420 282 408" stroke="#2B2118" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <!-- the dignified face at muppet scale: heavy brows, patient eyes -->
+  <path d="M178 328 Q212 316 242 326" stroke="#2F6023" stroke-width="13" fill="none" stroke-linecap="round"/>
+  <path d="M270 326 Q300 316 334 328" stroke="#2F6023" stroke-width="13" fill="none" stroke-linecap="round"/>
+  <ellipse cx="212" cy="368" rx="23" ry="26" fill="#FFFFFF" stroke="#3A2A1E" stroke-width="6.5"/>
+  <ellipse cx="300" cy="368" rx="23" ry="26" fill="#FFFFFF" stroke="#3A2A1E" stroke-width="6.5"/>
+  <path d="M189 362 A23 22 0 0 1 235 361 L235 348 A27 27 0 0 0 189 348 Z" fill="#4B8A3C" stroke="#3A2A1E" stroke-width="4"/>
+  <path d="M277 362 A23 22 0 0 1 323 361 L323 348 A27 27 0 0 0 277 348 Z" fill="#4B8A3C" stroke="#3A2A1E" stroke-width="4"/>
+  <circle cx="217" cy="374" r="8.5" fill="#2B2118"/>
+  <circle cx="295" cy="374" r="8.5" fill="#2B2118"/>
+  <circle cx="214" cy="371" r="3" fill="#FFFFFF"/>
+  <circle cx="292" cy="371" r="3" fill="#FFFFFF"/>
+  <path d="M226 412 Q256 426 286 412" stroke="#2B2118" stroke-width="7" fill="none" stroke-linecap="round"/>
   <!-- little leaf bowtie: service with dignity -->
-  <path d="M244 432 L226 424 L226 444 Z" fill="#3F7C2C" stroke="#3A2A1E" stroke-width="5" stroke-linejoin="round"/>
-  <path d="M268 432 L286 424 L286 444 Z" fill="#3F7C2C" stroke="#3A2A1E" stroke-width="5" stroke-linejoin="round"/>
-  <circle cx="256" cy="433" r="7" fill="#57993C" stroke="#3A2A1E" stroke-width="5"/>
+  <path d="M240 440 L216 430 L216 456 Z" fill="#3F7C2C" stroke="#3A2A1E" stroke-width="5.5" stroke-linejoin="round"/>
+  <path d="M272 440 L296 430 L296 456 Z" fill="#3F7C2C" stroke="#3A2A1E" stroke-width="5.5" stroke-linejoin="round"/>
+  <circle cx="256" cy="441" r="9" fill="#57993C" stroke="#3A2A1E" stroke-width="5.5"/>
   <!-- sprigs, clear of the face -->
   <g fill="#B8E594" opacity="0.85">
     <circle cx="150" cy="342" r="6"/><circle cx="352" cy="338" r="5"/>
