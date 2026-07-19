@@ -41,4 +41,5 @@ data class GardenState(
     val gridRows: Int,
     val gridCols: Int,
     val monthMarkers: List<MonthMarker> = emptyList(),       // all-time fold only; monthly folds leave it empty
+    val houseLevel: Int = 1,                                 // 1C.6: hut→cottage→brick→villa by months tracked
 )

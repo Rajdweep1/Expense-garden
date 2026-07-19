@@ -131,9 +131,26 @@ class GardenFolderTest {
         assertEquals(2, g.plants.size)                  // but every txn still stands in the field
     }
 
-    @Test fun `grid grows with total plant count across months`() {
+    @Test fun `grid grows in square rings with total plant count`() {
         val txns = (1..12).map { txn(103, day = it, month = 5) } + (1..11).map { txn(103, day = it, month = 7) }
         val g = foldAll(txns)
-        assertEquals(5, g.gridRows)                     // 23 plants → ceil(23/5) = 5 rows
+        assertEquals(6, g.gridRows)                     // 23 plants → 2 rings → side 6
+        assertEquals(6, g.gridCols)
+        assertTrue(g.plants.none { it.tile in SpiralTiler.houseTiles(6) })
+    }
+
+    @Test fun `house levels up with months tracked, investment-only months count`() {
+        fun monthsSpan(months: List<Int>) = months.map { m -> txn(103, day = 2, month = m) }
+        assertEquals(1, foldAll(monthsSpan(listOf(7))).houseLevel)
+        assertEquals(1, foldAll(emptyList()).houseLevel)                      // day-0 hut
+        assertEquals(2, foldAll(monthsSpan(listOf(4, 5, 7))).houseLevel)      // 3 months → cottage
+        val withInvestmentMonth = monthsSpan(listOf(4, 5)) + txn(10, day = 3, month = 6, paise = 200_000)
+        assertEquals(2, foldAll(withInvestmentMonth).houseLevel)              // 3 tracked, one by SIP alone
+    }
+
+    @Test fun `monthly greenhouse fold keeps serpentine and default house level`() {
+        val g = fold((1..23).map { txn(103, day = it) })
+        assertEquals(5, g.gridRows)                     // ceil(23/5) — postcards unchanged
+        assertEquals(1, g.houseLevel)
     }
 }
