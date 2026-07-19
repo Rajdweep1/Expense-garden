@@ -47,45 +47,46 @@ class IsoMathTest {
         assert(above < below) { "expected sky bias, above=$above below=$below" }
     }
 
-    // ---- 1C.5 world mode: width-driven fit for the endless island ----
+    // ---- 1C.6 homestead: the house anchors the world ----
 
-    @Test fun `fitWidth matches fit exactly while the island is small`() {
-        val a = IsoMath.fit(gridRows = 6, gridCols = 5, viewportW = 1080f, viewportH = 2400f, topReserve = 300f, bottomReserve = 320f)
-        val b = IsoMath.fitWidth(gridRows = 6, gridCols = 5, viewportW = 1080f, viewportH = 2400f, topReserve = 300f, bottomReserve = 320f)
-        assertEquals(a.tileW, b.tileW, 1e-3f)
-        assertEquals(a.originX, b.originX, 1e-3f)
-        assertEquals(a.originY, b.originY, 1e-3f)
+    private fun houseCenter(iso: IsoMath, side: Int): Pair<Float, Float> {
+        // the point between the four house tiles: row = col = side/2 - .5 in tile units
+        val r = side / 2f - .5f
+        return (iso.originX + 0f) to (iso.originY + (r + r) * iso.tileH / 2f)
     }
 
-    @Test fun `fitWidth freezes tile size once history outgrows the frame`() {
-        val atFrame = IsoMath.fitWidth(gridRows = IsoMath.FRAME_ROWS, gridCols = 5, viewportW = 1080f, viewportH = 2400f, topReserve = 300f, bottomReserve = 320f)
-        val deep = IsoMath.fitWidth(gridRows = 60, gridCols = 5, viewportW = 1080f, viewportH = 2400f, topReserve = 300f, bottomReserve = 320f)
-        assertEquals(atFrame.tileW, deep.tileW, 1e-3f)          // history never shrinks the world
-        // frontier (visual row 0) pinned near the top band, its 5 cols centered
-        val frontierMid = (deep.tileCenterX(Tile(0, 0)) + deep.tileCenterX(Tile(0, 4))) / 2f
-        assertEquals(540f, frontierMid, 1e-2f)
-        assert(deep.tileCenterY(Tile(0, 0)) < 700f) { "frontier not pinned high: ${deep.tileCenterY(Tile(0, 0))}" }
-        // ...while the island's tail runs far past the viewport for the camera to explore
-        assert(deep.tileCenterY(Tile(59, 4)) > 2400f)
+    @Test fun `fitHome equals fit for small islands`() {
+        val a = IsoMath.fit(6, 6, 1080f, 2400f, 300f, 320f)
+        val b = IsoMath.fitHome(6, 1080f, 2400f, 300f, 320f)
+        assertEquals(a.tileW, b.tileW, 1e-3f); assertEquals(a.originX, b.originX, 1e-3f); assertEquals(a.originY, b.originY, 1e-3f)
     }
 
-    @Test fun `fitWidth keeps a mid-size island centered even past the frame`() {
-        // 13 rows: tile size is frozen, but the island still fits vertically -> whole-field centering.
-        val f = IsoMath.fitWidth(gridRows = 13, gridCols = 5, viewportW = 1080f, viewportH = 2400f, topReserve = 300f, bottomReserve = 320f)
-        assert(f.tileCenterY(Tile(0, 0)) > 700f) { "island still pinned high: ${f.tileCenterY(Tile(0, 0))}" }
-        val fieldMidX = (f.tileCenterX(Tile(12, 0)) + f.tileCenterX(Tile(0, 4))) / 2f
-        assertEquals(540f, fieldMidX, 1f)
-        val bottom = f.tileCenterY(Tile(12, 4)) + f.tileH / 2f + f.tileH * IsoMath.WALL_UNITS
-        assert(bottom <= 2400f - 320f) { "island spills into the FAB band: $bottom" }
+    @Test fun `fitHome freezes tile size and pins the house once past the frame`() {
+        val ten = IsoMath.fitHome(10, 1080f, 2400f, 300f, 320f)
+        val thirty = IsoMath.fitHome(30, 1080f, 2400f, 300f, 320f)
+        assertEquals(ten.tileW, thirty.tileW, 1e-3f)                 // history never shrinks the world
+        val (hx10, hy10) = houseCenter(ten, 10)
+        val (hx30, hy30) = houseCenter(thirty, 30)
+        assertEquals(hx10, hx30, 1e-2f); assertEquals(hy10, hy30, 1e-2f)   // the anchor does not move
+        assertEquals(540f, hx10, 1e-2f)
+        assertEquals(300f + (2400f - 300f - 320f) * .45f, hy10, 1e-2f)
     }
 
-    @Test fun `islandRect encloses every tile of the field plus the slab wall`() {
-        val fitted = IsoMath.fitWidth(gridRows = 20, gridCols = 5, viewportW = 1080f, viewportH = 2400f, topReserve = 300f, bottomReserve = 320f)
-        val r = fitted.islandRect(gridRows = 20, gridCols = 5)
-        for (row in listOf(0, 10, 19)) for (col in listOf(0, 4)) {
+    @Test fun `a planted tile keeps its world position when a ring is added`() {
+        // plant 0 sits at (0,0) on side 10 and (1,1) on side 12 — same spot relative to the house
+        val a = IsoMath.fitHome(10, 1080f, 2400f, 300f, 320f)
+        val b = IsoMath.fitHome(12, 1080f, 2400f, 300f, 320f)
+        assertEquals(a.tileCenterX(Tile(0, 0)), b.tileCenterX(Tile(1, 1)), 1e-2f)
+        assertEquals(a.tileCenterY(Tile(0, 0)), b.tileCenterY(Tile(1, 1)), 1e-2f)
+    }
+
+    @Test fun `islandRect encloses every tile of the square field plus the slab wall`() {
+        val fitted = IsoMath.fitHome(20, 1080f, 2400f, 300f, 320f)
+        val r = fitted.islandRect(gridRows = 20, gridCols = 20)
+        for (row in listOf(0, 10, 19)) for (col in listOf(0, 10, 19)) {
             val x = fitted.tileCenterX(Tile(row, col)); val y = fitted.tileCenterY(Tile(row, col))
             assert(x in r.left..r.right && y in r.top..r.bottom) { "tile ($row,$col) at ($x,$y) outside $r" }
         }
-        assert(r.bottom >= fitted.tileCenterY(Tile(19, 4)) + fitted.tileH * IsoMath.WALL_UNITS)
+        assert(r.bottom >= fitted.tileCenterY(Tile(19, 19)) + fitted.tileH * IsoMath.WALL_UNITS)
     }
 }

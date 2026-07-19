@@ -137,7 +137,7 @@ fun GardenCanvas(
     // One iso for gestures, glide, and drawing alike. Null only before the first layout.
     val iso = remember(state.gridRows, state.gridCols, viewport, worldMode) {
         if (viewport == Size.Zero) null
-        else if (worldMode) IsoMath.fitWidth(state.gridRows, state.gridCols, viewport.width, viewport.height, topReservePx, bottomReservePx)
+        else if (worldMode) IsoMath.fitHome(state.gridRows, viewport.width, viewport.height, topReservePx, bottomReservePx)
         else IsoMath.fit(state.gridRows, state.gridCols, viewport.width, viewport.height, topReservePx, bottomReservePx)
     }
 
@@ -180,26 +180,8 @@ fun GardenCanvas(
         }
     }
 
-    // Growth glide: a new serpentine row shifts every visual row down-left half a tile.
-    // Cancel the shift instantly so the view holds still, then — if the user is sitting
-    // at the frontier — spring back to reveal the new row scrolling in from the horizon.
-    var prevRows by remember { mutableStateOf(state.gridRows) }
-    LaunchedEffect(state.gridRows, iso != null) {
-        val theIso = iso ?: return@LaunchedEffect
-        val delta = state.gridRows - prevRows
-        prevRows = state.gridRows
-        if (worldMode && cameraEnabled && delta > 0 && state.gridRows > IsoMath.FRAME_ROWS) {
-            val wasNearFrontier = abs(pan.y) < theIso.tileH && abs(pan.x) < theIso.tileW
-            val before = pan
-            pan += Offset(delta * theIso.tileW / 2f, -delta * theIso.tileH / 2f)
-            if (wasNearFrontier) {
-                val start = pan
-                Animatable(0f).animateTo(1f, spring(dampingRatio = 0.85f, stiffness = 170f)) {
-                    pan = lerp(start, before, value)
-                }
-            }
-        }
-    }
+    // 1C.6: the house-anchored fitHome() keeps every planted tile fixed on screen as a
+    // ring is added, so the old serpentine growth-glide compensation is gone entirely.
 
     // Model row 0 = front (nearest viewer); IsoMath projects row 0 topmost (farthest).
     // Flip rows at the render boundary so the model's front lands at the bottom of the
@@ -245,7 +227,7 @@ fun GardenCanvas(
     Canvas(canvasModifier) {
         val t = timeState.value
         val iso = iso ?: if (worldMode)
-            IsoMath.fitWidth(state.gridRows, state.gridCols, size.width, size.height, topReservePx, bottomReservePx)
+            IsoMath.fitHome(state.gridRows, size.width, size.height, topReservePx, bottomReservePx)
         else
             IsoMath.fit(state.gridRows, state.gridCols, size.width, size.height, topReservePx, bottomReservePx)
 

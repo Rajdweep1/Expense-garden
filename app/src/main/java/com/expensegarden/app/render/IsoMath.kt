@@ -34,9 +34,9 @@ class IsoMath(val tileW: Float, val tileH: Float, val originX: Float, val origin
          *  and the drawn island agree on the island block's true height. */
         const val WALL_UNITS = 1.05f
 
-        /** World-mode framing window: tile size is taken from an island this many rows
-         *  deep, then FROZEN — more history extends the island, never shrinks the tiles. */
-        const val FRAME_ROWS = 8
+        /** World-mode framing window: tile size is taken from an island this many tiles
+         *  per side, then FROZEN — more history rings out the island, never shrinks tiles. */
+        const val FRAME_SIDE = 8
 
         /** Scale + center a rows×cols field into the viewport between the reserved bands. */
         fun fit(gridRows: Int, gridCols: Int, viewportW: Float, viewportH: Float, topReserve: Float, bottomReserve: Float): IsoMath {
@@ -58,25 +58,19 @@ class IsoMath(val tileW: Float, val tileH: Float, val originX: Float, val origin
             return IsoMath(tileW, tileH, originX, originY)
         }
 
-        /** 1C.5 world mode: width-driven fit for the endless island. Small gardens frame
-         *  exactly like fit(); past FRAME_ROWS the tile size freezes — while the island
-         *  still fits the band vertically it stays centered (whole-field, both axes), and
-         *  once it truly outgrows the screen the frontier (visual row 0 = newest) pins
-         *  near the top band and the tail runs off-screen for the camera to explore. */
-        fun fitWidth(gridRows: Int, gridCols: Int, viewportW: Float, viewportH: Float, topReserve: Float, bottomReserve: Float): IsoMath {
-            if (gridRows <= FRAME_ROWS) return fit(gridRows, gridCols, viewportW, viewportH, topReserve, bottomReserve)
-            val frame = fit(FRAME_ROWS, gridCols, viewportW, viewportH, topReserve, bottomReserve)
+        /** 1C.6 world mode: the island is square and the HOUSE (grid center) is the anchor.
+         *  Small islands frame exactly like fit(); past FRAME_SIDE the tile size freezes and
+         *  the house pins to a fixed on-screen point — which also makes every planted tile's
+         *  world position invariant under ring growth (the origin shift as a ring is added
+         *  exactly cancels the tile's re-index, so plants never move on screen). */
+        fun fitHome(gridSide: Int, viewportW: Float, viewportH: Float, topReserve: Float, bottomReserve: Float): IsoMath {
+            if (gridSide <= FRAME_SIDE) return fit(gridSide, gridSide, viewportW, viewportH, topReserve, bottomReserve)
+            val frame = fit(FRAME_SIDE, FRAME_SIDE, viewportW, viewportH, topReserve, bottomReserve)
             val availH = viewportH - topReserve - bottomReserve
-            val islandH = (gridCols + gridRows) / 2f * frame.tileH + frame.tileH * WALL_UNITS
-            return if (islandH <= availH) {
-                val originX = viewportW / 2f + ((gridRows - 1) * .5f - (gridCols - 1) * .5f) * frame.tileW / 2f
-                val originY = topReserve + (availH - islandH) * .42f + frame.tileH / 2f
-                IsoMath(frame.tileW, frame.tileH, originX, originY)
-            } else {
-                val originX = viewportW / 2f - (gridCols - 1) * frame.tileW / 4f
-                val originY = topReserve + frame.tileH * 2.6f
-                IsoMath(frame.tileW, frame.tileH, originX, originY)
-            }
+            // house center sits at a fixed screen Y; back off by the center tile's projection
+            // so tileCenterY(house center) always lands on houseY regardless of side.
+            val houseY = topReserve + availH * .45f
+            return IsoMath(frame.tileW, frame.tileH, viewportW / 2f, houseY - (gridSide - 1) * frame.tileH / 2f)
         }
     }
 }
