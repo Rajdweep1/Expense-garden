@@ -35,6 +35,18 @@ object SpriteLoader {
             }
         }.toMap()
     }
+
+    /** Named non-plant structures (house levels). Same graceful partial-pack behavior. */
+    fun loadStructures(context: Context): Map<String, ImageBitmap> {
+        val present = runCatching { context.assets.list("garden")?.toSet() ?: emptySet() }.getOrDefault(emptySet())
+        return present.filter { it.startsWith("house_") && it.endsWith(".png") }.mapNotNull { name ->
+            runCatching {
+                context.assets.open("garden/$name").use { s ->
+                    name.removeSuffix(".png") to BitmapFactory.decodeStream(s).asImageBitmap()
+                }
+            }.getOrNull()
+        }.toMap()
+    }
 }
 
 /** Sprites where available, procedural everywhere else — a partial pack still renders a full garden.

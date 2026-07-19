@@ -27,4 +27,7 @@ class AppContainer(private val app: Application) {
 
     /** Lazy: decoded on first painter selection, not app start. Empty map = pack not installed. */
     val sprites: Map<Pair<Archetype, Int>, ImageBitmap> by lazy { SpriteLoader.load(app) }
+
+    /** House-level sprites (house_0..3), keyed by base name. Empty = not installed → house skipped. */
+    val structures: Map<String, ImageBitmap> by lazy { SpriteLoader.loadStructures(app) }
 }

@@ -32,6 +32,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.lerp
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
@@ -46,11 +47,14 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.toSize
 import com.expensegarden.app.game.Archetype
 import com.expensegarden.app.game.GardenState
 import com.expensegarden.app.game.Plant
 import com.expensegarden.app.game.SizeTier
+import com.expensegarden.app.game.SpiralTiler
 import com.expensegarden.app.game.Tile
 import com.expensegarden.app.game.Weather
 import kotlin.math.PI
@@ -72,12 +76,13 @@ private class TapPuff(val tile: Tile) {
 fun GardenCanvas(
     state: GardenState,
     painter: PlantPainter,
+    structures: Map<String, ImageBitmap> = emptyMap(),   // 1C.6 house_0..3, keyed by base name
     modifier: Modifier = Modifier,
     onPlantTap: ((String) -> Unit)? = null,
     topReservePx: Float = 300f,
     bottomReservePx: Float = 320f,
     animated: Boolean = true,
-    worldMode: Boolean = false,   // 1C.5: endless island — width-fit tiles, frontier-pinned, camera roams
+    worldMode: Boolean = false,   // 1C.6: square all-time island with a center house, camera roams
 ) {
     // One master clock in SECONDS; every motion derives its own period from it, so no
     // two ambient rhythms share a phase and drifting objects never snap on a loop seam.
@@ -188,6 +193,12 @@ fun GardenCanvas(
     // field. vis is an involution, so it also maps tapped visual tiles back to model tiles.
     fun vis(t: Tile) = Tile(state.gridRows - 1 - t.row, t.col)
 
+    // 1C.6 homestead geometry: the 2×2 house block + the 4 backyard (grove) tiles exist
+    // only in world mode on the square island; both are reserved (never planted or propped).
+    val side = state.gridRows
+    val houseTiles = if (worldMode) SpiralTiler.houseTiles(side) else emptySet()
+    val backyardTiles = if (worldMode) SpiralTiler.backyardTiles(side) else emptySet()
+
     var canvasModifier = modifier.onSizeChanged { viewport = it.toSize() }
     if (cameraEnabled) canvasModifier = canvasModifier.transformable(transformState)
     if (onPlantTap != null) {
@@ -210,7 +221,7 @@ fun GardenCanvas(
                         }
                     }
                     onPlantTap(plant.txnUuid)
-                } else if (tile.row in 0 until state.gridRows && tile.col in 0 until state.gridCols) {
+                } else if (tile.row in 0 until state.gridRows && tile.col in 0 until state.gridCols && tile !in houseTiles) {
                     val puff = TapPuff(tile)
                     puffs += puff
                     scope.launch {
@@ -338,8 +349,9 @@ fun GardenCanvas(
             scale(zoomNow, zoomNow, pivot = center)
         }) {
 
-            // ---- back-row trees on the horizon: stand just behind the field's far edge ----
-            if (rowVisible(state.gridRows - 1)) repeat(state.backRowTreeCount) { i ->
+            // ---- back-row trees on the horizon (greenhouse/monthly only; world mode shelters
+            // ---- the grove in the backyard behind the house — drawn at house depth below) ----
+            if (!worldMode && rowVisible(state.gridRows - 1)) repeat(state.backRowTreeCount) { i ->
                 val backTile = vis(Tile(state.gridRows - 1, i * 2))     // every other col along the back edge
                 val base = Offset(iso.tileCenterX(backTile), iso.tileCenterY(backTile) - iso.tileH * .35f)
                 drawOval(GardenPalette.shadow, topLeft = Offset(base.x - 26f, base.y - 8f), size = Size(52f, 16f))
@@ -417,7 +429,7 @@ fun GardenCanvas(
             for (r in 0 until state.gridRows) for (c in 0 until state.gridCols) {
                 if (!rowVisible(r)) continue
                 val tile = Tile(r, c)
-                if (tile in occupied) continue
+                if (tile in occupied || tile in houseTiles || tile in backyardTiles) continue
                 val h = (r * 31 + c * 17 + 7) * 1103515245
                 val v = vis(tile)
                 val cx = iso.tileCenterX(v); val cy = iso.tileCenterY(v)
@@ -450,8 +462,39 @@ fun GardenCanvas(
                 }
             }
 
+            // ---- homestead: house sprite + backyard grove, drawn at the block's depth so
+            // ---- plants behind it occlude correctly and plants in front sit over it ----
+            val houseBmp = if (worldMode) (structures["house_${(state.houseLevel - 1).coerceIn(0, 3)}"] ?: structures["house_0"]) else null
+            val houseRowsVisible = rowVisible(side / 2) || rowVisible(side / 2 - 1)
+            val houseCorners = listOf(Tile(side / 2 - 1, side / 2 - 1), Tile(side / 2 - 1, side / 2), Tile(side / 2, side / 2 - 1), Tile(side / 2, side / 2))
+            val hAnchorX = if (houseBmp != null) houseCorners.map { iso.tileCenterX(vis(it)) }.average().toFloat() else 0f
+            val hAnchorY = if (houseBmp != null) houseCorners.maxOf { iso.tileCenterY(vis(it)) } + iso.tileH * .5f else 0f
+            val ds = this
+            val drawHomestead = {
+                with(ds) {
+                    val yard = backyardTiles.sortedBy { it.col }
+                    repeat(minOf(state.backRowTreeCount, yard.size)) { i ->
+                        val bt = yard[i]
+                        val base = Offset(iso.tileCenterX(vis(bt)), iso.tileCenterY(vis(bt)) + iso.tileH * .18f)
+                        drawOval(GardenPalette.shadow, topLeft = Offset(base.x - 26f, base.y - 8f), size = Size(52f, 16f))
+                        val treeH = iso.tileH * (2.6f + minOf(state.trunkTier, 15) * .06f)
+                        val sway = sin((t / 4.3f + i * .8f) * TAU) * 1.2f
+                        with(painter) { drawPlant(Plant("grove-$i", Archetype.TREE, SizeTier.L, false, Tile(0, 0), i * 31), base, treeH, sway) }
+                    }
+                    houseBmp?.let { house(it, hAnchorX, hAnchorY, iso.tileW * 2.3f, GardenPalette.shadow.copy(alpha = .22f)) }
+                }
+            }
+            var houseDrawn = false
+
+            // 1C.6: cap animated zombies (nearest first) so a rough month isn't a whole horde in motion.
+            val animatedZombies = visPlants.filter { it.archetype == Archetype.ZOMBIE }
+                .sortedByDescending { it.tile.row }.take(4).map { it.txnUuid }.toSet()
+
             // ---- plants, back to front (max model row = farthest visually, drawn first) ----
             visPlants.sortedByDescending { iso.depth(it.tile) }.forEach { plant ->
+                if (houseBmp != null && houseRowsVisible && !houseDrawn && plant.tile.row < side / 2 - 1) {
+                    drawHomestead(); houseDrawn = true
+                }
                 val v = vis(plant.tile)
                 val ax = iso.tileCenterX(v); val ay = iso.tileCenterY(v) + iso.tileH * .18f
                 val anchor = Offset(ax, ay)
@@ -475,14 +518,20 @@ fun GardenCanvas(
                 val speedMul = if (plant.isWeed) 1.6f else 1f
                 val ph = plant.seed.mod(628) / 100f
                 val isZombie = plant.archetype == Archetype.ZOMBIE
-                // zombies shamble: a slow heavy lean with an occasional lurch-dip, never a happy breath
-                val lean =
-                    if (isZombie) sin(t / 1.9f * TAU + ph) * 1.1f + sin(t / 7.3f * TAU + ph * 2f) * 2.4f
-                    else sin(t / swayPeriod * speedMul * TAU + ph) * (2.2f + plant.seed.mod(5) * .3f) * (if (plant.isWeed) 1.25f else 1f)
+                val zAnim = isZombie && plant.txnUuid in animatedZombies
+                // zombies shamble: a slow heavy lean with an occasional lurch-dip, never a happy
+                // breath. Beyond the animated cap a zombie just holds a frozen lean.
+                val lean = when {
+                    zAnim -> sin(t / 1.9f * TAU + ph) * 1.1f + sin(t / 7.3f * TAU + ph * 2f) * 2.4f
+                    isZombie -> 1.2f
+                    else -> sin(t / swayPeriod * speedMul * TAU + ph) * (2.2f + plant.seed.mod(5) * .3f) * (if (plant.isWeed) 1.25f else 1f)
+                }
                 val breathAmp = when (plant.sizeTier) { SizeTier.S -> .026f; SizeTier.M -> .020f; SizeTier.L -> .013f }
-                val breath =
-                    if (isZombie) .035f * maxOf(0f, sin(t / 3.7f * TAU + ph)) - .01f
-                    else sin(t / (swayPeriod * .618f) * TAU + ph * 1.7f) * breathAmp
+                val breath = when {
+                    zAnim -> .035f * maxOf(0f, sin(t / 3.7f * TAU + ph)) - .01f
+                    isZombie -> 0f
+                    else -> sin(t / (swayPeriod * .618f) * TAU + ph * 1.7f) * breathAmp
+                }
                 val j = jiggle[plant.txnUuid]?.value ?: 1f               // tap wobble: squash then springy stretch
                 val squashY = 1f + breath - (1f - j) * .16f
                 val squashX = 1f - breath * .6f + (1f - j) * .11f
@@ -500,6 +549,8 @@ fun GardenCanvas(
                     }
                 }
             }
+            // house had no plants in front of it (or all front rows culled) — draw it now
+            if (houseBmp != null && houseRowsVisible && !houseDrawn) drawHomestead()
 
             // ---- month signposts: little wooden signs where each month's growth began ----
             state.monthMarkers.forEach { m ->
@@ -571,12 +622,13 @@ fun GardenCanvas(
                 }
 
                 // ---- every third bird cycle, one bird visits the grove tree instead ----
-                if (state.backRowTreeCount > 0 && rowVisible(state.gridRows - 1)) {
+                val groveTile = if (worldMode) backyardTiles.minByOrNull { it.col } else Tile(state.gridRows - 1, 0)
+                if (state.backRowTreeCount > 0 && groveTile != null && rowVisible(groveTile.row)) {
                     val bCycle = floor(t / 13f).toInt()
                     if (bCycle % 3 == 2) {
                         val bu = (t % 13f) / 13f
-                        val backTile = vis(Tile(state.gridRows - 1, 0))
-                        val treeBase = Offset(iso.tileCenterX(backTile), iso.tileCenterY(backTile) - iso.tileH * .35f)
+                        val backTile = vis(groveTile)
+                        val treeBase = Offset(iso.tileCenterX(backTile), iso.tileCenterY(backTile) + (if (worldMode) iso.tileH * .18f else -iso.tileH * .35f))
                         val treeH = iso.tileH * (2.6f + minOf(state.trunkTier, 15) * .06f)
                         val crown = Offset(treeBase.x + iso.tileW * .08f, treeBase.y - treeH * .80f)
                         val inFrom = crown + Offset(-iso.tileW * 4.5f, -iso.tileH * 2.5f)
@@ -684,6 +736,19 @@ private fun DrawScope.diamond(cx: Float, cy: Float, w: Float, h: Float, color: C
     // faint highlight along the two far edges sells the raised lip
     val hl = Path().apply { moveTo(cx - w / 2, cy); lineTo(cx, cy - h / 2); lineTo(cx + w / 2, cy) }
     drawPath(hl, Color(0x1AFFFFFF), style = Stroke(2.5f))
+}
+
+/** The center-island house, bottom-anchored at (cx, baseY) — the front corner of its 2×2 block. */
+private fun DrawScope.house(bmp: ImageBitmap, cx: Float, baseY: Float, spanW: Float, shadow: Color) {
+    val hW = spanW
+    val hH = hW * bmp.height / bmp.width
+    drawOval(shadow, topLeft = Offset(cx - hW * .42f, baseY - hH * .05f), size = Size(hW * .84f, hH * .13f))
+    drawImage(
+        image = bmp,
+        srcOffset = IntOffset.Zero, srcSize = IntSize(bmp.width, bmp.height),
+        dstOffset = IntOffset((cx - hW / 2f).toInt(), (baseY - hH).toInt()),
+        dstSize = IntSize(hW.toInt(), hH.toInt()),
+    )
 }
 
 private fun DrawScope.wall(top1: Offset, top2: Offset, depth: Float, light: Color, dark: Color) {

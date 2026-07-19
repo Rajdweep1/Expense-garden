@@ -84,6 +84,7 @@ private fun GardenNav(vm: MainViewModel, dashVm: DashboardViewModel, gardenVm: G
                     if (container.sprites.isEmpty()) com.expensegarden.app.render.ProceduralPainter()
                     else com.expensegarden.app.render.SpritePainter(container.sprites)
                 },
+                structures = remember { (context.applicationContext as GardenApp).container.structures },
                 onScan = {
                     scanLauncher.launch(
                         ScanOptions()

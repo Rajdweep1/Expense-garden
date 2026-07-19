@@ -41,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.expensegarden.app.core.Money
@@ -60,6 +61,7 @@ fun GardenHomeScreen(
     gardenVm: GardenViewModel,
     vm: MainViewModel,
     painter: PlantPainter,
+    structures: Map<String, ImageBitmap> = emptyMap(),
     onScan: () -> Unit,
     onManual: () -> Unit,
     onOpenDashboard: () -> Unit,
@@ -77,6 +79,7 @@ fun GardenHomeScreen(
             GardenCanvas(
                 state = g,
                 painter = painter,
+                structures = structures,
                 modifier = Modifier.fillMaxSize(),
                 onPlantTap = { uuid -> scope.launch { plantTarget = gardenVm.plantRow(uuid) } },
                 worldMode = true,   // 1C.5: home is the endless all-time island
