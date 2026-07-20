@@ -481,7 +481,10 @@ fun GardenCanvas(
                         val sway = sin((t / 4.3f + i * .8f) * TAU) * 1.2f
                         with(painter) { drawPlant(Plant("grove-$i", Archetype.TREE, SizeTier.L, false, Tile(0, 0), i * 31), base, treeH, sway) }
                     }
-                    houseBmp?.let { house(it, hAnchorX, hAnchorY, iso.tileW * 2.3f, GardenPalette.shadow.copy(alpha = .22f)) }
+                    // Draw-size grows with level so the upgrade reads as SIZE, not just detail:
+                    // hut 2.0 → cottage 2.22 → two-story 2.44 → villa 2.66 tile-widths.
+                    val houseSpan = iso.tileW * (2.0f + 0.22f * (state.houseLevel - 1).coerceIn(0, 3))
+                    houseBmp?.let { house(it, hAnchorX, hAnchorY, houseSpan, GardenPalette.shadow.copy(alpha = .22f)) }
                 }
             }
             var houseDrawn = false
@@ -706,6 +709,17 @@ fun GardenCanvas(
         }) {
             if (!rowVisible(0)) return@withTransform
             val baseY = iso.tileCenterY(vis(Tile(0, state.gridCols - 1))) + iso.tileH * IsoMath.WALL_UNITS
+            // 1C.6 Task 10: drought shore shamblers — a regretted-spending signal. When the
+            // month is a drought (over budget), 1–2 mini-zombies wander the waterline below
+            // the slab, never on tiles. The master clock freezes them when animations are off.
+            if (worldMode && state.weather == Weather.DROUGHT) {
+                repeat(2) { i ->
+                    val walk = t / 40f + i * .5f
+                    val sx = center.x + sin(walk * TAU) * size.width * .34f
+                    val sy = baseY + iso.tileH * (.7f + i * .4f) + abs(sin(walk * TAU * 9f)) * iso.tileH * .06f
+                    shoreShambler(Offset(sx, sy), iso.tileH * 1.2f)
+                }
+            }
             listOf(-.18f, .12f, .38f).forEachIndexed { i, dx ->
                 val mx = size.width * (.5f + dx) + sin((t / 6.7f + i * .3f) * TAU) * 14f
                 drawOval(GardenPalette.mist, topLeft = Offset(mx - 130f, baseY - 34f + i * 10f), size = Size(260f, 68f))
@@ -749,6 +763,28 @@ private fun DrawScope.house(bmp: ImageBitmap, cx: Float, baseY: Float, spanW: Fl
         dstOffset = IntOffset((cx - hW / 2f).toInt(), (baseY - hH).toInt()),
         dstSize = IntSize(hW.toInt(), hH.toInt()),
     )
+}
+
+/** 1C.6 Task 10: a mini regret-zombie shambling the waterline during a drought. Mirrors
+ *  ProceduralPainter.zombie's shape (green body, X eyes, receipt hat) so it reads as kin to
+ *  the risen purchases on the island, but lives off-tile in the water below the slab. */
+private fun DrawScope.shoreShambler(a: Offset, h: Float) {
+    drawOval(GardenPalette.shadow.copy(alpha = .18f), topLeft = Offset(a.x - h * .18f, a.y - h * .04f), size = Size(h * .36f, h * .10f))
+    drawOval(Color(0xFF7E9464), topLeft = Offset(a.x - h * .16f, a.y - h * .52f), size = Size(h * .32f, h * .52f))
+    drawCircle(Color(0xFF9DB07C), radius = h * .15f, center = Offset(a.x, a.y - h * .60f))
+    listOf(-1f, 1f).forEach { s ->                       // drooping arms reaching forward
+        drawLine(Color(0xFF7E9464), Offset(a.x + s * h * .14f, a.y - h * .40f),
+            Offset(a.x + s * h * .26f, a.y - h * .22f), strokeWidth = h * .07f, cap = StrokeCap.Round)
+    }
+    listOf(-.06f, .06f).forEach { dx ->                  // X eyes
+        val e = Offset(a.x + h * dx, a.y - h * .62f)
+        drawLine(Color(0xFF3A2A1E), Offset(e.x - h * .025f, e.y - h * .025f), Offset(e.x + h * .025f, e.y + h * .025f), strokeWidth = h * .018f)
+        drawLine(Color(0xFF3A2A1E), Offset(e.x - h * .025f, e.y + h * .025f), Offset(e.x + h * .025f, e.y - h * .025f), strokeWidth = h * .018f)
+    }
+    rotate(degrees = -14f, pivot = Offset(a.x, a.y - h * .72f)) {  // receipt hat
+        drawRoundRect(Color(0xFFF4EFE2), topLeft = Offset(a.x - h * .09f, a.y - h * .84f), size = Size(h * .18f, h * .13f), cornerRadius = CornerRadius(h * .015f))
+        drawLine(Color(0xFFC64545), Offset(a.x - h * .05f, a.y - h * .78f), Offset(a.x + h * .05f, a.y - h * .78f), strokeWidth = h * .015f)
+    }
 }
 
 private fun DrawScope.wall(top1: Offset, top2: Offset, depth: Float, light: Color, dark: Color) {
