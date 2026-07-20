@@ -171,7 +171,9 @@ class ProceduralPainter : PlantPainter {
 
 /** Height in px for a tier, relative to tile height. */
 fun tierHeight(tileH: Float, tier: SizeTier): Float = when (tier) {
-    SizeTier.S -> tileH * 1.4f
-    SizeTier.M -> tileH * 2.0f
-    SizeTier.L -> tileH * 2.7f
+    // Full-body sprites (1C.6 FLUX cast) carry far more mass than the old thin-stem SVGs,
+    // so the multipliers are ~25% lower than the SVG-era values to keep the island breathing.
+    SizeTier.S -> tileH * 1.05f
+    SizeTier.M -> tileH * 1.5f
+    SizeTier.L -> tileH * 2.0f
 }
