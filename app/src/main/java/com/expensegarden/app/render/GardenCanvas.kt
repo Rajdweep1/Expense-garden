@@ -475,9 +475,12 @@ fun GardenCanvas(
                     val yard = backyardTiles.sortedBy { it.col }
                     repeat(minOf(state.backRowTreeCount, yard.size)) { i ->
                         val bt = yard[i]
-                        val base = Offset(iso.tileCenterX(vis(bt)), iso.tileCenterY(vis(bt)) + iso.tileH * .18f)
+                        // Pushed back (-.30 tileH) and shortened as the house grows so the
+                        // taller upper levels — villa cupola especially — clear the canopy.
+                        val base = Offset(iso.tileCenterX(vis(bt)), iso.tileCenterY(vis(bt)) - iso.tileH * .12f)
                         drawOval(GardenPalette.shadow, topLeft = Offset(base.x - 26f, base.y - 8f), size = Size(52f, 16f))
-                        val treeH = iso.tileH * (2.6f + minOf(state.trunkTier, 15) * .06f)
+                        val groveScale = 1f - .07f * (state.houseLevel - 1).coerceIn(0, 3)
+                        val treeH = iso.tileH * (2.6f + minOf(state.trunkTier, 15) * .06f) * groveScale
                         val sway = sin((t / 4.3f + i * .8f) * TAU) * 1.2f
                         with(painter) { drawPlant(Plant("grove-$i", Archetype.TREE, SizeTier.L, false, Tile(0, 0), i * 31), base, treeH, sway) }
                     }
