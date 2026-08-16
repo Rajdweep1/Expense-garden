@@ -556,9 +556,14 @@ fun GardenCanvas(
                         val old = spanOf(expandFrom!!.houseLevel)
                         old + (newSpan - old) * ep
                     } else newSpan
-                    // Crossfade old house → new over the same 1.5s, both at the lerped anchor.
+                    // Dissolve old house → new over the same 1.5s, both at the lerped anchor.
+                    // The OLD one stays fully opaque underneath and only the new one fades in:
+                    // cross-fading at (1−ep)/ep leaves total coverage at ep+(1−ep)², which dips
+                    // to 0.75 mid-tween and shows ground tiles straight through the walls.
+                    // Opaque-under + fade-over keeps coverage at ep + 1·(1−ep) = 1 throughout.
+                    // Its shadow is suppressed so the two don't stack into a double-dark pool.
                     val oldBmp = if (expanding) structures["house_${(expandFrom!!.houseLevel - 1).coerceIn(0, 3)}"] else null
-                    oldBmp?.let { house(it, hAnchor.x, hAnchor.y, houseSpan, GardenPalette.shadow.copy(alpha = .22f), alpha = 1f - ep) }
+                    oldBmp?.let { house(it, hAnchor.x, hAnchor.y, houseSpan, Color.Transparent, alpha = 1f) }
                     houseBmp?.let { house(it, hAnchor.x, hAnchor.y, houseSpan, GardenPalette.shadow.copy(alpha = .22f), alpha = if (expanding) ep else 1f) }
                 }
             }
