@@ -18,11 +18,20 @@ object PlantMapper {
         8L to Archetype.HERB_TUFT,      // Personal
         11L to Archetype.BUSH,          // Misc
     )
+    /** 1C.7: a subcategory may override its root's family — consulted BEFORE the root maps.
+     *  Food & Drinks is the highest-volume root, so its subcats earn distinct looks. */
+    private val archetypeBySubcat = mapOf(
+        102L to Archetype.CURL_VINE,      // Delivery — something that arrived
+        103L to Archetype.CHAI_CLUSTER,   // Chai & Snacks — small and frequent
+    )
+
     /** Sprite variants per archetype (matching the asset pack); everything else has one look. */
     private val variantCounts = mapOf(
         Archetype.PETAL_FLOWER to 3, Archetype.TULIP to 3, Archetype.BELL_FLOWER to 2,
         Archetype.HERB_TUFT to 2, Archetype.BUSH to 2, Archetype.HEDGE to 3,
         Archetype.PERENNIAL_SHRUB to 2, Archetype.TREE to 2, Archetype.ZOMBIE to 3,
+        Archetype.VEGETABLE_ROW to 2, Archetype.SUCCULENT to 2, Archetype.BERRY_BUSH to 2,
+        Archetype.CURL_VINE to 2, Archetype.CHAI_CLUSTER to 2,
     )
 
     fun variantCount(archetype: Archetype): Int = variantCounts[archetype] ?: 1
@@ -32,11 +41,11 @@ object PlantMapper {
     private val variantBySubcat = mapOf(401L to 1, 402L to 2, 301L to 1)
 
     private val necessityByRoot = mapOf(
-        2L to Archetype.HEDGE,          // Groceries
+        2L to Archetype.VEGETABLE_ROW,  // Groceries   (1C.7: was HEDGE)
         3L to Archetype.PERENNIAL_SHRUB,// Transport
-        4L to Archetype.HEDGE,          // Housing
-        5L to Archetype.PERENNIAL_SHRUB,// Health
-        9L to Archetype.HEDGE,          // Family
+        4L to Archetype.HEDGE,          // Housing — the topiary IS the rent landmark
+        5L to Archetype.SUCCULENT,      // Health      (1C.7: was PERENNIAL_SHRUB)
+        9L to Archetype.BERRY_BUSH,     // Family      (1C.7: was HEDGE)
     )
 
     fun map(txn: TransactionEntity, tree: CategoryTree): MappedPlant? {
@@ -54,6 +63,7 @@ object PlantMapper {
         val archetype = when {
             isZombie -> Archetype.ZOMBIE
             isWeed -> if (abs(seed) % 2 == 0) Archetype.THISTLE_WEED else Archetype.ODD_MUSHROOM
+            archetypeBySubcat.containsKey(txn.categoryId) -> archetypeBySubcat.getValue(txn.categoryId)
             ownNecessity -> necessityByRoot[root] ?: Archetype.HEDGE
             else -> discretionaryByRoot[root] ?: Archetype.BUSH
         }

@@ -37,6 +37,14 @@ class ProceduralPainter : PlantPainter {
                 Archetype.THISTLE_WEED -> thistle(anchor, h * jitter)
                 Archetype.ODD_MUSHROOM -> mushroom(anchor, h * jitter)
                 Archetype.ZOMBIE -> zombie(anchor, h * jitter)
+                // 1C.7 newcomers ship with sprites, so the procedural path is a
+                // nearest-neighbour alias rather than five new hand-drawn looks. This only
+                // ever renders if the asset pack is missing or a decode fails.
+                Archetype.VEGETABLE_ROW -> bush(anchor, h * jitter)
+                Archetype.BERRY_BUSH -> bush(anchor, h * jitter)
+                Archetype.SUCCULENT -> herbTuft(anchor, h * jitter)
+                Archetype.CURL_VINE -> herbTuft(anchor, h * jitter)
+                Archetype.CHAI_CLUSTER -> herbTuft(anchor, h * jitter)
             }
         }
     }

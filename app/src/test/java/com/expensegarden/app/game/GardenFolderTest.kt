@@ -45,7 +45,7 @@ class GardenFolderTest {
     @Test fun `every logged txn plants in chronological order`() {
         val g = fold(listOf(txn(103, day = 3), txn(2, day = 1), txn(103, day = 2)))
         assertEquals(3, g.plants.size)
-        assertEquals(Tile(0, 0), g.plants.first { it.archetype == Archetype.HEDGE }.tile)  // day-1 groceries planted first
+        assertEquals(Tile(0, 0), g.plants.first { it.archetype == Archetype.VEGETABLE_ROW }.tile)  // day-1 groceries planted first
         assertEquals(15_000L, g.spentPaise)
     }
 
@@ -107,7 +107,7 @@ class GardenFolderTest {
     @Test fun `all-time fold plants every month on one island in chronological order`() {
         val g = foldAll(listOf(txn(103, day = 5, month = 7), txn(2, day = 2, month = 5), txn(103, day = 10, month = 6)))
         assertEquals(3, g.plants.size)
-        assertEquals(Tile(0, 0), g.plants.first { it.archetype == Archetype.HEDGE }.tile)   // May groceries planted first
+        assertEquals(Tile(0, 0), g.plants.first { it.archetype == Archetype.VEGETABLE_ROW }.tile)   // May groceries planted first
         assertEquals("2026-07", g.monthKey)
         assertEquals(4, g.gridRows)                                                          // min rows still applies
         assertTrue(!g.archived)

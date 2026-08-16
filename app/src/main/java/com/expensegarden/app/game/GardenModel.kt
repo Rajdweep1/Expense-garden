@@ -4,7 +4,9 @@ enum class Weather { SUNNY, OVERCAST, DROUGHT }
 
 enum class Archetype {
     PETAL_FLOWER, TULIP, BELL_FLOWER, HERB_TUFT, BUSH,      // discretionary families
+    CURL_VINE, CHAI_CLUSTER,                                 // 1C.7: Food & Drinks subcategories
     HEDGE, PERENNIAL_SHRUB,                                  // necessities — dignified
+    VEGETABLE_ROW, SUCCULENT, BERRY_BUSH,                    // 1C.7: necessity split
     TREE,                                                    // investments, back row
     THISTLE_WEED, ODD_MUSHROOM,                              // weeds — grew during a breach
     ZOMBIE,                                                  // a regretted purchase, risen; revives when marked worth-it
