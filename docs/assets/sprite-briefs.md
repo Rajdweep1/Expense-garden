@@ -6,10 +6,19 @@ generation, PopCap-adjacent soft-shaded finish, ORIGINAL characters only.
 ## How these briefs are used
 
 Each image = SHARED STYLE BLOCK + the character brief + VARIANT line (if any).
-Generator: Gemini free-tier image model (`gemini-2.5-flash-image`), one image per
-prompt, then chroma-key matting (magenta), autocrop, pad square, resize 512 px,
-save to `app/src/main/assets/garden/<archetype>_<variant>.png` (loader contract
-unchanged). Script: session scratchpad `gen_sprites.py`.
+Generator: FLUX.1-schnell via `mflux` on Apple Silicon, q4-quantized copy at
+`~/.cache/mflux-models/flux1-schnell-q4`, 4 steps, creatures at 768 px and houses
+at 1024 px. Then chroma-key matting by border flood-fill, gentle despill, autocrop,
+pad square, resize 512 px, save to `app/src/main/assets/garden/<archetype>_<variant>.png`
+(loader contract unchanged). Script: `tools/art/gen.py` — **in the repo**, because the
+session scratchpad is cleaned between sessions and has eaten it twice.
+
+Warm-palette sprites (tulips, berries) shoot on a CYAN screen; everything else on
+MAGENTA. Magenta despill destroys legitimate pink and red — it bleached the tulips
+white before this rule existed.
+
+This file is the human-readable source of truth; `tools/art/briefs.py` is the
+executable mirror. Keep them in sync — this is the copy that survives a wipe.
 
 ## Shared style block (prepended to every prompt)
 
@@ -17,13 +26,18 @@ unchanged). Script: session scratchpad `gen_sprites.py`.
 > plant creature with an oversized head and huge glossy eyes, soft airbrushed
 > shading, rounded chunky volumes, thick clean dark-brown outlines, vibrant
 > saturated colors, warm rim light from the upper left, standing on a small soil
-> mound. Single character, full body, centered, isolated on a solid bright magenta
-> background (#FF00FF). No text, no watermark, no logo.
+> mound. Single character, full body, centered, isolated on a solid bright
+> {screen} background. No text, no watermark, no logo. No drop shadow, no cast
+> shadow, no shadow ellipse on the ground.
 > This must be an ORIGINAL character design. It must NOT depict or resemble
 > Peashooter, Sunflower, Wall-nut, Crazy Dave, or any Plants vs. Zombies character.
 
-The zombie and house briefs swap "plant creature" for their own subject line but
-keep every other clause.
+`{screen}` is substituted per sprite — magenta by default, cyan for warm palettes.
+
+The zombie brief swaps "plant creature" for its own subject line but keeps every
+other clause. Houses use a separate BUILDING_STYLE block that drops every face
+clause entirely — the shared creature block put googly eyes on the hut during the
+1C.6 pilot.
 
 ## Casting sheet
 
@@ -40,7 +54,22 @@ keep every other clause.
 | thistle_weed_0 | **Scruff** (weed) | Scraggly thistle punk: spiky awkward purple-green tuft, guilty sideways glance, sheepish grimace. |
 | odd_mushroom_0 | **Dozer** (weed) | Droopy dusty-purple mushroom creature: lopsided cap slid over one eye, half-asleep confused expression, tiny yawn. |
 | zombie_0/1/2 | **The Regret** | Cartoon zombie garden-person freshly risen out of the soil: grey-green skin, big round skull with a heavy brow, mismatched wide white eyes with tiny pupils, dislocated open jaw with a few crooked teeth, torn olive-brown t-shirt with a stitched fabric patch, shredded blue-grey trousers, both arms stretched forward with limp dangling fingers, a crumpled white paper RECEIPT (red scribble on it) stuck on its head like a little hat, soil clods at its feet, one small buzzing fly. Goofy and harmless, not scary or gory. Extra negatives: no suit, no necktie, no traffic cone, no bucket. 0: tiny toddler-sized. 1: standard shambler. 2: big heavy bruiser, wider jaw, both arms fully out. |
-| house_0..3 | **The Homestead** | Cozy storybook garden cottage viewed from the front at a slight three-quarter angle suiting an isometric game, warm cream walls, front door facing viewer-left, round window, potted flower by the door, same outline + soft-shading style, on a soil base. 0: small thatched-roof hut with a stitched thatch patch. 1: stone cottage with a chimney. 2: two-story brick house with shutters. 3: villa with a balcony and flower trellis. |
+| house_0..3 | **The Homestead** | Cozy storybook garden dwelling viewed from the front at a slight three-quarter angle suiting an isometric game, warm cream walls, front door facing viewer-left, round window, potted flower by the door, same outline + soft-shading style, on a soil base. 0: small thatched-roof hut with a stitched thatch patch. 1: stone cottage with a chimney. 2 (revised 1C.6): a GRAND TWO-STORY house — brick walls, tall shuttered windows on both floors, a steep gabled roof, a chimney. 3 (revised 1C.6): a STATELY VILLA MANSION — wide symmetrical facade, a columned portico over the entrance, a first-floor balcony with a railing, a small cupola on the roof, flower trellis. |
+
+## 1C.7 additions
+
+Five new archetypes splitting mappings that previously shared a look: three necessity
+roots that all grew `HEDGE`/`PERENNIAL_SHRUB`, and two Food & Drinks subcategories that
+all grew `PETAL_FLOWER`. No faces on these — they are plants, not creatures, so they use
+the shared style block minus its character clauses.
+
+| File(s) | Character | Brief core |
+|---|---|---|
+| vegetable_row_0/1 | **Patch** (Groceries) | A low neat row of three plump round cabbages with crinkled blue-green outer leaves, chunky and sturdy. v1: leafy dark-green chard with bright pale stems, broad ruffled leaves fanning outward. |
+| succulent_0/1 | **Nurse** (Health) | A single aloe rosette, thick tapered blue-green paddles radiating from the center, matte waxy surface, calm and sculptural. v1: compact jade succulent, rounded fleshy leaves in tight clusters on short stems. |
+| berry_bush_0/1 | **Kin** (Family) — **CYAN screen** | A rounded compact bush of small dark-green leaves studded with clusters of bright red berries, cheerful and generous. v1: deep purple-blue berries. Shot on cyan, not magenta: magenta despill would bleach the berries exactly as it bleached the tulips. |
+| curl_vine_0/1 | **Dash** (Delivery) | A single coiled green vine spiralling upward in loose curls, small heart-shaped leaves along its length, springy and quick-looking — something that arrived. v1: tighter corkscrew curls with a few tiny pale tendrils. |
+| chai_cluster_0/1 | **Kettle** (Chai & Snacks) | A low tight cluster of many tiny round cream-and-amber buds on short green stems, small and numerous. v1: pale-green buds, slightly taller sprigs at the center. |
 
 ## Acceptance
 
