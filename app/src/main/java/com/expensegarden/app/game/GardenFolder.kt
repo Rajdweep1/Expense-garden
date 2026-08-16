@@ -74,6 +74,9 @@ object GardenFolder {
         allTimeInvestmentCount: Int,
         today: LocalDate,
         zone: ZoneId,
+        houseLevelOverride: Int? = null,                     // 1C.7: fold the SAME txns at a
+                                                             // previous house level, for the
+                                                             // expansion tween's "before" state
     ): GardenState {
         val ym = YearMonth.from(today)
         val daysInMonth = ym.lengthOfMonth()
@@ -86,14 +89,17 @@ object GardenFolder {
                 m to YearMonth.from(Instant.ofEpochMilli(t.occurredAt).atZone(zone)).toString()
             }
         }
-        val tiles = SpiralTiler.tiles(mapped.size)
+        // Months tracked = distinct months with any LOGGED txn (investments count — showing
+        // up is showing up). The house is the monument to sticking with it.
+        val monthsTracked = ordered.map { YearMonth.from(Instant.ofEpochMilli(it.occurredAt).atZone(zone)) }.distinct().size
+        // 1C.7: the house's footprint drives the tiling, so the level must be resolved first.
+        val level = houseLevelOverride ?: houseLevel(monthsTracked)
+        val foot = SpiralTiler.footprint(level)
+        val tiles = SpiralTiler.tiles(mapped.size, foot)
         val plants = mapped.mapIndexed { i, (m, _) -> Plant(m.txnUuid, m.archetype, m.sizeTier, m.isWeed, tiles[i], m.seed, m.variant) }
         val markers = mapped.mapIndexedNotNull { i, (_, mk) ->
             if (i == 0 || mapped[i - 1].second != mk) MonthMarker(mk, tiles[i]) else null
         }
-        // Months tracked = distinct months with any LOGGED txn (investments count — showing
-        // up is showing up). The house is the monument to sticking with it.
-        val monthsTracked = ordered.map { YearMonth.from(Instant.ofEpochMilli(it.occurredAt).atZone(zone)) }.distinct().size
 
         val currentTxns = ordered.filter { YearMonth.from(Instant.ofEpochMilli(it.occurredAt).atZone(zone)) == ym }
         val leafSums = currentTxns.groupBy { it.categoryId }.mapValues { (_, l) -> l.sumOf { it.amountPaise } }
@@ -113,10 +119,10 @@ object GardenFolder {
             streakDays = StreakMath.underPaceStreak(dayTotals, overall, today.dayOfMonth, daysInMonth),
             noSpendDays = StreakMath.noSpendDays(dayTotals, today.dayOfMonth),
             archived = false,
-            gridRows = SpiralTiler.gridSide(mapped.size),
-            gridCols = SpiralTiler.gridSide(mapped.size),
+            gridRows = SpiralTiler.gridSide(mapped.size, foot),
+            gridCols = SpiralTiler.gridSide(mapped.size, foot),
             monthMarkers = markers,
-            houseLevel = houseLevel(monthsTracked),
+            houseLevel = level,
         )
     }
 

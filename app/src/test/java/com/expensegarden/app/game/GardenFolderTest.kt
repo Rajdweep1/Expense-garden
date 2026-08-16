@@ -8,6 +8,7 @@ import com.expensegarden.app.data.TransactionEntity
 import com.expensegarden.app.data.TxnSource
 import com.expensegarden.app.data.TxnStatus
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
@@ -100,7 +101,8 @@ class GardenFolderTest {
         events: List<GameEventEntity> = emptyList(),
         allTimeInvestmentCount: Int = 0,
         today: LocalDate = LocalDate.of(2026, 7, 10),
-    ) = GardenFolder.foldAllTime(txns, categories, budgets, events, allTimeInvestmentCount, today, zone)
+        houseLevelOverride: Int? = null,
+    ) = GardenFolder.foldAllTime(txns, categories, budgets, events, allTimeInvestmentCount, today, zone, houseLevelOverride)
 
     @Test fun `all-time fold plants every month on one island in chronological order`() {
         val g = foldAll(listOf(txn(103, day = 5, month = 7), txn(2, day = 2, month = 5), txn(103, day = 10, month = 6)))
@@ -152,5 +154,31 @@ class GardenFolderTest {
         val g = fold((1..23).map { txn(103, day = it) })
         assertEquals(5, g.gridRows)                     // ceil(23/5) — postcards unchanged
         assertEquals(1, g.houseLevel)
+    }
+
+    // ---- 1C.7: the growing homestead footprint ----
+
+    @Test fun `houseLevelOverride yields the old level and the old footprint together`() {
+        // The "before" state must be internally coherent — old level AND old footprint — not a
+        // hybrid, or the expansion tween lerps against a bogus layout.
+        val txns = (1..7).map { m -> txn(103, day = 2, month = m) }            // 7 months → level 3
+        val now = foldAll(txns)
+        assertEquals(3, now.houseLevel)
+        assertEquals(SpiralTiler.gridSide(now.plants.size, 3), now.gridRows)
+
+        val before = foldAll(txns, houseLevelOverride = 2)
+        assertEquals(2, before.houseLevel)
+        assertEquals(SpiralTiler.gridSide(before.plants.size, 2), before.gridRows)
+        // Same transactions, same order — only the tiles differ.
+        assertEquals(now.plants.map { it.txnUuid }, before.plants.map { it.txnUuid })
+        assertNotEquals(now.plants.map { it.tile }, before.plants.map { it.tile })
+    }
+
+    @Test fun `default fold is unchanged by the override parameter`() {
+        val txns = (4..6).map { m -> txn(103, day = 2, month = m) }
+        assertEquals(
+            foldAll(txns).plants.map { it.tile },
+            foldAll(txns, houseLevelOverride = null).plants.map { it.tile },
+        )
     }
 }
