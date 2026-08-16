@@ -20,7 +20,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # runnable from 
 
 from briefs import PROMPTS, STYLE, BUILDING_STYLE  # noqa: E402
 
-MFLUX = "mflux-generate"
+# Resolve the CLI next to whichever interpreter is running us, so
+# `~/.cache/expense-garden-art-venv/bin/python3 gen.py` works without touching PATH.
+_SIBLING = os.path.join(os.path.dirname(sys.executable), "mflux-generate")
+MFLUX = _SIBLING if os.path.exists(_SIBLING) else "mflux-generate"
 MODEL = os.path.expanduser("~/.cache/mflux-models/flux1-schnell-q4")
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, "..", ".."))

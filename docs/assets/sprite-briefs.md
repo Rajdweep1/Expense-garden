@@ -60,8 +60,9 @@ clause entirely — the shared creature block put googly eyes on the hut during 
 
 Five new archetypes splitting mappings that previously shared a look: three necessity
 roots that all grew `HEDGE`/`PERENNIAL_SHRUB`, and two Food & Drinks subcategories that
-all grew `PETAL_FLOWER`. No faces on these — they are plants, not creatures, so they use
-the shared style block minus its character clauses.
+all grew `PETAL_FLOWER`. These use the full shared STYLE block, faces included — the
+whole 1C.6 cast is faced, and a faceless plant reads as an outsider next to Sunny and
+Warden. The brief core below describes the body; the face comes from the style block.
 
 | File(s) | Character | Brief core |
 |---|---|---|
