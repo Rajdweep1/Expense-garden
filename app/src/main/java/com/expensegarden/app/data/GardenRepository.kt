@@ -31,8 +31,9 @@ class GardenRepository(private val db: AppDatabase, private val ledger: LedgerRe
         }
     }
 
-    /** 1C.5: the persistent island — every LOGGED txn ever, with the current month's sky. */
-    fun observeAllTimeGarden(): Flow<GardenState> {
+    /** 1C.5: the persistent island — every LOGGED txn ever, with the current month's sky.
+     *  1C.7: houseLevelOverride folds the same txns at a previous level, for the expansion. */
+    fun observeAllTimeGarden(houseLevelOverride: Int? = null): Flow<GardenState> {
         val monthKey = ledger.currentMonthKey()
         val (from, to) = ledger.boundsOfMonth(monthKey)
         return combine(
@@ -42,7 +43,7 @@ class GardenRepository(private val db: AppDatabase, private val ledger: LedgerRe
             db.gameEventDao().observeEventsBetween(from, to),
             db.transactionDao().observeLoggedCountIn(investmentIds()),
         ) { txns, cats, budgets, events, sips ->
-            GardenFolder.foldAllTime(txns, cats, budgets, events, sips, LocalDate.now(zone), zone)
+            GardenFolder.foldAllTime(txns, cats, budgets, events, sips, LocalDate.now(zone), zone, houseLevelOverride)
         }
     }
 

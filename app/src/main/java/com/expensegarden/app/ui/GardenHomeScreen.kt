@@ -68,6 +68,7 @@ fun GardenHomeScreen(
     onOpenGreenhouse: () -> Unit,
 ) {
     val garden by gardenVm.garden.collectAsState()
+    val expandFrom by gardenVm.expandFrom.collectAsState()
     val header by vm.homeHeader.collectAsState()
     val pending by vm.pendingConfirm.collectAsState()
     val scope = rememberCoroutineScope()
@@ -83,6 +84,8 @@ fun GardenHomeScreen(
                 modifier = Modifier.fillMaxSize(),
                 onPlantTap = { uuid -> scope.launch { plantTarget = gardenVm.plantRow(uuid) } },
                 worldMode = true,   // 1C.5: home is the endless all-time island
+                expandFrom = expandFrom,
+                onExpansionShown = { gardenVm.markExpansionShown() },
             )
         }
 
