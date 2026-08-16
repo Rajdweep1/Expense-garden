@@ -89,4 +89,22 @@ class IsoMathTest {
         }
         assert(r.bottom >= fitted.tileCenterY(Tile(19, 19)) + fitted.tileH * IsoMath.WALL_UNITS)
     }
+
+    @Test fun `house centroid screen position is independent of footprint`() {
+        // 1C.7 §1: the block is centered, so its centroid index is (side−1)/2 for every
+        // footprint — the f cancels. This is exactly why fitHome takes no footprint argument.
+        // side ≡ f (mod 2) always, so an even side is only ever paired with an even f.
+        val side = 12
+        val iso = IsoMath.fitHome(side, 1080f, 2400f, 300f, 320f)
+        fun centroid(f: Int): Pair<Float, Float> {
+            val lo = (side - f) / 2
+            val tiles = buildList {
+                for (r in lo until lo + f) for (c in lo until lo + f) add(Tile(r, c))
+            }
+            return tiles.map { iso.tileCenterX(it) }.average().toFloat() to
+                tiles.map { iso.tileCenterY(it) }.average().toFloat()
+        }
+        assertEquals(centroid(2).first, centroid(4).first, 0.01f)
+        assertEquals(centroid(2).second, centroid(4).second, 0.01f)
+    }
 }
