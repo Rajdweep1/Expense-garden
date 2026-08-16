@@ -1,41 +1,58 @@
 package com.expensegarden.app.game
 
-/** 1C.6 homestead tiling: a square island that grows in chronological rings around a
- *  fixed 2×2 house block. Ring 1's back edge is the backyard (grove); both are reserved.
- *  Coordinates are absolute per side, but positions are invariant RELATIVE to the house —
- *  the canvas anchors the house on screen, so growth never moves a planted tile visually. */
+/** 1C.6 homestead tiling: a square island that grows in chronological rings around a centered
+ *  house block. Ring 1's back edge is the backyard (grove); both are reserved.
+ *
+ *  1C.7: the house block is f×f and f grows with houseLevel. Every function defaults to f = 2,
+ *  so all 1C.6 behaviour is exactly the f = 2 case — SpiralTilerTest passes unchanged.
+ *
+ *  Note side = f + 2k, so side and f ALWAYS share parity and (side − f) / 2 is exact. */
 object SpiralTiler {
-    fun rings(plantCount: Int): Int {
+    /** House side in tiles per house level (spec §1). Hut and cottage share the 2×2 plot, so
+     *  levelling 1→2 is a rebuild, not a land grab, and triggers no re-layout. */
+    fun footprint(houseLevel: Int): Int = when (houseLevel.coerceIn(1, 4)) {
+        1, 2 -> 2
+        3 -> 3
+        else -> 4
+    }
+
+    fun rings(plantCount: Int, f: Int = 2): Int {
         var k = 1
-        while (capacity(k) < plantCount) k++
+        while (capacity(k, f) < plantCount) k++
         return k
     }
 
-    fun gridSide(plantCount: Int): Int = 2 + 2 * rings(plantCount)
+    fun gridSide(plantCount: Int, f: Int = 2): Int = f + 2 * rings(plantCount, f)
 
-    /** Plantable tiles through ring k: ring i holds 4+8i, minus ring 1's 4 backyard tiles. */
-    fun capacity(k: Int): Int = 4 * k * k + 8 * k - 4
+    /** Plantable tiles through ring k around an f×f core. Ring i holds (f+2i)² − (f+2i−2)²
+     *  = 4f + 8i − 4 tiles; summing i=1..k gives 4k² + 4fk. Minus the 4 reserved grove tiles.
+     *  f = 2 reduces to the 1C.6 formula 4k² + 8k − 4. */
+    fun capacity(k: Int, f: Int = 2): Int = 4 * k * k + 4 * f * k - 4
 
-    fun houseTiles(side: Int): Set<Tile> {
-        val lo = side / 2 - 1
-        return setOf(Tile(lo, lo), Tile(lo, lo + 1), Tile(lo + 1, lo), Tile(lo + 1, lo + 1))
+    fun houseTiles(side: Int, f: Int = 2): Set<Tile> {
+        val lo = (side - f) / 2
+        return buildSet { for (r in lo until lo + f) for (c in lo until lo + f) add(Tile(r, c)) }
     }
 
-    fun backyardTiles(side: Int): Set<Tile> {
-        val r = side / 2 + 1
-        return (side / 2 - 2..side / 2 + 1).map { Tile(r, it) }.toSet()
+    /** 4 tiles on the row directly behind the house. The left edge lo + f/2 − 2 (INTEGER
+     *  division) reproduces the 1C.6 placement exactly at f = 2 and lands flush on the house
+     *  at f = 4; at f = 3 it is one column left-biased, which is invisible in isometric. */
+    fun backyardTiles(side: Int, f: Int = 2): Set<Tile> {
+        val lo = (side - f) / 2
+        val c0 = lo + f / 2 - 2
+        return (c0 until c0 + 4).map { Tile(lo + f, it) }.toSet()
     }
 
-    fun tiles(plantCount: Int): List<Tile> {
-        val side = gridSide(plantCount)
-        val center = side / 2                                     // house block spans center-1..center
+    fun tiles(plantCount: Int, f: Int = 2): List<Tile> {
+        val side = gridSide(plantCount, f)
+        val origin = (side - f) / 2                               // house block spans origin..origin+f-1
         val out = ArrayList<Tile>(plantCount)
-        val skip = backyardTiles(side).map { Tile(it.row - center, it.col - center) }.toSet()
+        val skip = backyardTiles(side, f).map { Tile(it.row - origin, it.col - origin) }.toSet()
         var k = 1
         while (out.size < plantCount) {
-            // ring k around the house block, in house-relative coords (house cells are rows/cols -1 and 0)
-            val lo = -1 - k
-            val hi = k
+            // ring k around the house block, in house-relative coords (house cells are 0..f-1)
+            val lo = -k
+            val hi = f - 1 + k
             val walk = buildList {
                 for (c in lo..hi) add(Tile(lo, c))                // front edge, left → right
                 for (r in lo + 1..hi) add(Tile(r, hi))            // right edge, front → back
@@ -45,7 +62,7 @@ object SpiralTiler {
             for (t in walk) {
                 if (t in skip) continue
                 if (out.size == plantCount) break
-                out += Tile(t.row + center, t.col + center)
+                out += Tile(t.row + origin, t.col + origin)
             }
             k++
         }
