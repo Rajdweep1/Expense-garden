@@ -1,6 +1,7 @@
 package com.expensegarden.app.render
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
@@ -83,6 +84,8 @@ fun GardenCanvas(
     bottomReservePx: Float = 320f,
     animated: Boolean = true,
     worldMode: Boolean = false,   // 1C.6: square all-time island with a center house, camera roams
+    expandFrom: GardenState? = null,          // 1C.7: the SAME txns folded at the previous house level
+    onExpansionShown: (() -> Unit)? = null,   // fired once the tween completes, so it never replays
 ) {
     // One master clock in SECONDS; every motion derives its own period from it, so no
     // two ambient rhythms share a phase and drifting objects never snap on a loop seam.
@@ -97,6 +100,17 @@ fun GardenCanvas(
     } else {
         remember { mutableFloatStateOf(47f) }   // an arbitrary frozen moment mid-scene
     }
+
+    // 1C.7: one-shot homestead expansion. 0→1 over 1.5s, then the caller records the level so
+    // it never replays. Static callers (greenhouse cards) never pass expandFrom, so ep stays 1.
+    val expand = remember(expandFrom) { Animatable(if (expandFrom == null) 1f else 0f) }
+    LaunchedEffect(expandFrom) {
+        if (expandFrom == null) return@LaunchedEffect
+        expand.snapTo(0f)
+        expand.animateTo(1f, tween(1500, easing = FastOutSlowInEasing))
+        onExpansionShown?.invoke()
+    }
+    val ep = expand.value
 
     // Pop-in: new uuids since last state spring from 0→1 with overshoot; first composition skips the show.
     val pop = remember { mutableStateMapOf<String, Animatable<Float, *>>() }
@@ -467,14 +481,53 @@ fun GardenCanvas(
 
             // ---- homestead: house sprite + backyard grove, drawn at the block's depth so
             // ---- plants behind it occlude correctly and plants in front sit over it ----
+            // 1C.7 expansion: plants glide from their old tiles to their new ones. Positions
+            // are lerped in SCREEN space between each state's OWN iso, so a changed island
+            // side needs no special-casing. The ground/slab renders at the new size for the
+            // whole tween — the land is already there; the house pushes the garden onto it.
+            val isoFrom = expandFrom?.let {
+                IsoMath.fitHome(it.gridRows, size.width, size.height, topReservePx, bottomReservePx)
+            }
+            val fromTiles = expandFrom?.plants?.associate { it.txnUuid to it.tile } ?: emptyMap()
+            val fromRows = expandFrom?.gridRows ?: 0
+            fun visFrom(t: Tile) = Tile(fromRows - 1 - t.row, t.col)
+            val expanding = expandFrom != null && isoFrom != null && ep < 1f
+
+            /** Bottom-center of a plant, lerped from its previous tile while expanding. */
+            fun anchorOf(plant: Plant): Offset {
+                val v = vis(plant.tile)
+                val nx = iso.tileCenterX(v)
+                val ny = iso.tileCenterY(v) + iso.tileH * .18f
+                val ft = fromTiles[plant.txnUuid]
+                if (!expanding || ft == null) return Offset(nx, ny)
+                val fv = visFrom(ft)
+                val im = isoFrom!!                          // local capture: no smart-cast reliance
+                val ox = im.tileCenterX(fv)
+                val oy = im.tileCenterY(fv) + im.tileH * .18f
+                return Offset(ox + (nx - ox) * ep, oy + (ny - oy) * ep)
+            }
+
+            /** House anchor for a given state under its own projection. */
+            fun houseAnchor(s: GardenState, im: IsoMath, flip: (Tile) -> Tile): Offset {
+                val f = SpiralTiler.footprint(s.houseLevel)
+                val lo = (s.gridRows - f) / 2
+                val corners = listOf(
+                    Tile(lo, lo), Tile(lo, lo + f - 1),
+                    Tile(lo + f - 1, lo), Tile(lo + f - 1, lo + f - 1),
+                )
+                return Offset(
+                    corners.map { im.tileCenterX(flip(it)) }.average().toFloat(),
+                    corners.maxOf { im.tileCenterY(flip(it)) } + im.tileH * .5f,
+                )
+            }
+
             val houseBmp = if (worldMode) (structures["house_${(state.houseLevel - 1).coerceIn(0, 3)}"] ?: structures["house_0"]) else null
             val houseRowsVisible = (houseLo until houseLo + foot).any { rowVisible(it) }
-            val houseCorners = listOf(
-                Tile(houseLo, houseLo), Tile(houseLo, houseLo + foot - 1),
-                Tile(houseLo + foot - 1, houseLo), Tile(houseLo + foot - 1, houseLo + foot - 1),
-            )
-            val hAnchorX = if (houseBmp != null) houseCorners.map { iso.tileCenterX(vis(it)) }.average().toFloat() else 0f
-            val hAnchorY = if (houseBmp != null) houseCorners.maxOf { iso.tileCenterY(vis(it)) } + iso.tileH * .5f else 0f
+            val hNew = houseAnchor(state, iso, ::vis)
+            val hAnchor = if (expanding) {
+                val hOld = houseAnchor(expandFrom!!, isoFrom!!, ::visFrom)
+                Offset(hOld.x + (hNew.x - hOld.x) * ep, hOld.y + (hNew.y - hOld.y) * ep)
+            } else hNew
             val ds = this
             val drawHomestead = {
                 with(ds) {
@@ -492,13 +545,21 @@ fun GardenCanvas(
                     }
                     // Draw-size follows the footprint ladder (1C.7 §4): the villa spans half
                     // the frame. Level 2 slightly overhangs its 2×2 plot, as in 1C.6.
-                    val houseSpan = iso.tileW * when (state.houseLevel.coerceIn(1, 4)) {
+                    fun spanOf(level: Int) = iso.tileW * when (level.coerceIn(1, 4)) {
                         1 -> 2.0f
                         2 -> 2.4f
                         3 -> 3.2f
                         else -> 4.0f
                     }
-                    houseBmp?.let { house(it, hAnchorX, hAnchorY, houseSpan, GardenPalette.shadow.copy(alpha = .22f)) }
+                    val newSpan = spanOf(state.houseLevel)
+                    val houseSpan = if (expanding) {
+                        val old = spanOf(expandFrom!!.houseLevel)
+                        old + (newSpan - old) * ep
+                    } else newSpan
+                    // Crossfade old house → new over the same 1.5s, both at the lerped anchor.
+                    val oldBmp = if (expanding) structures["house_${(expandFrom!!.houseLevel - 1).coerceIn(0, 3)}"] else null
+                    oldBmp?.let { house(it, hAnchor.x, hAnchor.y, houseSpan, GardenPalette.shadow.copy(alpha = .22f), alpha = 1f - ep) }
+                    houseBmp?.let { house(it, hAnchor.x, hAnchor.y, houseSpan, GardenPalette.shadow.copy(alpha = .22f), alpha = if (expanding) ep else 1f) }
                 }
             }
             var houseDrawn = false
@@ -512,9 +573,8 @@ fun GardenCanvas(
                 if (houseBmp != null && houseRowsVisible && !houseDrawn && plant.tile.row < houseLo) {
                     drawHomestead(); houseDrawn = true
                 }
-                val v = vis(plant.tile)
-                val ax = iso.tileCenterX(v); val ay = iso.tileCenterY(v) + iso.tileH * .18f
-                val anchor = Offset(ax, ay)
+                val anchor = anchorOf(plant)
+                val ax = anchor.x; val ay = anchor.y
                 val popScale = pop[plant.txnUuid]?.value ?: 1f
                 if (popScale < 1f) {                                     // soil poof while springing in
                     drawCircle(GardenPalette.wallLeft.copy(alpha = (1f - popScale) * .5f), radius = iso.tileW * .3f * (0.4f + popScale), center = anchor)
@@ -767,15 +827,16 @@ private fun DrawScope.diamond(cx: Float, cy: Float, w: Float, h: Float, color: C
 }
 
 /** The center-island house, bottom-anchored at (cx, baseY) — the front corner of its 2×2 block. */
-private fun DrawScope.house(bmp: ImageBitmap, cx: Float, baseY: Float, spanW: Float, shadow: Color) {
+private fun DrawScope.house(bmp: ImageBitmap, cx: Float, baseY: Float, spanW: Float, shadow: Color, alpha: Float = 1f) {
     val hW = spanW
     val hH = hW * bmp.height / bmp.width
-    drawOval(shadow, topLeft = Offset(cx - hW * .42f, baseY - hH * .05f), size = Size(hW * .84f, hH * .13f))
+    drawOval(shadow.copy(alpha = shadow.alpha * alpha), topLeft = Offset(cx - hW * .42f, baseY - hH * .05f), size = Size(hW * .84f, hH * .13f))
     drawImage(
         image = bmp,
         srcOffset = IntOffset.Zero, srcSize = IntSize(bmp.width, bmp.height),
         dstOffset = IntOffset((cx - hW / 2f).toInt(), (baseY - hH).toInt()),
         dstSize = IntSize(hW.toInt(), hH.toInt()),
+        alpha = alpha,
     )
 }
 
