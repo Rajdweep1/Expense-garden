@@ -193,11 +193,14 @@ fun GardenCanvas(
     // field. vis is an involution, so it also maps tapped visual tiles back to model tiles.
     fun vis(t: Tile) = Tile(state.gridRows - 1 - t.row, t.col)
 
-    // 1C.6 homestead geometry: the 2×2 house block + the 4 backyard (grove) tiles exist
-    // only in world mode on the square island; both are reserved (never planted or propped).
+    // 1C.6 homestead geometry: the house block + the 4 backyard (grove) tiles exist only in
+    // world mode on the square island; both are reserved (never planted or propped).
+    // 1C.7: the block is footprint×footprint, growing 2→3→4 with the house level.
     val side = state.gridRows
-    val houseTiles = if (worldMode) SpiralTiler.houseTiles(side) else emptySet()
-    val backyardTiles = if (worldMode) SpiralTiler.backyardTiles(side) else emptySet()
+    val foot = SpiralTiler.footprint(state.houseLevel)
+    val houseLo = (side - foot) / 2
+    val houseTiles = if (worldMode) SpiralTiler.houseTiles(side, foot) else emptySet()
+    val backyardTiles = if (worldMode) SpiralTiler.backyardTiles(side, foot) else emptySet()
 
     var canvasModifier = modifier.onSizeChanged { viewport = it.toSize() }
     if (cameraEnabled) canvasModifier = canvasModifier.transformable(transformState)
@@ -465,8 +468,11 @@ fun GardenCanvas(
             // ---- homestead: house sprite + backyard grove, drawn at the block's depth so
             // ---- plants behind it occlude correctly and plants in front sit over it ----
             val houseBmp = if (worldMode) (structures["house_${(state.houseLevel - 1).coerceIn(0, 3)}"] ?: structures["house_0"]) else null
-            val houseRowsVisible = rowVisible(side / 2) || rowVisible(side / 2 - 1)
-            val houseCorners = listOf(Tile(side / 2 - 1, side / 2 - 1), Tile(side / 2 - 1, side / 2), Tile(side / 2, side / 2 - 1), Tile(side / 2, side / 2))
+            val houseRowsVisible = (houseLo until houseLo + foot).any { rowVisible(it) }
+            val houseCorners = listOf(
+                Tile(houseLo, houseLo), Tile(houseLo, houseLo + foot - 1),
+                Tile(houseLo + foot - 1, houseLo), Tile(houseLo + foot - 1, houseLo + foot - 1),
+            )
             val hAnchorX = if (houseBmp != null) houseCorners.map { iso.tileCenterX(vis(it)) }.average().toFloat() else 0f
             val hAnchorY = if (houseBmp != null) houseCorners.maxOf { iso.tileCenterY(vis(it)) } + iso.tileH * .5f else 0f
             val ds = this
@@ -484,9 +490,14 @@ fun GardenCanvas(
                         val sway = sin((t / 4.3f + i * .8f) * TAU) * 1.2f
                         with(painter) { drawPlant(Plant("grove-$i", Archetype.TREE, SizeTier.L, false, Tile(0, 0), i * 31), base, treeH, sway) }
                     }
-                    // Draw-size grows with level so the upgrade reads as SIZE, not just detail:
-                    // hut 2.0 → cottage 2.22 → two-story 2.44 → villa 2.66 tile-widths.
-                    val houseSpan = iso.tileW * (2.0f + 0.22f * (state.houseLevel - 1).coerceIn(0, 3))
+                    // Draw-size follows the footprint ladder (1C.7 §4): the villa spans half
+                    // the frame. Level 2 slightly overhangs its 2×2 plot, as in 1C.6.
+                    val houseSpan = iso.tileW * when (state.houseLevel.coerceIn(1, 4)) {
+                        1 -> 2.0f
+                        2 -> 2.4f
+                        3 -> 3.2f
+                        else -> 4.0f
+                    }
                     houseBmp?.let { house(it, hAnchorX, hAnchorY, houseSpan, GardenPalette.shadow.copy(alpha = .22f)) }
                 }
             }
@@ -498,7 +509,7 @@ fun GardenCanvas(
 
             // ---- plants, back to front (max model row = farthest visually, drawn first) ----
             visPlants.sortedByDescending { iso.depth(it.tile) }.forEach { plant ->
-                if (houseBmp != null && houseRowsVisible && !houseDrawn && plant.tile.row < side / 2 - 1) {
+                if (houseBmp != null && houseRowsVisible && !houseDrawn && plant.tile.row < houseLo) {
                     drawHomestead(); houseDrawn = true
                 }
                 val v = vis(plant.tile)
