@@ -556,15 +556,38 @@ fun GardenCanvas(
                         val old = spanOf(expandFrom!!.houseLevel)
                         old + (newSpan - old) * ep
                     } else newSpan
-                    // Dissolve old house → new over the same 1.5s, both at the lerped anchor.
-                    // The OLD one stays fully opaque underneath and only the new one fades in:
-                    // cross-fading at (1−ep)/ep leaves total coverage at ep+(1−ep)², which dips
-                    // to 0.75 mid-tween and shows ground tiles straight through the walls.
-                    // Opaque-under + fade-over keeps coverage at ep + 1·(1−ep) = 1 throughout.
-                    // Its shadow is suppressed so the two don't stack into a double-dark pool.
+                    // EXACTLY ONE house sprite is visible at any instant. The levels have
+                    // different silhouettes — roof shape, height, width — so ANY alpha blend of
+                    // the pair shows the union of both outlines: a house wearing two roofs,
+                    // which reads as a broken model rather than a transition. (Cross-fading at
+                    // (1−ep)/ep also dipped coverage to 0.75 and showed ground through the walls;
+                    // both attempts failed for the same underlying reason.) So: hard-swap at the
+                    // midpoint and hide the cut behind a construction puff — the same idiom the
+                    // tap dust uses, and how the genre has always concealed a building swap.
                     val oldBmp = if (expanding) structures["house_${(expandFrom!!.houseLevel - 1).coerceIn(0, 3)}"] else null
-                    oldBmp?.let { house(it, hAnchor.x, hAnchor.y, houseSpan, Color.Transparent, alpha = 1f) }
-                    houseBmp?.let { house(it, hAnchor.x, hAnchor.y, houseSpan, GardenPalette.shadow.copy(alpha = .22f), alpha = if (expanding) ep else 1f) }
+                    val shownBmp = if (expanding && ep < .5f) (oldBmp ?: houseBmp) else houseBmp
+                    shownBmp?.let { house(it, hAnchor.x, hAnchor.y, houseSpan, GardenPalette.shadow.copy(alpha = .22f)) }
+                    if (expanding) {
+                        // Dust swells across ep .30–.70 and peaks exactly on the cut at .50.
+                        val s = ((ep - .30f) / .40f).coerceIn(0f, 1f)
+                        val a = sin(s * PI.toFloat())
+                        val puffY = hAnchor.y - houseSpan * .14f
+                        repeat(5) { k ->
+                            val r = houseSpan * (.15f + .20f * s) * (1f - .12f * abs(k - 2))
+                            drawCircle(
+                                Color.White.copy(alpha = a * .60f), radius = r,
+                                center = Offset(hAnchor.x + (k - 2) * houseSpan * .21f, puffY - s * houseSpan * .05f),
+                            )
+                        }
+                        repeat(6) { k ->
+                            val ang = (k / 6f) * TAU
+                            val d = houseSpan * (.20f + .30f * s)
+                            drawCircle(
+                                GardenPalette.leaf.copy(alpha = a * .70f), radius = houseSpan * .022f,
+                                center = Offset(hAnchor.x + cos(ang) * d, puffY + sin(ang) * d * .45f),
+                            )
+                        }
+                    }
                 }
             }
             var houseDrawn = false
