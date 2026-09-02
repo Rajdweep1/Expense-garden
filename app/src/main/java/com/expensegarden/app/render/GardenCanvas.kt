@@ -596,12 +596,19 @@ fun GardenCanvas(
             val animatedZombies = visPlants.filter { it.archetype == Archetype.ZOMBIE }
                 .sortedByDescending { it.tile.row }.take(4).map { it.txnUuid }.toSet()
 
-            // ---- plants, back to front (max model row = farthest visually, drawn first) ----
-            visPlants.sortedByDescending { iso.depth(it.tile) }.forEach { plant ->
-                if (houseBmp != null && houseRowsVisible && !houseDrawn && plant.tile.row < houseLo) {
+            // ---- plants, back to front ----
+            // Draw order AND the house's insertion point both key off the anchor's SCREEN Y,
+            // never the tile row. Isometric depth runs along row+col diagonals, so a row-only
+            // test misfiles any plant whose column pulls it behind the house. Short plants hid
+            // that for two phases; the 1C.7 villa stands ~8 tile-heights tall, so a misfiled
+            // plant no longer lands beside the house — it lands on its wall or roof.
+            // Ground-position Y is the correct depth for a billboard, and it also keeps the
+            // ordering honest mid-expansion while anchors are still lerping.
+            val houseBaseY = hAnchor.y
+            visPlants.map { it to anchorOf(it) }.sortedBy { it.second.y }.forEach { (plant, anchor) ->
+                if (houseBmp != null && houseRowsVisible && !houseDrawn && anchor.y > houseBaseY) {
                     drawHomestead(); houseDrawn = true
                 }
-                val anchor = anchorOf(plant)
                 val ax = anchor.x; val ay = anchor.y
                 val popScale = pop[plant.txnUuid]?.value ?: 1f
                 if (popScale < 1f) {                                     // soil poof while springing in
