@@ -543,13 +543,21 @@ fun GardenCanvas(
                         val sway = sin((t / 4.3f + i * .8f) * TAU) * 1.2f
                         with(painter) { drawPlant(Plant("grove-$i", Archetype.TREE, SizeTier.L, false, Tile(0, 0), i * 31), base, treeH, sway) }
                     }
-                    // Draw-size follows the footprint ladder (1C.7 §4): the villa spans half
-                    // the frame. Level 2 slightly overhangs its 2×2 plot, as in 1C.6.
+                    // Draw-size follows the footprint ladder (1C.7 §4). Level 2 slightly
+                    // overhangs its 2×2 plot, as in 1C.6.
+                    // The villa's 5.2 is deliberately more than the ladder would suggest: the
+                    // island's BACK CORNER projects to the topmost point of the diamond, dead
+                    // centre — directly above the house. Plants standing there are correctly
+                    // drawn behind the house but were tall enough to clear its roofline, so
+                    // their faces appeared to sit on the roof. Raising the silhouette is the
+                    // only fix that preserves growth-invariance: reserving those tiles cannot
+                    // work, because they are island-EDGE relative and therefore move outward
+                    // every time a ring is added, which would shift already-planted tiles.
                     fun spanOf(level: Int) = iso.tileW * when (level.coerceIn(1, 4)) {
                         1 -> 2.0f
                         2 -> 2.4f
                         3 -> 3.2f
-                        else -> 4.0f
+                        else -> 5.2f
                     }
                     val newSpan = spanOf(state.houseLevel)
                     val houseSpan = if (expanding) {
