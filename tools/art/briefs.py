@@ -133,9 +133,15 @@ PROMPTS = {
     "house_1": _HOMESTEAD + " A stone cottage with a chimney.",
     "house_2": _HOMESTEAD + " A GRAND TWO-STORY house: brick walls, tall shuttered "
     "windows on both floors, a steep gabled roof, a chimney.",
+    # The villa MUST be one solid mass. The first pass drew overhanging eaves and an
+    # overhanging balcony, leaving see-through bands across 68 rows of the facade — on a
+    # packed island the garden showed through them and the house read as stacked slabs.
     "house_3": _HOMESTEAD + " A STATELY VILLA MANSION: wide symmetrical facade, a "
-    "columned portico over the entrance, a first-floor balcony "
-    "with a railing, a small cupola on the roof, flower trellis.",
+    "columned portico built flush against the wall, a first-floor balcony whose "
+    "underside is a SOLID wall, a small cupola on the roof, flower trellis. The "
+    "building is ONE SOLID CONTINUOUS MASS: solid unbroken walls from the roof down "
+    "to the ground, no gaps between floors, no open space beneath the balcony or the "
+    "eaves, nothing see-through anywhere in the building.",
     # ---- 1C.7 necessity split ----
     "vegetable_row_0": (
         "A low neat row of three plump round cabbages with crinkled blue-green outer "

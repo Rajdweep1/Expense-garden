@@ -156,8 +156,36 @@ def gen(name, prompt_core):
         check=True,
     )
     out = os.path.join(OUT_DIR, name + ".png")
-    key_out(raw, screen).save(out)
+    img = key_out(raw, screen)
+    img.save(out)
     print("saved", out)
+    if name.startswith("house"):
+        bad = facade_gaps(img)
+        if bad:
+            print(f"  WARNING {name}: {bad} rows are >30% see-through across the facade.")
+            print("  A building with holes in it shows the garden through its walls and reads")
+            print("  as stacked slabs. Re-roll with SEED_OFFSET rather than shipping it.")
+
+
+def facade_gaps(img, thresh=0.30):
+    """Count rows where the building is substantially see-through side to side.
+
+    Houses are the one archetype that must be a solid mass: they sit at the centre of a
+    packed island, so any hole in the silhouette frames a creature's face and the building
+    stops reading as one object. Creatures are exempt — gaps between leaves are the point.
+    """
+    w, h = img.size
+    px = img.load()
+    bad = 0
+    for y in range(h):
+        xs = [x for x in range(w) if px[x, y][3] >= 40]
+        if len(xs) < 2:
+            continue
+        lo, hi = xs[0], xs[-1]
+        clear = sum(1 for x in range(lo, hi + 1) if px[x, y][3] < 40)
+        if clear > thresh * (hi - lo + 1):
+            bad += 1
+    return bad
 
 
 if __name__ == "__main__":

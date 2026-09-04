@@ -612,11 +612,16 @@ fun GardenCanvas(
             // plant no longer lands beside the house — it lands on its wall or roof.
             // Ground-position Y is the correct depth for a billboard, and it also keeps the
             // ordering honest mid-expansion while anchors are still lerping.
-            val houseBaseY = hAnchor.y
+            // The house is deliberately NOT interleaved into this loop. Per-plant depth is
+            // correct for plants, but the house is a single tall billboard: any plant sorted
+            // in front of it paints across the sprite, and because plants sit at all heights
+            // the result was horizontal seams — foliage and faces banding the house under the
+            // eave and under the balcony, so it read as three stacked slabs with garden
+            // showing through the joins. A landmark building must render whole, so it is drawn
+            // after every plant (see the drawHomestead() call below the loop). The cost is
+            // that plants standing directly in front of it lose their tops behind the wall —
+            // Rajdweep's explicit call: an unbroken house beats a few occluded plants.
             visPlants.map { it to anchorOf(it) }.sortedBy { it.second.y }.forEach { (plant, anchor) ->
-                if (houseBmp != null && houseRowsVisible && !houseDrawn && anchor.y > houseBaseY) {
-                    drawHomestead(); houseDrawn = true
-                }
                 val ax = anchor.x; val ay = anchor.y
                 val popScale = pop[plant.txnUuid]?.value ?: 1f
                 if (popScale < 1f) {                                     // soil poof while springing in
@@ -670,6 +675,7 @@ fun GardenCanvas(
                 }
             }
             // house had no plants in front of it (or all front rows culled) — draw it now
+            // Sole draw path for the homestead: after every plant, so the house is never sliced.
             if (houseBmp != null && houseRowsVisible && !houseDrawn) drawHomestead()
 
             // ---- month signposts: little wooden signs where each month's growth began ----
