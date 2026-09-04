@@ -67,8 +67,7 @@ fun GardenHomeScreen(
     onOpenDashboard: () -> Unit,
     onOpenGreenhouse: () -> Unit,
 ) {
-    val garden by gardenVm.garden.collectAsState()
-    val expandFrom by gardenVm.expandFrom.collectAsState()
+    val homestead by gardenVm.homestead.collectAsState()
     val header by vm.homeHeader.collectAsState()
     val pending by vm.pendingConfirm.collectAsState()
     val scope = rememberCoroutineScope()
@@ -76,7 +75,8 @@ fun GardenHomeScreen(
     val dateFmt = remember { DateTimeFormatter.ofPattern("dd MMM") }
 
     Box(Modifier.fillMaxSize()) {
-        garden?.let { g ->
+        homestead?.let { h ->
+            val g = h.state
             GardenCanvas(
                 state = g,
                 painter = painter,
@@ -84,7 +84,7 @@ fun GardenHomeScreen(
                 modifier = Modifier.fillMaxSize(),
                 onPlantTap = { uuid -> scope.launch { plantTarget = gardenVm.plantRow(uuid) } },
                 worldMode = true,   // 1C.5: home is the endless all-time island
-                expandFrom = expandFrom,
+                expandFrom = h.expandFrom,
                 onExpansionShown = { gardenVm.markExpansionShown() },
             )
         }
@@ -107,7 +107,7 @@ fun GardenHomeScreen(
                 if (h == null) Text(" ", style = MaterialTheme.typography.titleMedium)
                 else {
                     Text(Money.display(h.spentPaise), style = MaterialTheme.typography.titleMedium)
-                    val streak = garden?.streakDays ?: 0
+                    val streak = homestead?.state?.streakDays ?: 0
                     val streakSuffix = if (streak > 0) " · 🌱${streak}d" else ""   // the streaks-lite counter (spec §1)
                     Text(
                         (h.overallBudgetPaise?.let { "${Money.display(it)} · ${gardenHint(h.hint)}" } ?: "dashboard →") + streakSuffix,
