@@ -133,15 +133,41 @@ PROMPTS = {
     "house_1": _HOMESTEAD + " A stone cottage with a chimney.",
     "house_2": _HOMESTEAD + " A GRAND TWO-STORY house: brick walls, tall shuttered "
     "windows on both floors, a steep gabled roof, a chimney.",
-    # The villa MUST be one solid mass. The first pass drew overhanging eaves and an
-    # overhanging balcony, leaving see-through bands across 68 rows of the facade — on a
-    # packed island the garden showed through them and the house read as stacked slabs.
-    "house_3": _HOMESTEAD + " A STATELY VILLA MANSION: wide symmetrical facade, a "
-    "columned portico built flush against the wall, a first-floor balcony whose "
-    "underside is a SOLID wall, a small cupola on the roof, flower trellis. The "
-    "building is ONE SOLID CONTINUOUS MASS: solid unbroken walls from the roof down "
-    "to the ground, no gaps between floors, no open space beneath the balcony or the "
-    "eaves, nothing see-through anywhere in the building.",
+    # house_3 is a CASTLE, chosen by Rajdweep 2026-09-04 after the villa re-rolls: he wanted
+    # something between a stately villa and a classical manor, referencing medieval castles.
+    #
+    # Two hard-won clauses here, both naming a specific past failure:
+    #  - Castles are full of overhangs (machicolations, corbels, bartizans) and those are
+    #    exactly what punched see-through bands through the previous villa. Forbid them.
+    #  - FLUX ignored "isolated on a magenta background" and painted a sunset sky, so the
+    #    flood-fill had nothing to key. A positive instruction was not enough; the negatives
+    #    naming sky/gradient/horizon are what fixed it.
+    # Shipped asset = SEED_OFFSET 61 on this prompt.
+    #
+    # EXPECTED: facade_gaps reports ~38 rows for this sprite. That is CORRECT and must
+    # not be 'fixed'. The gaps are the notches between the two towers and the lower
+    # central block — inherent to a twin-tower silhouette, and legitimate: you expect to
+    # see sky between castle towers. Verified on device: the castle stands tall enough
+    # that those notches sit above the island's back edge, so only sky shows through them,
+    # never plants. The gate counts transparent pixels and cannot tell a notch from a
+    # hole in a wall — the island is the arbiter, not the alpha channel.
+    "house_3": (
+        "Cozy storybook fortified manor house viewed from the front at a slight three-quarter "
+        "angle suiting an isometric game, warm pale honey-stone walls, a heavy arched timber "
+        "door with iron studs facing viewer-left, a climbing rose by the door."
+        " A GRAND CASTLE MANOR: symmetrical stone facade flanked by TWO square corner towers "
+        "with crenellated tops, a central arched gatehouse entrance under a carved stone hood, "
+        "rows of tall mullioned arched windows, stone quoins."
+        " The building is ONE SOLID CONTINUOUS MASS: crenellated parapets sit directly on top "
+        "of the walls, every tower rises from the ground, all walls solid and unbroken from the "
+        "battlements down to the ground. NO machicolations, NO corbels, NO overhanging "
+        "bartizans, NO projecting balconies, no open space beneath any part of the building, "
+        "nothing see-through anywhere."
+        " The ENTIRE background behind and around the building is ONE FLAT SOLID UNIFORM "
+        "MAGENTA COLOR filling the whole frame. Absolutely NO sky, NO clouds, NO sunset, NO "
+        "gradient, NO horizon, NO hills, NO trees, NO landscape or scenery of any kind — "
+        "nothing behind the building except flat magenta."
+    ),
     # ---- 1C.7 necessity split ----
     "vegetable_row_0": (
         "A low neat row of three plump round cabbages with crinkled blue-green outer "

@@ -159,12 +159,29 @@ def gen(name, prompt_core):
     img = key_out(raw, screen)
     img.save(out)
     print("saved", out)
-    if name.startswith("house"):
+    if key_failed(img):
+        print(f"  WARNING {name}: the chroma screen was NOT keyed out — the sprite is opaque")
+        print("  edge to edge. FLUX drew a scene background instead of the flat screen, so the")
+        print("  flood-fill had nothing to remove. Re-roll; do NOT ship a baked background.")
+    elif name.startswith("house"):
         bad = facade_gaps(img)
         if bad:
             print(f"  WARNING {name}: {bad} rows are >30% see-through across the facade.")
             print("  A building with holes in it shows the garden through its walls and reads")
             print("  as stacked slabs. Re-roll with SEED_OFFSET rather than shipping it.")
+
+
+def key_failed(img):
+    """True when the background survived keying, leaving an opaque rectangle.
+
+    Checked BEFORE facade_gaps, because a fully opaque image trivially has zero gaps —
+    total keying failure would otherwise be reported as a clean pass. FLUX occasionally
+    ignores the "solid bright {screen} background" clause and paints a sky instead.
+    """
+    w, h = img.size
+    px = img.load()
+    corners = [px[2, 2], px[w - 3, 2], px[2, h - 3], px[w - 3, h - 3]]
+    return sum(1 for c in corners if c[3] > 40) >= 3
 
 
 def facade_gaps(img, thresh=0.30):
@@ -176,14 +193,29 @@ def facade_gaps(img, thresh=0.30):
     """
     w, h = img.size
     px = img.load()
-    bad = 0
+    spans = []
     for y in range(h):
         xs = [x for x in range(w) if px[x, y][3] >= 40]
-        if len(xs) < 2:
+        spans.append((xs[0], xs[-1]) if len(xs) >= 2 else None)
+    widest = max((hi - lo + 1 for s in spans if s for lo, hi in [s]), default=1)
+    bad = 0
+    for y in range(h):
+        if not spans[y]:
             continue
-        lo, hi = xs[0], xs[-1]
+        lo, hi = spans[y]
+        width = hi - lo + 1
+        # Only judge the building's BODY. Roof finials — a spire, a cupola, a chimney —
+        # legitimately leave sky beside them, and those rows are narrow relative to the
+        # facade. Counting them made the gate cry wolf on villas that were solid-walled.
+        if width < 0.55 * widest:
+            continue
         clear = sum(1 for x in range(lo, hi + 1) if px[x, y][3] < 40)
-        if clear > thresh * (hi - lo + 1):
+        # A row that is nearly all clear between two stray edge pixels is padding, not a
+        # wall with a hole in it — the square-pad step leaves one antialiased pixel at each
+        # extreme of the top and bottom rows.
+        if width - clear < 0.10 * widest:
+            continue
+        if clear > thresh * width:
             bad += 1
     return bad
 
