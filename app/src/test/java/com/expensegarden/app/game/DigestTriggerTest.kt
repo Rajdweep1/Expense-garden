@@ -113,13 +113,19 @@ class DigestTriggerTest {
         assertTrue("monthly must all be MONTHLY", v.monthly.all { it.kind == DigestKind.MONTHLY })
     }
 
-    @Test fun `a closed month suppresses the daily card`() {
+    @Test fun `a closed month does not suppress the daily card`() {
+        // runReconciler emits month.closed and streak.hit in ONE call. Suppressing DAILY here
+        // would advance the watermark past the dodge and lose it forever. Both cards write;
+        // they live on different screens.
         val v = evaluate(
             events = listOf(DigestEvent.MonthClosed(101, "2026-08"), DigestEvent.GateDodged(102)),
             now = state(weather = Weather.DROUGHT),
         )
-        assertEquals(null, v.daily)
         assertEquals(1, v.monthly.size)
+        assertEquals(
+            listOf(Trigger.WeatherChanged(Weather.SUNNY, Weather.DROUGHT), Trigger.GateDodged(1)),
+            v.daily?.triggers,
+        )
     }
 
     // ---------- first run ----------
@@ -144,6 +150,12 @@ class DigestTriggerTest {
             mutedUntilMillis = 9_000L,          // nowMillis is 5_000 — still muted
         )
         assertTrue(v.isSilent)
+    }
+
+    @Test fun `the mute boundary is exclusive`() {
+        // nowMillis == mutedUntilMillis is NOT muted: the window is [start, until).
+        val v = evaluate(events = listOf(DigestEvent.GateDodged(101)), mutedUntilMillis = 5_000L)
+        assertTrue(!v.isSilent)
     }
 
     @Test fun `an expired mute does not silence`() {

@@ -38,6 +38,8 @@ sealed interface Trigger {
     data class HouseLevelled(val from: Int, val to: Int) : Trigger
     data class StreakCrossed(val days: Int) : Trigger
     object FirstRegretOfMonth : Trigger
+    /** A WIN. The user backed out at the payment gate; the persona celebrates it (spec §5).
+     *  Carrying the polarity here means a writer cannot mistake it for a lapse. */
     data class GateDodged(val count: Int) : Trigger
     data class MonthClosed(val monthKey: String) : Trigger
 }

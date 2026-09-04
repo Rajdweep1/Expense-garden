@@ -23,18 +23,13 @@ object DigestTrigger {
         // nothing. The rule is self-healing.
         if (mutedUntilMillis != null && nowMillis < mutedUntilMillis) return DigestVerdict.SILENT
 
-        // A closed month is bigger news than a day. One digest per closed month, and the
-        // daily card stands down — the day's transitions stay pending for tomorrow, because
-        // the snapshot freezes at write time (spec §9).
-        val closed = eventsSince.filterIsInstance<DigestEvent.MonthClosed>()
-        if (closed.isNotEmpty()) {
-            return DigestVerdict(
-                daily = null,
-                monthly = closed.sortedBy { it.monthKey }.map {
-                    DigestReason(DigestKind.MONTHLY, it.monthKey, listOf(Trigger.MonthClosed(it.monthKey)))
-                },
-            )
-        }
+        // One MONTHLY digest per closed month. These do NOT suppress the daily card: the two
+        // land on different screens (greenhouse postcard vs home), and runReconciler emits
+        // month.closed and streak.hit in the SAME call — a suppression rule would put the
+        // streak, and any dodge or regret in the window, behind the watermark forever.
+        val monthly = eventsSince.filterIsInstance<DigestEvent.MonthClosed>()
+            .sortedBy { it.monthKey }
+            .map { DigestReason(DigestKind.MONTHLY, it.monthKey, listOf(Trigger.MonthClosed(it.monthKey))) }
 
         val triggers = buildList {
             // Comparison triggers need a baseline. On first run there isn't one, so claiming
@@ -65,10 +60,7 @@ object DigestTrigger {
             }
         }
 
-        if (triggers.isEmpty()) return DigestVerdict.SILENT
-        return DigestVerdict(
-            daily = DigestReason(DigestKind.DAILY, today.toString(), triggers),
-            monthly = emptyList(),
-        )
+        val daily = if (triggers.isEmpty()) null else DigestReason(DigestKind.DAILY, today.toString(), triggers)
+        return DigestVerdict(daily, monthly)
     }
 }
