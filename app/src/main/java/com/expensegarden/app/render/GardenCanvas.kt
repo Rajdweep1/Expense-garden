@@ -674,16 +674,19 @@ fun GardenCanvas(
                     }
                 }
             }
-            // house had no plants in front of it (or all front rows culled) — draw it now
-            // Sole draw path for the homestead: after every plant, so the house is never sliced.
-            if (houseBmp != null && houseRowsVisible && !houseDrawn) drawHomestead()
-
             // ---- month signposts: little wooden signs where each month's growth began ----
+            // Drawn in TWO passes, split around the house by the same ground-depth rule the
+            // plants use. A signpost standing behind the homestead has to be occluded by it,
+            // or its label reads as a sticker on the wall — very visible now the houses are
+            // solid. Ones nearer the viewer than the house's base still draw over it, so a
+            // marker on the front tiles is not swallowed by the building's plinth.
+            fun drawMarkers(behind: Boolean) {
             state.monthMarkers.forEach { m ->
                 if (!rowVisible(m.tile.row)) return@forEach
                 val v = vis(m.tile)
                 val px = iso.tileCenterX(v) - iso.tileW * .40f
                 val py = iso.tileCenterY(v) + iso.tileH * .10f
+                if ((py <= hAnchor.y) != behind) return@forEach
                 val postH = iso.tileH * .62f
                 drawLine(GardenPalette.hullBrown, Offset(px, py), Offset(px, py - postH), strokeWidth = 4.5f, cap = StrokeCap.Round)
                 val plateW = iso.tileW * .34f; val plateH = iso.tileH * .42f
@@ -694,6 +697,13 @@ fun GardenCanvas(
                 val layout = textMeasurer.measure(label, TextStyle(fontSize = (plateH * .5f).toSp(), fontWeight = FontWeight.Bold, color = Color(0xFFFFF3DC)))
                 drawText(layout, topLeft = Offset(plateTL.x + (plateW - layout.size.width) / 2f, plateTL.y + (plateH - layout.size.height) / 2f))
             }
+            }
+
+            drawMarkers(behind = true)
+            // house had no plants in front of it (or all front rows culled) — draw it now.
+            // Sole draw path for the homestead: after every plant, so the house is never sliced.
+            if (houseBmp != null && houseRowsVisible && !houseDrawn) drawHomestead()
+            drawMarkers(behind = false)
 
             // ---- bees: orbit a flower head, then hop to the next (stable plant list, so
             // ---- panning never teleports a bee; it just goes off-screen with its flower) ----
