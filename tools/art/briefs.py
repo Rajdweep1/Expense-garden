@@ -130,7 +130,17 @@ PROMPTS = {
     "zombie_2": _REGRET + " Big heavy bruiser, wider jaw, both arms fully out.",
     # ---- The Homestead (house levels; 2 and 3 rewritten in 1C.6 for grandeur) ----
     "house_0": _HOMESTEAD + " A small thatched-roof hut with a stitched thatch patch.",
-    "house_1": _HOMESTEAD + " A stone cottage with a chimney.",
+    # house_1 originally carried no solidity clause at all — it predates the lesson — and
+    # shipped with creature faces visible through the wall/base junction and through the notch
+    # between the main roof and the porch roof. Same fix as the castle: forbid the overhangs.
+    "house_1": _HOMESTEAD + " A STONE COTTAGE with a chimney, a shingled porch roof over the "
+    "door built FLUSH against the wall, and a round window."
+    " The building is ONE SOLID CONTINUOUS MASS: solid unbroken walls from the roof down to "
+    "the ground, the walls meeting the ground with no gap, no open space beneath the roof "
+    "eaves or the porch roof, no holes or openings in the walls, nothing see-through anywhere "
+    "in the building."
+    " The ENTIRE background behind and around the building is ONE FLAT SOLID UNIFORM MAGENTA "
+    "COLOR filling the whole frame. No sky, no gradient, no horizon, no landscape.",
     "house_2": _HOMESTEAD + " A GRAND TWO-STORY house: brick walls, tall shuttered "
     "windows on both floors, a steep gabled roof, a chimney.",
     # house_3 is a CASTLE, chosen by Rajdweep 2026-09-04 after the villa re-rolls: he wanted
