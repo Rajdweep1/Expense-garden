@@ -96,7 +96,8 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     suspend fun prepareGate(amountPaise: Long): GatePrompt {
         val d = draft.value
         val verdict = ledger.evaluateGate(d.categoryId!!, amountPaise, d.occurredAt)
-        val quip = if (verdict.severity == Severity.OK) "" else container.quips.pick(verdict.severity)
+        val quip = if (verdict.severity == Severity.OK) "" else
+            container.quips.pick(verdict.severity, container.aiPrefs.tone)
         val label = verdict.offender?.takeIf { it.categoryId != null }?.label
         return GatePrompt(verdict.severity, quip, label)
     }
