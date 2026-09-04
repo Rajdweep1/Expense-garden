@@ -107,7 +107,37 @@ data class GameEventEntity(
 data class QuipEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val severity: String,                  // Severity.name — PACE_WARNING or BREACH
-    @ColumnInfo(defaultValue = "STATIC") val origin: String = "STATIC", // LLM refresh comes in 1D
+    @ColumnInfo(defaultValue = "STATIC") val origin: String = "STATIC", // STATIC or LLM
+    // 1D: the bank is bucketed by (severity × tone). The seeded STATIC lines were written in
+    // the sharp-but-fair voice, so they migrate to SHARP and act as the fallback for every
+    // tone whose LLM bucket is still empty (spec §6).
+    @ColumnInfo(defaultValue = "SHARP") val tone: String = "SHARP",     // Tone.name
     val text: String,
     val usedAt: Long?,                     // null = never used; picker prefers these
+)
+
+/** One thing the persona said (spec §9).
+ *
+ *  `UNIQUE(kind, scopeKey)` is the whole concurrency story: several transitions on one day
+ *  still produce at most one daily card, and a month cannot be summarized twice.
+ *
+ *  `lastEventId` is the watermark — the highest game_event.id seen at EVALUATION time,
+ *  captured before the LLM call. A createdAt watermark would be unsound twice over: an event
+ *  logged during the network round trip would land with an earlier timestamp and fall behind
+ *  it forever, and runReconciler stamps a whole batch of month.closed rows with one
+ *  System.currentTimeMillis(), so timestamps cannot even order them. */
+@Entity(
+    tableName = "digest",
+    indices = [Index(value = ["kind", "scopeKey"], unique = true)],
+)
+data class DigestEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val kind: String,            // DigestKind.name — DAILY or MONTHLY
+    val scopeKey: String,        // "2026-09-05" for DAILY, "2026-09" for MONTHLY
+    val text: String,
+    val reasonJson: String,      // why it spoke — traceability when a digest reads oddly
+    val snapshotJson: String,    // weather / houseLevel / streakDays at the moment of speaking
+    val lastEventId: Long,       // the watermark
+    val createdAt: Long,
+    val dismissedAt: Long?,      // null = still showing
 )

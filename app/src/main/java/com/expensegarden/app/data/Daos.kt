@@ -2,6 +2,7 @@ package com.expensegarden.app.data
 
 import androidx.room.Dao
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
 
@@ -166,9 +167,54 @@ interface GameEventDao {
 
 @Dao
 interface QuipDao {
-    @Query("SELECT * FROM quip WHERE severity = :severity ORDER BY usedAt IS NOT NULL, usedAt ASC LIMIT 1")
-    suspend fun leastRecentlyUsed(severity: String): QuipEntity?
+    /** Least-recently-used line for this (severity, tone); unused quips win first.
+     *  NOTE: this CYCLES once the bucket is exhausted — it is least-recent, not no-repeat.
+     *  Keeping repeats rare is QuipRefresher's job, not this query's (spec §7). */
+    @Query(
+        "SELECT * FROM quip WHERE severity = :severity AND tone = :tone " +
+            "ORDER BY usedAt IS NOT NULL, usedAt ASC LIMIT 1"
+    )
+    suspend fun leastRecentlyUsed(severity: String, tone: String): QuipEntity?
+
+    /** Fallback when a tone's bucket is empty: the seeded sharp-but-fair bank. */
+    @Query(
+        "SELECT * FROM quip WHERE severity = :severity AND origin = 'STATIC' " +
+            "ORDER BY usedAt IS NOT NULL, usedAt ASC LIMIT 1"
+    )
+    suspend fun leastRecentlyUsedStatic(severity: String): QuipEntity?
+
+    /** Unused stock in one bucket — drives the "below 5 lines" refresh trigger (spec §6). */
+    @Query("SELECT COUNT(*) FROM quip WHERE severity = :severity AND tone = :tone AND usedAt IS NULL")
+    suspend fun unusedCount(severity: String, tone: String): Int
 
     @Query("UPDATE quip SET usedAt = :now WHERE id = :id")
     suspend fun markUsed(id: Long, now: Long)
+
+    @Insert
+    suspend fun insertAll(quips: List<QuipEntity>)
+}
+
+@Dao
+interface DigestDao {
+    /** The watermark row — the most recent digest of any kind. */
+    @Query("SELECT * FROM digest ORDER BY id DESC LIMIT 1")
+    suspend fun latest(): DigestEntity?
+
+    @Query("SELECT * FROM digest WHERE kind = :kind AND scopeKey = :scopeKey LIMIT 1")
+    suspend fun byScope(kind: String, scopeKey: String): DigestEntity?
+
+    /** The daily card the home screen shows: today's, if it exists and is undismissed. */
+    @Query("SELECT * FROM digest WHERE kind = 'DAILY' AND scopeKey = :day AND dismissedAt IS NULL LIMIT 1")
+    fun observeDaily(day: String): Flow<DigestEntity?>
+
+    @Query("SELECT * FROM digest WHERE kind = 'MONTHLY' AND scopeKey = :monthKey LIMIT 1")
+    suspend fun monthly(monthKey: String): DigestEntity?
+
+    /** IGNORE, not REPLACE: the UNIQUE(kind, scopeKey) constraint is the concurrency guard,
+     *  and a second write for the same scope must lose rather than overwrite the first. */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insert(digest: DigestEntity): Long
+
+    @Query("UPDATE digest SET dismissedAt = :now WHERE id = :id")
+    suspend fun dismiss(id: Long, now: Long)
 }

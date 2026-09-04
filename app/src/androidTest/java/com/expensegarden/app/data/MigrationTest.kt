@@ -49,4 +49,49 @@ class MigrationTest {
         }
         assertTrue("insert with bogus categoryId must violate the new FK", rejected)
     }
+
+    @Test
+    fun migrate2To3_addsToneAndDigest_andEnforcesScopeUniqueness() {
+        helper.createDatabase("migration-test-3", 2).apply {
+            execSQL("INSERT INTO quip (severity, origin, text, usedAt) VALUES ('BREACH', 'STATIC', 'old line', NULL)")
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate("migration-test-3", 3, true, MIGRATION_2_3)
+
+        // Existing quips adopt the voice they were written in.
+        db.query("SELECT tone, text FROM quip").use { c ->
+            assertEquals(1, c.count)
+            c.moveToFirst()
+            assertEquals("SHARP", c.getString(0))
+            assertEquals("old line", c.getString(1))
+        }
+
+        // The digest table exists and its uniqueness guard actually bites — this is what
+        // stops a turbulent day producing a stream of cards instead of one.
+        db.execSQL(
+            "INSERT INTO digest (kind, scopeKey, text, reasonJson, snapshotJson, lastEventId, createdAt, dismissedAt) " +
+                "VALUES ('DAILY', '2026-09-05', 'first', '{}', '{}', 7, 1000, NULL)"
+        )
+        var rejected = false
+        try {
+            db.execSQL(
+                "INSERT INTO digest (kind, scopeKey, text, reasonJson, snapshotJson, lastEventId, createdAt, dismissedAt) " +
+                    "VALUES ('DAILY', '2026-09-05', 'second', '{}', '{}', 9, 2000, NULL)"
+            )
+        } catch (e: SQLiteConstraintException) {
+            rejected = true
+        }
+        assertTrue("a second DAILY digest for the same day must be rejected", rejected)
+
+        // A different scope is fine — one card per day, not one card ever.
+        db.execSQL(
+            "INSERT INTO digest (kind, scopeKey, text, reasonJson, snapshotJson, lastEventId, createdAt, dismissedAt) " +
+                "VALUES ('MONTHLY', '2026-09', 'month', '{}', '{}', 9, 2000, NULL)"
+        )
+        db.query("SELECT COUNT(*) FROM digest").use { c ->
+            c.moveToFirst()
+            assertEquals(2, c.getInt(0))
+        }
+    }
 }

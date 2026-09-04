@@ -21,8 +21,9 @@ class EnumConverters {
     entities = [
         CategoryEntity::class, PayeeEntity::class, TransactionEntity::class,
         BudgetEntity::class, GameEventEntity::class, QuipEntity::class,
+        DigestEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 @TypeConverters(EnumConverters::class)
@@ -33,11 +34,12 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun budgetDao(): BudgetDao
     abstract fun gameEventDao(): GameEventDao
     abstract fun quipDao(): QuipDao
+    abstract fun digestDao(): DigestDao
 
     companion object {
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "garden.db")
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .addCallback(SeedCallback)
                 .build()
     }

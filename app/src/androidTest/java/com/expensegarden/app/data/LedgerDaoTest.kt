@@ -59,9 +59,9 @@ class LedgerDaoTest {
     }
 
     @Test fun quip_picker_prefers_unused_then_lru() = runBlocking {
-        val first = db.quipDao().leastRecentlyUsed("BREACH")!!
+        val first = db.quipDao().leastRecentlyUsed("BREACH", "SHARP")!!
         db.quipDao().markUsed(first.id, now = 100L)
-        val second = db.quipDao().leastRecentlyUsed("BREACH")!!
+        val second = db.quipDao().leastRecentlyUsed("BREACH", "SHARP")!!
         // second must be a different, still-unused quip
         assertEquals(null, second.usedAt)
     }
