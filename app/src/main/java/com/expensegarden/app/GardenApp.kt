@@ -2,6 +2,7 @@ package com.expensegarden.app
 
 import android.app.Application
 import androidx.compose.ui.graphics.ImageBitmap
+import com.expensegarden.app.data.AiPrefs
 import com.expensegarden.app.data.AppDatabase
 import com.expensegarden.app.data.GardenPrefs
 import com.expensegarden.app.data.GardenRepository
@@ -26,6 +27,7 @@ class AppContainer(private val app: Application) {
     val quips: QuipRepository = QuipRepository(db)
     val garden: GardenRepository = GardenRepository(db, ledger)
     val prefs: GardenPrefs = GardenPrefs(app)
+    val aiPrefs: AiPrefs = AiPrefs(app)
 
     /** Lazy: decoded on first painter selection, not app start. Empty map = pack not installed. */
     val sprites: Map<Pair<Archetype, Int>, ImageBitmap> by lazy { SpriteLoader.load(app) }
