@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Gemini API key lives in ai_secrets.xml. Auto Backup would otherwise copy it to
+     Google's cloud (spec §2.1). Everything else — the Room ledger included — still backs
+     up, because until the Phase 2 backend exists this is the only device-loss protection. -->
+<full-backup-content>
+    <exclude domain="sharedpref" path="ai_secrets.xml" />
+</full-backup-content>
