@@ -36,7 +36,7 @@ object QuipSanitizer {
         if (line.length > MAX_LEN) return null
         if (line.contains('\n')) return null
         val lower = line.lowercase()
-        if (FORBIDDEN.any { lower.contains(it) }) return null
+        if (FORBIDDEN_AT_WORD_START.any { it.containsMatchIn(lower) }) return null
         return line
     }
 
@@ -45,4 +45,17 @@ object QuipSanitizer {
         raw.lines().mapNotNull { clean(it) }.distinct()
 
     private val NUMBER_PREFIX = Regex("^\\d+[.)]\\s*")
+
+    /** Anchored at a word START, not matched as a bare substring.
+     *
+     *  Plain `contains("rent")` fires on "cur-rent-", "diffe-rent-", "appa-rent-ly" and
+     *  "inhe-rent-ly" — ordinary words a model writing budget copy reaches for constantly.
+     *  That would reject most legitimate output while looking like it worked, since the gate
+     *  silently falls back to the static bank.
+     *
+     *  The trailing end is deliberately left open so plurals and inflections still match:
+     *  "doctors", "rents", "affording". "rental car" therefore still trips the rent rule —
+     *  an accepted false positive, and the reason the refresher asks for 8 lines at a time. */
+    private val FORBIDDEN_AT_WORD_START =
+        FORBIDDEN.map { Regex("\\b" + Regex.escape(it)) }
 }

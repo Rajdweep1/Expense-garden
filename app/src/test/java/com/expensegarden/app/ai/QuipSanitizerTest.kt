@@ -32,6 +32,21 @@ class QuipSanitizerTest {
         assertEquals(null, QuipSanitizer.clean("Groceries, seriously?"))
     }
 
+    @Test fun `a forbidden word inside a longer word is not a match`() {
+        // "rent" as a bare substring fires on current/different/apparently/inherently —
+        // words a model writing budget copy uses constantly. Rejecting those would starve
+        // the refresh while looking like it worked.
+        assertEquals("Your current pace is ambitious.", QuipSanitizer.clean("Your current pace is ambitious."))
+        assertEquals("That's a different kind of weed.", QuipSanitizer.clean("That's a different kind of weed."))
+        assertEquals("Apparently the budget disagrees.", QuipSanitizer.clean("Apparently the budget disagrees."))
+    }
+
+    @Test fun `the necessity rules still bite at a word start, plurals included`() {
+        assertEquals(null, QuipSanitizer.clean("Rent again? Predictable."))
+        assertEquals(null, QuipSanitizer.clean("Two doctors in one month."))
+        assertEquals(null, QuipSanitizer.clean("Still affording that, are you?"))
+    }
+
     @Test fun `splits a multi-line response and drops only the bad lines`() {
         val raw = """
             1. Bold pace. The garden's getting thirsty.
