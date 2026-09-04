@@ -163,6 +163,12 @@ interface GameEventDao {
 
     @Query("SELECT * FROM game_event WHERE type = :type ORDER BY id")
     suspend fun ofType(type: String): List<GameEventEntity>
+
+    /** The watermark read (spec §9): strictly after the last digest's lastEventId.
+     *  Bounded by id, not createdAt — runReconciler stamps a whole batch of month.closed
+     *  rows with one System.currentTimeMillis(), so timestamps cannot order them. */
+    @Query("SELECT * FROM game_event WHERE id > :afterId ORDER BY id")
+    suspend fun eventsAfterId(afterId: Long): List<GameEventEntity>
 }
 
 @Dao

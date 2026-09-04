@@ -7,6 +7,7 @@ import com.expensegarden.app.ai.LlmClient
 import com.expensegarden.app.ai.NoopLlmClient
 import com.expensegarden.app.data.AiPrefs
 import com.expensegarden.app.data.AppDatabase
+import com.expensegarden.app.data.DigestRepository
 import com.expensegarden.app.data.GardenPrefs
 import com.expensegarden.app.data.GardenRepository
 import com.expensegarden.app.data.LedgerRepository
@@ -29,6 +30,7 @@ class AppContainer(private val app: Application) {
     val ledger: LedgerRepository = LedgerRepository(db)
     val quips: QuipRepository = QuipRepository(db)
     val garden: GardenRepository = GardenRepository(db, ledger)
+    val digests: DigestRepository = DigestRepository(db, ledger)
     val prefs: GardenPrefs = GardenPrefs(app)
     val aiPrefs: AiPrefs = AiPrefs(app)
 
