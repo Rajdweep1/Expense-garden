@@ -28,6 +28,7 @@ object DigestTrigger {
         // month.closed and streak.hit in the SAME call — a suppression rule would put the
         // streak, and any dodge or regret in the window, behind the watermark forever.
         val monthly = eventsSince.filterIsInstance<DigestEvent.MonthClosed>()
+            .distinctBy { it.monthKey }         // game_event has no (type, month) uniqueness
             .sortedBy { it.monthKey }
             .map { DigestReason(DigestKind.MONTHLY, it.monthKey, listOf(Trigger.MonthClosed(it.monthKey))) }
 
@@ -46,14 +47,13 @@ object DigestTrigger {
             // Event triggers are self-contained facts and need no baseline.
             eventsSince.filterIsInstance<DigestEvent.StreakHit>()
                 .maxByOrNull { it.days }
-                ?.let { add(Trigger.StreakCrossed(it.days)) }
+                ?.let { add(Trigger.StreakHit(it.days)) }
 
             val dodges = eventsSince.count { it is DigestEvent.GateDodged }
             if (dodges > 0) add(Trigger.GateDodged(dodges))
 
             // "First regret of the month" needs month scope, which the window cannot see.
-            // regretCount is the month's total at evaluation time; subtracting the regrets
-            // inside the window says how many came before it.
+            // `<= 0`, not `== 0`: tolerates a window that straddles an unfenced month boundary.
             val regretsInWindow = eventsSince.count { it is DigestEvent.Regretted }
             if (regretsInWindow > 0 && monthToDate.regretCount - regretsInWindow <= 0) {
                 add(Trigger.FirstRegretOfMonth)

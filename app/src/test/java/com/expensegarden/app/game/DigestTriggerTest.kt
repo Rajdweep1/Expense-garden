@@ -1,6 +1,7 @@
 package com.expensegarden.app.game
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
@@ -57,7 +58,7 @@ class DigestTriggerTest {
     }
 
     @Test fun `a house level going DOWN says nothing`() {
-        // Cannot happen from the fold, but a silent no-op beats a fabricated demotion story.
+        // foldAllTime(houseLevelOverride) can produce this; a silent no-op beats a fabricated demotion.
         assertTrue(evaluate(last = snap(houseLevel = 3), now = state(houseLevel = 2)).isSilent)
     }
 
@@ -77,7 +78,7 @@ class DigestTriggerTest {
                 DigestEvent.StreakHit(103, 14), DigestEvent.StreakHit(104, 30),
             )
         )
-        assertEquals(listOf(Trigger.StreakCrossed(30)), v.daily?.triggers)
+        assertEquals(listOf(Trigger.StreakHit(30)), v.daily?.triggers)
     }
 
     @Test fun `the first regret of the month speaks`() {
@@ -97,13 +98,26 @@ class DigestTriggerTest {
         assertTrue(v.isSilent)
     }
 
+    @Test fun `the second regret of the month is not the first`() {
+        // regretCount 2 with 1 in the window means exactly one came before it. Boundary pin:
+        // mutating `<= 0` to `<= 1` would announce this one as the first.
+        val v = evaluate(
+            events = listOf(DigestEvent.Regretted(101)),
+            monthFacts = MonthFacts("2026-09", regretCount = 2),
+        )
+        assertTrue(v.isSilent)
+    }
+
     // ---------- plural month close ----------
 
     @Test fun `four closed months produce four monthly reasons`() {
+        // Fed out of order, with one month duplicated: the sort and the distinct both earn
+        // their lines. game_event has no (type, month) uniqueness, so a duplicate is possible.
         val v = evaluate(
             events = listOf(
-                DigestEvent.MonthClosed(101, "2026-05"), DigestEvent.MonthClosed(102, "2026-06"),
-                DigestEvent.MonthClosed(103, "2026-07"), DigestEvent.MonthClosed(104, "2026-08"),
+                DigestEvent.MonthClosed(101, "2026-07"), DigestEvent.MonthClosed(102, "2026-05"),
+                DigestEvent.MonthClosed(103, "2026-08"), DigestEvent.MonthClosed(104, "2026-06"),
+                DigestEvent.MonthClosed(105, "2026-07"),
             )
         )
         assertEquals(
@@ -111,6 +125,10 @@ class DigestTriggerTest {
             v.monthly.map { it.scopeKey },
         )
         assertTrue("monthly must all be MONTHLY", v.monthly.all { it.kind == DigestKind.MONTHLY })
+        assertEquals(
+            listOf(Trigger.MonthClosed("2026-05")),
+            v.monthly[0].triggers,                                  // reasonJson must not be empty
+        )
     }
 
     @Test fun `a closed month does not suppress the daily card`() {
@@ -155,12 +173,12 @@ class DigestTriggerTest {
     @Test fun `the mute boundary is exclusive`() {
         // nowMillis == mutedUntilMillis is NOT muted: the window is [start, until).
         val v = evaluate(events = listOf(DigestEvent.GateDodged(101)), mutedUntilMillis = 5_000L)
-        assertTrue(!v.isSilent)
+        assertFalse(v.isSilent)
     }
 
     @Test fun `an expired mute does not silence`() {
         val v = evaluate(events = listOf(DigestEvent.GateDodged(101)), mutedUntilMillis = 1_000L)
-        assertTrue(!v.isSilent)
+        assertFalse(v.isSilent)
     }
 
     // ---------- combination ----------
@@ -172,6 +190,11 @@ class DigestTriggerTest {
             now = state(weather = Weather.OVERCAST),
         )
         assertTrue("a daily card must not carry monthly reasons", v.monthly.isEmpty())
-        assertEquals(2, v.daily?.triggers?.size)                  // weather + dodge, one card
+        assertEquals(DigestKind.DAILY, v.daily?.kind)
+        // Comparison triggers precede event triggers — the writer may come to rely on it.
+        assertEquals(
+            listOf(Trigger.WeatherChanged(Weather.SUNNY, Weather.OVERCAST), Trigger.GateDodged(1)),
+            v.daily?.triggers,
+        )
     }
 }

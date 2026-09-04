@@ -30,14 +30,16 @@ data class DigestSnapshot(
 )
 
 /** Month-scoped counts that `eventsSince` cannot see, because that window starts at the last
- *  digest. Without this, "first regret of the month" is not computable. */
+ *  digest. Without this, "first regret of the month" is not computable.
+ *  `regretCount` = number of `transaction.regretted` events created inside `monthKey`, at
+ *  evaluation time. `monthKey` is identity for traceability; the trigger does not read it. */
 data class MonthFacts(val monthKey: String, val regretCount: Int)
 
 sealed interface Trigger {
     data class WeatherChanged(val from: Weather, val to: Weather) : Trigger
     data class HouseLevelled(val from: Int, val to: Int) : Trigger
-    data class StreakCrossed(val days: Int) : Trigger
-    object FirstRegretOfMonth : Trigger
+    data class StreakHit(val days: Int) : Trigger
+    data object FirstRegretOfMonth : Trigger     // data: stable toString() for reasonJson
     /** A WIN. The user backed out at the payment gate; the persona celebrates it (spec §5).
      *  Carrying the polarity here means a writer cannot mistake it for a lapse. */
     data class GateDodged(val count: Int) : Trigger
