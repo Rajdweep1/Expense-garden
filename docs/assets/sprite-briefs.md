@@ -39,6 +39,17 @@ other clause. Houses use a separate BUILDING_STYLE block that drops every face
 clause entirely — the shared creature block put googly eyes on the hut during the
 1C.6 pilot.
 
+## Palette consistency pass
+
+`gen.py` normalizes every `house_*` sprite's median saturation to **70** (`HOUSE_TARGET_SAT`),
+scaling saturation only — hue and lightness are untouched. The houses' hues already agree
+(~28° across the ladder); it was richness alone that drifted.
+
+The ladder had gone hut 72 / cottage 72 / two-story 56 / castle 51, so the upper two read as
+washed out beside the vivid creature cast. The Acceptance section below has always asked for a
+"consistency pass across the pack" — this makes it automatic instead of remembered. Applied to
+the four shipped houses on 2026-09-04.
+
 ## Casting sheet
 
 | File(s) | Character | Brief core |

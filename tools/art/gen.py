@@ -157,6 +157,12 @@ def gen(name, prompt_core):
     )
     out = os.path.join(OUT_DIR, name + ".png")
     img = key_out(raw, screen)
+    if name.startswith("house"):
+        before = median_saturation(img)
+        img = match_palette(img)
+        after = median_saturation(img)
+        if abs(after - before) > 1:
+            print(f"  palette match: median saturation {before:.0f} -> {after:.0f}")
     img.save(out)
     print("saved", out)
     if key_failed(img):
@@ -169,6 +175,58 @@ def gen(name, prompt_core):
             print(f"  WARNING {name}: {bad} rows are >30% see-through across the facade.")
             print("  A building with holes in it shows the garden through its walls and reads")
             print("  as stacked slabs. Re-roll with SEED_OFFSET rather than shipping it.")
+
+
+# The cast's saturation band. The hut and cottage both sit at ~72; the two-story drifted to
+# 56 and the castle came out at 51, which read as washed-out beside them on the island. The
+# casting sheet has always asked for a "consistency pass across the pack" before integration —
+# this is that pass, made automatic instead of remembered.
+HOUSE_TARGET_SAT = 70.0
+
+
+def median_saturation(img):
+    import colorsys
+
+    px = img.load()
+    w, h = img.size
+    vals = []
+    for y in range(0, h, 2):
+        for x in range(0, w, 2):
+            r, g, b, a = px[x, y]
+            if a < 200:
+                continue
+            vals.append(colorsys.rgb_to_hls(r / 255, g / 255, b / 255)[2] * 100)
+    vals.sort()
+    return vals[len(vals) // 2] if vals else 0.0
+
+
+def match_palette(img, target=HOUSE_TARGET_SAT):
+    """Scale saturation so the sprite's median lands on the cast's band.
+
+    Saturation only — hue and lightness are left alone. The houses' hues already agree
+    (~28 degrees across the ladder); it was purely richness that drifted, and shifting
+    channels to 'warm it up' skews hues for no gain.
+    """
+    import colorsys
+
+    cur = median_saturation(img)
+    if cur <= 0:
+        return img
+    k = target / cur
+    if abs(k - 1.0) < 0.02:
+        return img
+    out = img.copy()
+    px = out.load()
+    w, h = out.size
+    for y in range(h):
+        for x in range(w):
+            r, g, b, a = px[x, y]
+            if a == 0:
+                continue
+            hh, ll, ss = colorsys.rgb_to_hls(r / 255, g / 255, b / 255)
+            r2, g2, b2 = colorsys.hls_to_rgb(hh, ll, min(1.0, ss * k))
+            px[x, y] = (int(r2 * 255), int(g2 * 255), int(b2 * 255), a)
+    return out
 
 
 def key_failed(img):
