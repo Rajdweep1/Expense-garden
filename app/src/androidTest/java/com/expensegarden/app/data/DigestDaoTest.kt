@@ -13,6 +13,7 @@ import com.expensegarden.app.game.Weather
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -132,4 +133,43 @@ class DigestDaoTest {
     @Test fun latestSnapshot_is_null_before_anything_has_been_said() = runBlocking {
         assertNull(repo.latestSnapshot())
     }
+
+    /** Regression. Second open of a day whose DAILY was already written, with the reconciler's
+     *  month.closed (id 101) and a fresh gate dodge (id 102) both in the window. The MONTHLY
+     *  has no conflict of its own and would insert happily, carrying the shared watermark past
+     *  the dodge — which the swallowed DAILY never spoke about. The whole job must roll back. */
+    @Test fun a_conflicting_scope_rolls_the_whole_job_back_instead_of_advancing_the_watermark() = runBlocking {
+        val morning = DigestReason(DigestKind.DAILY, "2026-10-01", listOf(Trigger.GateDodged(1)))
+        assertTrue(repo.writeAll(listOf(morning to "morning card"), snapshotAt(100L), 1_000L))
+        assertEquals(100L, repo.latestSnapshot()?.lastEventId)
+
+        val monthly = DigestReason(DigestKind.MONTHLY, "2026-09", listOf(Trigger.MonthClosed("2026-09")))
+        val afternoon = DigestReason(DigestKind.DAILY, "2026-10-01", listOf(Trigger.GateDodged(1)))
+        assertFalse(
+            repo.writeAll(
+                listOf(monthly to "september recap", afternoon to "afternoon card"),
+                snapshotAt(102L), 2_000L,
+            )
+        )
+
+        // Nothing landed — not even the monthly, which had no conflict of its own.
+        assertNull(db.digestDao().byScope("MONTHLY", "2026-09"))
+        assertEquals("morning card", db.digestDao().byScope("DAILY", "2026-10-01")?.text)
+        // The watermark still sits below the dodge at 102, so it is spoken next open.
+        assertEquals(100L, repo.latestSnapshot()?.lastEventId)
+    }
+
+    @Test fun exists_reports_only_scopes_that_have_actually_been_written() = runBlocking {
+        val daily = DigestReason(DigestKind.DAILY, "2026-10-01", listOf(Trigger.GateDodged(1)))
+        val monthly = DigestReason(DigestKind.MONTHLY, "2026-09", listOf(Trigger.MonthClosed("2026-09")))
+        assertFalse(repo.exists(daily))
+
+        repo.writeAll(listOf(daily to "card"), snapshotAt(10L), 1_000L)
+
+        assertTrue(repo.exists(daily))
+        assertFalse(repo.exists(monthly))
+    }
+
+    private fun snapshotAt(lastEventId: Long) =
+        DigestSnapshot(Weather.SUNNY, houseLevel = 2, streakDays = 3, lastEventId = lastEventId)
 }

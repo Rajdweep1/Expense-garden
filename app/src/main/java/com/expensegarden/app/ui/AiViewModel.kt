@@ -86,6 +86,13 @@ class AiViewModel(private val container: AppContainer) : ViewModel() {
         )
         if (verdict.isSilent) return
 
+        val reasons = verdict.monthly + listOfNotNull(verdict.daily)
+        // A scope that already has a row would be swallowed by UNIQUE(kind, scopeKey) while its
+        // siblings committed the shared watermark past events nobody spoke about — a dodge or a
+        // streak lost for good. Staying silent consumes nothing and costs no completion; the
+        // verdict is re-evaluated next open, and a repeat daily scope clears itself at midnight.
+        if (reasons.any { container.digests.exists(it) }) return
+
         val snapshot = DigestSnapshot(
             weather = garden.weather,
             houseLevel = garden.houseLevel,
@@ -104,7 +111,6 @@ class AiViewModel(private val container: AppContainer) : ViewModel() {
         // card while the daily one failed would consume the day's events forever. Compose
         // every text first; a single null writes nothing, and the whole verdict is
         // re-evaluated next open — the same self-healing shape as the mute.
-        val reasons = verdict.monthly + listOfNotNull(verdict.daily)
         val texts = reasons.map { writer.compose(it, factsFor(it), tone) ?: return }
         container.digests.writeAll(reasons.zip(texts), snapshot, now)
     }
