@@ -9,11 +9,11 @@ import org.junit.Test
 
 class MonthStatsFolderTest {
     private val categories = listOf(
-        CategoryEntity(1, "Food & Drinks", null, false),
-        CategoryEntity(3, "Transport", null, true),
-        CategoryEntity(103, "Chai & Snacks", 1, false),
+        CategoryEntity(1, "Food & Drinks", null, false, updatedAt = 1L),
+        CategoryEntity(3, "Transport", null, true, updatedAt = 1L),
+        CategoryEntity(103, "Chai & Snacks", 1, false, updatedAt = 1L),
     )
-    private fun budget(catId: Long?, paise: Long) = BudgetEntity(categoryId = catId, month = "2026-07", amountPaise = paise)
+    private fun budget(catId: Long?, paise: Long) = BudgetEntity(categoryId = catId, month = "2026-07", amountPaise = paise, updatedAt = 1L)
 
     @Test fun `header carries total, overall budget, projection`() {
         val s = MonthStatsFolder.fold(categories, mapOf(103L to 300_000L), listOf(budget(null, 1_000_000L)), 10, 30)

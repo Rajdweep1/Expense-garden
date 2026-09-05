@@ -17,10 +17,10 @@ import java.time.ZoneId
 class GardenFolderTest {
     private val zone = ZoneId.of("Asia/Kolkata")
     private val categories = listOf(
-        CategoryEntity(1, "Food & Drinks", null, false),
-        CategoryEntity(103, "Chai & Snacks", 1, false),
-        CategoryEntity(2, "Groceries", null, true),
-        CategoryEntity(10, "Investments", null, true),
+        CategoryEntity(1, "Food & Drinks", null, false, updatedAt = 1L),
+        CategoryEntity(103, "Chai & Snacks", 1, false, updatedAt = 1L),
+        CategoryEntity(2, "Groceries", null, true, updatedAt = 1L),
+        CategoryEntity(10, "Investments", null, true, updatedAt = 1L),
     )
     private fun at(day: Int, month: Int = 7) = LocalDate.of(2026, month, day).atTime(12, 0).atZone(zone).toInstant().toEpochMilli()
     private var n = 0
@@ -28,7 +28,7 @@ class GardenFolderTest {
         TransactionEntity(
             uuid = "u${n++}", amountPaise = paise, payeeId = 1, categoryId = cat,
             source = TxnSource.MANUAL, status = TxnStatus.LOGGED, breachedAtLogging = breached,
-            regret = regret, note = null, occurredAt = at(day, month), createdAt = at(day, month),
+            regret = regret, note = null, occurredAt = at(day, month), createdAt = at(day, month), updatedAt = 1L,
         )
     private fun dodge(day: Int) = GameEventEntity(
         id = n++.toLong(), type = "gate.dodged", payloadJson = "{}", transactionUuid = null, createdAt = at(day),
@@ -50,7 +50,7 @@ class GardenFolderTest {
     }
 
     @Test fun `weather follows overall severity`() {
-        val budget = listOf(BudgetEntity(categoryId = null, month = "2026-07", amountPaise = 100_000))
+        val budget = listOf(BudgetEntity(categoryId = null, month = "2026-07", amountPaise = 100_000, updatedAt = 1L))
         assertEquals(Weather.SUNNY, fold(listOf(txn(103, 2, paise = 1_000)), budget).weather)
         // day 10/31 allowance = 1000*10/31*1.15 = ₹370.96; spend ₹500 → OVERCAST
         assertEquals(Weather.OVERCAST, fold(listOf(txn(103, 2, paise = 50_000)), budget).weather)
@@ -79,7 +79,7 @@ class GardenFolderTest {
     }
 
     @Test fun `archived month freezes at final day state`() {
-        val budget = listOf(BudgetEntity(categoryId = null, month = "2026-07", amountPaise = 100_000))
+        val budget = listOf(BudgetEntity(categoryId = null, month = "2026-07", amountPaise = 100_000, updatedAt = 1L))
         val g = GardenFolder.fold(
             "2026-07", listOf(txn(103, 2, paise = 150_000)), categories, budget, emptyList(),
             allTimeInvestmentCount = 0, today = LocalDate.of(2026, 8, 15), zone = zone,
@@ -126,7 +126,7 @@ class GardenFolderTest {
     }
 
     @Test fun `all-time stats come from the current month only`() {
-        val budget = listOf(BudgetEntity(categoryId = null, month = "2026-07", amountPaise = 100_000))
+        val budget = listOf(BudgetEntity(categoryId = null, month = "2026-07", amountPaise = 100_000, updatedAt = 1L))
         val g = foldAll(listOf(txn(103, day = 2, month = 5, paise = 900_000), txn(103, day = 2, month = 7, paise = 1_000)), budget)
         assertEquals(Weather.SUNNY, g.weather)          // May's blowout must not drought today's sky
         assertEquals(1_000L, g.spentPaise)              // the strip stays a monthly figure

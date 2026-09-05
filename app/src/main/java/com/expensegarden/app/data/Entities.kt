@@ -17,6 +17,12 @@ data class CategoryEntity(
     val name: String,
     val parentId: Long?,          // self-FK deliberately omitted in 1A: rows are seed-only; enforced in Postgres later
     val isNecessity: Boolean,
+    /** Sync stamp (Phase 2A). Written from SyncClock, never from System.currentTimeMillis()
+     *  directly — the logical clock guarantees it is strictly increasing, which is what makes
+     *  the `updatedAt > lastPushedAt` dirty-row predicate exact. The column carries a SQL
+     *  default so MIGRATION_3_4's ADD COLUMN matches Room's schema validation; the Kotlin
+     *  field deliberately has NO default, so every construction site must supply a stamp. */
+    @ColumnInfo(defaultValue = "0") val updatedAt: Long,
 )
 
 @Entity(
@@ -34,6 +40,7 @@ data class PayeeEntity(
     val name: String,
     val vpa: String?,             // null for cash payees
     val defaultCategoryId: Long?,
+    @ColumnInfo(defaultValue = "0") val updatedAt: Long,
 )
 
 @Entity(
@@ -66,6 +73,7 @@ data class TransactionEntity(
     val note: String?,
     val occurredAt: Long,                  // epoch millis; user-settable backdating UI lands in 1B
     val createdAt: Long,
+    @ColumnInfo(defaultValue = "0") val updatedAt: Long,
 )
 
 @Entity(
@@ -83,6 +91,7 @@ data class BudgetEntity(
     val categoryId: Long?,                 // null = overall budget
     val month: String,                     // "2026-07"
     val amountPaise: Long,
+    @ColumnInfo(defaultValue = "0") val updatedAt: Long,
 )
 
 @Entity(
@@ -140,4 +149,20 @@ data class DigestEntity(
     val lastEventId: Long,       // the watermark
     val createdAt: Long,
     val dismissedAt: Long?,      // null = still showing
+)
+
+/** A row that was deleted locally and must be deleted on the server too (spec §2.2).
+ *
+ *  A separate table rather than a soft-delete flag on `budget`: a flag would mean adding
+ *  `WHERE deleted = 0` to every existing budget query, and one missed filter silently
+ *  corrupts both the dashboard and the gate. `budget` is the only synced table with deletes.
+ *
+ *  `rowKey` encodes the sync key as "<categoryId or *>|<month>" — "3|2026-09" for a category
+ *  budget, "*|2026-09" for the overall one. The sentinel is explicit because an empty segment
+ *  would be indistinguishable from a malformed key. */
+@Entity(tableName = "sync_tombstone", primaryKeys = ["tableName", "rowKey"])
+data class SyncTombstoneEntity(
+    val tableName: String,
+    val rowKey: String,
+    val deletedAt: Long,
 )

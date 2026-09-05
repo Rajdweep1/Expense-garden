@@ -24,12 +24,12 @@ class GardenDaoTest {
     @After fun teardown() = db.close()
 
     private suspend fun logTxn(categoryId: Long, paise: Long, at: Long): String {
-        val payeeId = db.payeeDao().insert(PayeeEntity(name = "p$at", vpa = null, defaultCategoryId = null))
+        val payeeId = db.payeeDao().insert(PayeeEntity(name = "p$at", vpa = null, defaultCategoryId = null, updatedAt = 1L))
         val uuid = UUID.randomUUID().toString()
         db.transactionDao().insert(TransactionEntity(
             uuid = uuid, amountPaise = paise, payeeId = payeeId, categoryId = categoryId,
             source = TxnSource.MANUAL, status = TxnStatus.LOGGED, breachedAtLogging = false,
-            note = null, occurredAt = at, createdAt = at,
+            note = null, occurredAt = at, createdAt = at, updatedAt = 1L,
         ))
         return uuid
     }

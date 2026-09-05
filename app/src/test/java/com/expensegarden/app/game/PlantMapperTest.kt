@@ -15,31 +15,31 @@ import org.junit.Test
 class PlantMapperTest {
     // Mirror of the seed shape: necessity parents/children + discretionary families + investments (10)
     private val tree = CategoryTree(listOf(
-        CategoryEntity(1, "Food & Drinks", null, false),
-        CategoryEntity(101, "Restaurants", 1, false),
-        CategoryEntity(102, "Delivery", 1, false),
-        CategoryEntity(103, "Chai & Snacks", 1, false),
-        CategoryEntity(2, "Groceries", null, true),
-        CategoryEntity(3, "Transport", null, true),
-        CategoryEntity(302, "Cab & Auto", 3, false),
-        CategoryEntity(301, "Fuel", 3, true),
-        CategoryEntity(4, "Housing", null, true),
-        CategoryEntity(401, "Rent", 4, true),
-        CategoryEntity(402, "Utilities", 4, true),
-        CategoryEntity(5, "Health", null, true),
-        CategoryEntity(6, "Entertainment", null, false),
-        CategoryEntity(7, "Shopping", null, false),
-        CategoryEntity(8, "Personal", null, false),
-        CategoryEntity(9, "Family", null, true),
-        CategoryEntity(10, "Investments", null, true),
-        CategoryEntity(11, "Misc", null, false),
+        CategoryEntity(1, "Food & Drinks", null, false, updatedAt = 1L),
+        CategoryEntity(101, "Restaurants", 1, false, updatedAt = 1L),
+        CategoryEntity(102, "Delivery", 1, false, updatedAt = 1L),
+        CategoryEntity(103, "Chai & Snacks", 1, false, updatedAt = 1L),
+        CategoryEntity(2, "Groceries", null, true, updatedAt = 1L),
+        CategoryEntity(3, "Transport", null, true, updatedAt = 1L),
+        CategoryEntity(302, "Cab & Auto", 3, false, updatedAt = 1L),
+        CategoryEntity(301, "Fuel", 3, true, updatedAt = 1L),
+        CategoryEntity(4, "Housing", null, true, updatedAt = 1L),
+        CategoryEntity(401, "Rent", 4, true, updatedAt = 1L),
+        CategoryEntity(402, "Utilities", 4, true, updatedAt = 1L),
+        CategoryEntity(5, "Health", null, true, updatedAt = 1L),
+        CategoryEntity(6, "Entertainment", null, false, updatedAt = 1L),
+        CategoryEntity(7, "Shopping", null, false, updatedAt = 1L),
+        CategoryEntity(8, "Personal", null, false, updatedAt = 1L),
+        CategoryEntity(9, "Family", null, true, updatedAt = 1L),
+        CategoryEntity(10, "Investments", null, true, updatedAt = 1L),
+        CategoryEntity(11, "Misc", null, false, updatedAt = 1L),
     ))
 
     private fun txn(cat: Long, paise: Long = 5_000, breached: Boolean = false, regret: Regret = Regret.UNRATED) =
         TransactionEntity(
             uuid = "u-$cat-$paise-$breached-$regret", amountPaise = paise, payeeId = 1,
             categoryId = cat, source = TxnSource.MANUAL, status = TxnStatus.LOGGED,
-            breachedAtLogging = breached, regret = regret, note = null, occurredAt = 0L, createdAt = 0L,
+            breachedAtLogging = breached, regret = regret, note = null, occurredAt = 0L, createdAt = 0L, updatedAt = 1L,
         )
 
     @Test fun `discretionary maps to its family flower`() {

@@ -34,12 +34,12 @@ class LedgerDaoTest {
     }
 
     @Test fun insert_and_sum_logged_transaction() = runBlocking {
-        val payeeId = db.payeeDao().insert(PayeeEntity(name = "Chaiwala", vpa = "chai@ybl", defaultCategoryId = 103))
+        val payeeId = db.payeeDao().insert(PayeeEntity(name = "Chaiwala", vpa = "chai@ybl", defaultCategoryId = 103, updatedAt = 1L))
         db.transactionDao().insert(
             TransactionEntity(
                 uuid = UUID.randomUUID().toString(), amountPaise = 2000, payeeId = payeeId,
                 categoryId = 103, source = TxnSource.QR_GATE, status = TxnStatus.LOGGED,
-                breachedAtLogging = false, note = null, occurredAt = 1000L, createdAt = 1000L,
+                breachedAtLogging = false, note = null, occurredAt = 1000L, createdAt = 1000L, updatedAt = 1L,
             )
         )
         assertEquals(2000L, db.transactionDao().loggedSumBetween(0L, 2000L))
@@ -48,12 +48,12 @@ class LedgerDaoTest {
 
     @Test(expected = SQLiteConstraintException::class)
     fun fk_rejects_transaction_with_unknown_category(): Unit = runBlocking {
-        val payeeId = db.payeeDao().insert(PayeeEntity(name = "X", vpa = null, defaultCategoryId = null))
+        val payeeId = db.payeeDao().insert(PayeeEntity(name = "X", vpa = null, defaultCategoryId = null, updatedAt = 1L))
         db.transactionDao().insert(
             TransactionEntity(
                 uuid = UUID.randomUUID().toString(), amountPaise = 100, payeeId = payeeId,
                 categoryId = 999_999, source = TxnSource.MANUAL, status = TxnStatus.LOGGED,
-                breachedAtLogging = false, note = null, occurredAt = 0L, createdAt = 0L,
+                breachedAtLogging = false, note = null, occurredAt = 0L, createdAt = 0L, updatedAt = 1L,
             )
         )
     }
@@ -67,11 +67,11 @@ class LedgerDaoTest {
     }
 
     @Test fun top_category_names_orders_by_logged_sum_and_caps_at_three() = runBlocking {
-        val payeeId = db.payeeDao().insert(PayeeEntity(name = "Mixed", vpa = null, defaultCategoryId = null))
+        val payeeId = db.payeeDao().insert(PayeeEntity(name = "Mixed", vpa = null, defaultCategoryId = null, updatedAt = 1L))
         fun txn(categoryId: Long, paise: Long, at: Long, status: TxnStatus = TxnStatus.LOGGED) = TransactionEntity(
             uuid = UUID.randomUUID().toString(), amountPaise = paise, payeeId = payeeId,
             categoryId = categoryId, source = TxnSource.MANUAL, status = status,
-            breachedAtLogging = false, note = null, occurredAt = at, createdAt = at,
+            breachedAtLogging = false, note = null, occurredAt = at, createdAt = at, updatedAt = 1L,
         )
         // Sums inside [1000, 2000]: Fuel 900, Restaurants 500 (two rows), Streaming 300, Chai 100.
         db.transactionDao().insert(txn(301, 900, 1000))

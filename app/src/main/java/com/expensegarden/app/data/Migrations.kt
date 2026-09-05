@@ -50,3 +50,28 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
         )
     }
 }
+
+/**
+ * v3→v4 (Phase 2A): sync stamps and the tombstone table.
+ *
+ * Each ADD COLUMN carries `NOT NULL DEFAULT 0` to match the entities' @ColumnInfo default —
+ * Room compares the two and refuses to open on a mismatch. The follow-up UPDATE then stamps
+ * every pre-existing row with the migration time, which is what makes them all dirty against
+ * a cursor starting at 0: the first sync uploads the entire history as one batch.
+ *
+ * The CREATE below matches 4.json's createSql exactly (MigrationTest validates it).
+ */
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        val now = System.currentTimeMillis()
+        for (table in listOf("category", "payee", "txn", "budget")) {
+            db.execSQL("ALTER TABLE `$table` ADD COLUMN `updatedAt` INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("UPDATE `$table` SET `updatedAt` = $now")
+        }
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `sync_tombstone` (`tableName` TEXT NOT NULL, " +
+                "`rowKey` TEXT NOT NULL, `deletedAt` INTEGER NOT NULL, " +
+                "PRIMARY KEY(`tableName`, `rowKey`))"
+        )
+    }
+}

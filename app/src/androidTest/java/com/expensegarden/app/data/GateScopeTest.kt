@@ -29,8 +29,8 @@ class GateScopeTest {
     @After fun teardown() = db.close()
 
     @Test fun category_budget_breach_wins_over_healthy_overall() = runBlocking {
-        db.budgetDao().insert(BudgetEntity(categoryId = null, month = month, amountPaise = 10_000_000))  // ₹1,00,000 overall
-        db.budgetDao().insert(BudgetEntity(categoryId = 1, month = month, amountPaise = 50_000))         // ₹500 on Food & Drinks
+        db.budgetDao().insert(BudgetEntity(categoryId = null, month = month, amountPaise = 10_000_000, updatedAt = 1L))  // ₹1,00,000 overall
+        db.budgetDao().insert(BudgetEntity(categoryId = 1, month = month, amountPaise = 50_000, updatedAt = 1L))         // ₹500 on Food & Drinks
         // ₹400 already logged under Chai & Snacks (child of Food & Drinks) this month
         repo.saveManualLogged(
             LedgerRepository.Draft(vpa = null, payeeName = "Chaiwala", amountPaise = 40_000,
@@ -52,7 +52,7 @@ class GateScopeTest {
     @Test fun backdated_evaluation_uses_that_months_budget_and_spend() = runBlocking {
         val lastMonth = java.time.YearMonth.now(zone).minusMonths(1)
         val lastMonthMillis = lastMonth.atDay(15).atTime(12, 0).atZone(zone).toInstant().toEpochMilli()
-        db.budgetDao().insert(BudgetEntity(categoryId = null, month = lastMonth.toString(), amountPaise = 1_000))
+        db.budgetDao().insert(BudgetEntity(categoryId = null, month = lastMonth.toString(), amountPaise = 1_000, updatedAt = 1L))
         // ₹50 candidate against last month's tiny ₹10 budget → BREACH even though this month has no budget
         val verdict = repo.evaluateGate(categoryId = 103, amountPaise = 5_000, occurredAt = lastMonthMillis)
         assertEquals(Severity.BREACH, verdict.severity)

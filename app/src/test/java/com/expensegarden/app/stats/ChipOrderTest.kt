@@ -5,8 +5,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class ChipOrderTest {
-    private val cats = (1L..11L).map { CategoryEntity(it, "c$it", null, false) } +
-        listOf(CategoryEntity(103, "chai", 1, false))
+    private val cats = (1L..11L).map { CategoryEntity(it, "c$it", null, false, updatedAt = 1L) } +
+        listOf(CategoryEntity(103, "chai", 1, false, updatedAt = 1L))
 
     @Test fun `used categories lead, by count desc, tie broken by lower id`() {
         val chips = ChipOrder.topChips(cats, mapOf(103L to 5, 3L to 2, 7L to 2), limit = 4)

@@ -25,19 +25,19 @@ class BudgetDaoTest {
     @After fun teardown() = db.close()
 
     private suspend fun logTxn(categoryId: Long, paise: Long, at: Long) {
-        val payeeId = db.payeeDao().insert(PayeeEntity(name = "p$at", vpa = null, defaultCategoryId = null))
+        val payeeId = db.payeeDao().insert(PayeeEntity(name = "p$at", vpa = null, defaultCategoryId = null, updatedAt = 1L))
         db.transactionDao().insert(
             TransactionEntity(
                 uuid = UUID.randomUUID().toString(), amountPaise = paise, payeeId = payeeId,
                 categoryId = categoryId, source = TxnSource.MANUAL, status = TxnStatus.LOGGED,
-                breachedAtLogging = false, note = null, occurredAt = at, createdAt = at,
+                breachedAtLogging = false, note = null, occurredAt = at, createdAt = at, updatedAt = 1L,
             )
         )
     }
 
     @Test fun budget_scope_crud_null_and_category_are_distinct_rows() = runBlocking {
-        db.budgetDao().insert(BudgetEntity(categoryId = null, month = "2026-07", amountPaise = 1_000_000))
-        db.budgetDao().insert(BudgetEntity(categoryId = 1, month = "2026-07", amountPaise = 50_000))
+        db.budgetDao().insert(BudgetEntity(categoryId = null, month = "2026-07", amountPaise = 1_000_000, updatedAt = 1L))
+        db.budgetDao().insert(BudgetEntity(categoryId = 1, month = "2026-07", amountPaise = 50_000, updatedAt = 1L))
         assertEquals(2, db.budgetDao().allForMonth("2026-07").size)
 
         // SQL NULL never matches `categoryId = ?` — the category delete must not touch the overall row.

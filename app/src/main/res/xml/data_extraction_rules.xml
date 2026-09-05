@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Same exclusion as backup_rules.xml, for Android 12+. Both are required: minSdk is 26,
+<!-- Same exclusions as backup_rules.xml, for Android 12+. Both are required: minSdk is 26,
      and cloud-backup honours <cloud-backup>, device-to-device transfer honours <device-transfer>. -->
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="sharedpref" path="ai_secrets.xml" />
+        <exclude domain="sharedpref" path="sync_secrets.xml" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="sharedpref" path="ai_secrets.xml" />
+        <exclude domain="sharedpref" path="sync_secrets.xml" />
     </device-transfer>
 </data-extraction-rules>

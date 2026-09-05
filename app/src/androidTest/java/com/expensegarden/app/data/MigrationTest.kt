@@ -94,4 +94,35 @@ class MigrationTest {
             assertEquals(2, c.getInt(0))
         }
     }
+
+    @Test fun migrate3To4_stamps_existing_rows_and_adds_the_tombstone_table() {
+        helper.createDatabase("migration-test-4", 3).apply {
+            execSQL("INSERT INTO category (id, name, parentId, isNecessity) VALUES (1,'Food',NULL,0)")
+            execSQL("INSERT INTO payee (id, name, vpa, defaultCategoryId) VALUES (1,'Chaiwala',NULL,NULL)")
+            execSQL(
+                "INSERT INTO txn (uuid, amountPaise, payeeId, categoryId, source, status, regret," +
+                    " breachedAtLogging, note, occurredAt, createdAt) " +
+                    "VALUES ('u1', 500, 1, 1, 'MANUAL', 'LOGGED', 'UNRATED', 0, NULL, 100, 100)"
+            )
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate("migration-test-4", 4, true, MIGRATION_3_4)
+
+        // Every pre-existing row is stamped, so all of it is dirty against a cursor of 0.
+        db.query("SELECT updatedAt FROM txn WHERE uuid = 'u1'").use {
+            assertTrue(it.moveToFirst())
+            assertTrue("txn should be stamped, was " + it.getLong(0), it.getLong(0) > 0)
+        }
+        db.query("SELECT updatedAt FROM payee WHERE id = 1").use {
+            assertTrue(it.moveToFirst())
+            assertTrue(it.getLong(0) > 0)
+        }
+        // The tombstone table exists and accepts a composite-key row.
+        db.execSQL("INSERT INTO sync_tombstone (tableName, rowKey, deletedAt) VALUES ('budget','*|2026-09',7)")
+        db.query("SELECT deletedAt FROM sync_tombstone WHERE tableName='budget' AND rowKey='*|2026-09'").use {
+            assertTrue(it.moveToFirst())
+            assertEquals(7L, it.getLong(0))
+        }
+    }
 }

@@ -6,7 +6,7 @@ import org.junit.Test
 
 class CategoryTreeTest {
     private fun cat(id: Long, parent: Long? = null) =
-        CategoryEntity(id = id, name = "c$id", parentId = parent, isNecessity = false)
+        CategoryEntity(id = id, name = "c$id", parentId = parent, isNecessity = false, updatedAt = 1L)
 
     // Seed-shaped: 1=Food (parent), 103=Chai (child of 1), 3=Transport, plus a synthetic depth-3 chain 6→601→9001
     private val tree = CategoryTree(listOf(
