@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Release posture: HTTPS only, everywhere. The debug source set overrides this file with a
+     variant that permits cleartext to the emulator's host route, so local bring-up works
+     without ever weakening a shipped build. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>

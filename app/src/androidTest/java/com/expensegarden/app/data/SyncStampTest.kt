@@ -76,4 +76,16 @@ class SyncStampTest {
         assertTrue(db.syncDao().txnsChangedSince(49L).any { it.uuid == "u3" })
         assertTrue(db.syncDao().txnsChangedSince(50L).none { it.uuid == "u3" })
     }
+
+    /** Regression. SeedCallback writes categories with raw SQL, bypassing the entity
+     *  constructor, so it is the one category-writing path the compiler cannot force to supply
+     *  a stamp. Left at the column default of 0 they are invisible to the dirty predicate
+     *  forever — and since txn.categoryId is a real foreign key on the server, the first
+     *  transaction push would be rejected and degrade to silence. */
+    @Test fun seeded_categories_are_dirty_against_a_fresh_cursor() = runBlocking {
+        val seeded = db.syncDao().categoriesChangedSince(0L)
+
+        assertEquals(21, seeded.size)
+        assertTrue("every seeded category must carry a stamp", seeded.all { it.updatedAt > 0L })
+    }
 }

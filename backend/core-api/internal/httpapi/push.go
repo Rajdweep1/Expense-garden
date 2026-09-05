@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"expensegarden/core-api/internal/store"
@@ -31,7 +32,9 @@ func (s *Server) handlePush(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := s.Store.ApplyBatch(r.Context(), batch); err != nil {
 		// The phone treats any non-2xx as "cursors do not advance", so a failure here is
-		// simply retried with the same rows. Nothing is lost by refusing.
+		// simply retried with the same rows. Nothing is lost by refusing — but the reason
+		// must reach the server log, because it never reaches the phone.
+		log.Printf("push rejected: %v", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "apply failed"})
 		return
 	}

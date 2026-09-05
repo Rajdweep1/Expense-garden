@@ -24,7 +24,8 @@ import java.net.URL
  *  scheduler may run on a Main-confined scope, where HttpURLConnection throws
  *  NetworkOnMainThreadException.
  *
- *  Never logs. The bearer token must not reach logcat, not even truncated. */
+ *  Logs failures, but never the token: it travels in a header, so it cannot appear in an
+ *  exception's class or message. See logFailure. */
 class SyncClient(private val prefs: SyncPrefs) {
 
     /** True when the server accepted the whole batch. */
@@ -79,6 +80,7 @@ class SyncClient(private val prefs: SyncPrefs) {
             if (conn.responseCode !in 200..299) return null
             JSONObject(conn.inputStream.bufferedReader().use(BufferedReader::readText))
         } catch (e: Exception) {
+            logFailure("push", e)
             null
         } finally {
             conn?.disconnect()
@@ -92,10 +94,22 @@ class SyncClient(private val prefs: SyncPrefs) {
             if (conn.responseCode !in 200..299) return null
             JSONObject(conn.inputStream.bufferedReader().use(BufferedReader::readText))
         } catch (e: Exception) {
+            logFailure("snapshot", e)
             null
         } finally {
             conn?.disconnect()
         }
+    }
+
+    /** Deliberate, and a considered departure from ai/GeminiClient, which logs nothing.
+     *
+     *  A quiet persona costs nothing; a quiet BACKUP costs everything precisely when you need
+     *  it, and every failure mode here — wrong url, dead server, blocked cleartext, bad token —
+     *  renders on screen as the same nothing. Exactly one line, carrying the exception class
+     *  and message only: the bearer token travels in a header and is never part of either, so
+     *  nothing secret can reach logcat through here. */
+    private fun logFailure(verb: String, e: Exception) {
+        android.util.Log.w("SyncClient", "$verb failed: ${e.javaClass.simpleName}: ${e.message}")
     }
 
     // ---------- writers ----------

@@ -61,7 +61,17 @@ object SeedCallback : RoomDatabase.Callback() {
             "(401,'Rent',4,1)", "(402,'Utilities',4,1)",
             "(601,'Streaming',6,0)", "(602,'Outings',6,0)",
         )
-        db.execSQL("INSERT INTO category (id, name, parentId, isNecessity) VALUES ${categories.joinToString(",")}")
+        // The sync stamp is set here, not left to the column default (2A spec §2.4).
+        // This raw INSERT bypasses the entity constructor, so it is the one category-writing
+        // path the compiler cannot force to supply `updatedAt`. Left at the default 0, every
+        // seeded row would be invisible to the `updatedAt > cursor` dirty predicate forever —
+        // and because txn.categoryId is a real FK on the server, the first transaction push
+        // would then be rejected and, per §5, degrade to silence.
+        val seededAt = System.currentTimeMillis()
+        db.execSQL(
+            "INSERT INTO category (id, name, parentId, isNecessity, updatedAt) VALUES " +
+                categories.joinToString(",") { it.dropLast(1) + ",$seededAt)" }
+        )
 
         // Sharp-but-fair static quip bank. Gate shows nothing on OK.
         val quips = listOf(
