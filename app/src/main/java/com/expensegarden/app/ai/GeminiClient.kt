@@ -31,8 +31,8 @@ class GeminiClient(private val aiPrefs: AiPrefs) : LlmClient {
                 requestMethod = "POST"
                 setRequestProperty("Content-Type", "application/json")
                 doOutput = true
-                connectTimeout = TIMEOUT_MS
-                readTimeout = TIMEOUT_MS
+                connectTimeout = CONNECT_TIMEOUT_MS
+                readTimeout = READ_TIMEOUT_MS
             }
             conn.outputStream.use { it.write(requestBody(prompt).toString().toByteArray()) }
 
@@ -72,9 +72,25 @@ class GeminiClient(private val aiPrefs: AiPrefs) : LlmClient {
     }.getOrNull()
 
     private companion object {
-        const val MODEL = "gemini-2.0-flash"
+        /** Verified against this key on 2026-09-05 (Task 15). `gemini-2.0-flash` and even
+         *  `gemini-2.5-flash` now 404 with "no longer available to new users"; the API's own
+         *  error names this as the replacement. Pinned rather than `gemini-flash-latest`, for
+         *  the same reason `libs.versions.toml` is pinned: the persona's voice should not
+         *  change under us without a commit saying so. */
+        const val MODEL = "gemini-3.6-flash"
         const val ENDPOINT =
             "https://generativelanguage.googleapis.com/v1beta/models/$MODEL:generateContent"
-        const val TIMEOUT_MS = 15_000
+
+        /** Establishing the connection should be quick; a slow handshake means no network. */
+        const val CONNECT_TIMEOUT_MS = 15_000
+
+        /** Generous on purpose. 3.x models think before answering — a measured 22.7s for an
+         *  eight-line quip prompt, against the 15s this used to allow, which turned every call
+         *  into a timeout and every timeout into silence. Waiting costs nothing here because
+         *  §1 keeps the LLM out of every read path: no screen blocks on this, so the only
+         *  thing a long read timeout delays is a background write. Preferred over a
+         *  thinking-budget knob, whose shape is not stable across model generations
+         *  (`thinkingConfig.thinkingBudget: 0` is a 400 on this model). */
+        const val READ_TIMEOUT_MS = 60_000
     }
 }
