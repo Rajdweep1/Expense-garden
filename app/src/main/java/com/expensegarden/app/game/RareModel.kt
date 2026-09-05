@@ -195,8 +195,12 @@ object RareCatalog {
 
 /** What the greenhouse album renders (spec §5).
  *
- *  @param foundIds species actually grown on the island, plus earned landmarks.
+ *  @param foundBy species actually grown on the island (plus earned landmarks) mapped to what
+ *    earned them. Spec §5 asks for the species AND how it was earned; carrying both together
+ *    is what stops the two from disagreeing.
  *  @param pendingCount plantable earns still waiting for a qualifying purchase — shown so a
  *    banked reward never looks lost.
  */
-data class CollectionState(val foundIds: Set<String>, val pendingCount: Int)
+data class CollectionState(val foundBy: Map<String, RareTrigger>, val pendingCount: Int) {
+    val foundIds: Set<String> get() = foundBy.keys
+}

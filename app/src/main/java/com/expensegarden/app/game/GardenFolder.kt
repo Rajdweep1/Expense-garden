@@ -97,14 +97,7 @@ object GardenFolder {
         // 4A: earns are derived on every fold, never stored (spec §4.2). A first mapping pass
         // establishes which purchases could carry a rare — a weed or a zombie must not consume
         // a seed earned by restraint — then the assignment feeds the real mapping pass.
-        val eligibility = ordered.mapNotNull { t ->
-            PlantMapper.map(t, tree)?.let { m ->
-                RarePairing.Candidate(
-                    t.uuid, t.occurredAt, m.archetype,
-                    eligible = !m.isWeed && m.archetype != Archetype.ZOMBIE,
-                )
-            }
-        }
+        val eligibility = rareCandidates(ordered, tree)
         val earns = RareEngine.earns(
             rareSignals,
             noSpendByMonth(ordered, today, zone),
@@ -116,7 +109,7 @@ object GardenFolder {
 
         // Pair each planted txn with its month — markers fall out of the same chronological pass.
         val mapped = ordered.mapNotNull { t ->
-            PlantMapper.map(t, tree, rare = assignment[t.uuid])?.let { m ->
+            PlantMapper.map(t, tree, rare = assignment[t.uuid]?.species)?.let { m ->
                 m to YearMonth.from(Instant.ofEpochMilli(t.occurredAt).atZone(zone)).toString()
             }
         }
@@ -152,6 +145,24 @@ object GardenFolder {
             monthMarkers = markers,
             houseLevel = level,
         )
+    }
+
+    /** Which purchases could carry a rare, in chronological order.
+     *
+     *  Public because the greenhouse album re-derives the same assignment to show HOW each
+     *  species was earned. Sharing this is the point: two copies of "what counts as eligible"
+     *  would eventually disagree, and the album would then claim a species the island does not
+     *  actually show. */
+    fun rareCandidates(
+        ordered: List<TransactionEntity>,
+        tree: CategoryTree,
+    ): List<RarePairing.Candidate> = ordered.mapNotNull { t ->
+        PlantMapper.map(t, tree)?.let { m ->
+            RarePairing.Candidate(
+                t.uuid, t.occurredAt, m.archetype,
+                eligible = !m.isWeed && m.archetype != Archetype.ZOMBIE,
+            )
+        }
     }
 
     /** The longest CONSECUTIVE no-spend run per month (4A).

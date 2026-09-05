@@ -6,6 +6,7 @@ import com.expensegarden.app.game.Reconciler
 import com.expensegarden.app.game.StreakMath
 import com.expensegarden.app.game.CollectionState
 import com.expensegarden.app.game.RareEngine
+import com.expensegarden.app.game.RarePairing
 import com.expensegarden.app.game.RareSignal
 import com.expensegarden.app.game.RareTier
 import com.expensegarden.app.stats.CategoryTree
@@ -104,7 +105,6 @@ class GardenRepository(private val db: AppDatabase, private val ledger: LedgerRe
      *  Derived from the same fold the island uses, so the album can never disagree with it. */
     suspend fun collection(): CollectionState {
         val garden = observeAllTimeGarden().first()
-        val grown = garden.plants.mapNotNull { it.rare?.id }.toSet()
 
         val events = db.gameEventDao().eventsBetween(0L, Long.MAX_VALUE)
         val earns = RareEngine.earns(
@@ -114,10 +114,18 @@ class GardenRepository(private val db: AppDatabase, private val ledger: LedgerRe
             garden.houseLevel,
             zone,
         )
-        val landmarks = earns.mapNotNull { it.landmarkSpecies?.id }.toSet()
+        // Re-derive the same assignment the island used — through GardenFolder's own candidate
+        // builder, so the album cannot claim a species the garden does not actually show.
+        val txns = db.transactionDao().loggedBetween(0L, Long.MAX_VALUE)
+            .sortedWith(compareBy({ it.occurredAt }, { it.uuid }))
+        val tree = CategoryTree(db.categoryDao().all())
+        val awards = RarePairing.assign(earns, GardenFolder.rareCandidates(txns, tree))
+
+        val foundBy = awards.values.associate { it.species.id to it.earn.trigger }
+        val landmarks = earns.mapNotNull { e -> e.landmarkSpecies?.let { it.id to e.trigger } }.toMap()
         // Plantable earns still waiting for a purchase to land on.
-        val pending = earns.count { it.tier != RareTier.LANDMARK } - grown.size
-        return CollectionState(grown + landmarks, pending.coerceAtLeast(0))
+        val pending = earns.count { it.tier != RareTier.LANDMARK } - awards.size
+        return CollectionState(foundBy + landmarks, pending.coerceAtLeast(0))
     }
 
     /** The album re-derives these from the same transactions the fold saw, so it cannot drift

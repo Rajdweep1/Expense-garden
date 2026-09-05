@@ -127,11 +127,19 @@ class RarePairingTest {
         assertNotNull(m["tulip"])
     }
 
+    @Test fun `an award records which earn produced it`() {
+        // The album shows HOW a species was earned; that only works if the pairing keeps them
+        // together rather than deriving them separately.
+        val m = RarePairing.assign(listOf(earn(100)), listOf(cand("a", 150)))
+        assertEquals("k100", m["a"]?.earn?.scopeKey)
+        assertNotNull(m["a"]?.species)
+    }
+
     @Test fun `an assigned species always matches the transaction's own archetype`() {
         val m = RarePairing.assign(
             listOf(earn(100)),
             listOf(cand("a", 150, archetype = Archetype.HEDGE)),
         )
-        assertEquals(Archetype.HEDGE, m["a"]?.baseArchetype)
+        assertEquals(Archetype.HEDGE, m["a"]?.species?.baseArchetype)
     }
 }

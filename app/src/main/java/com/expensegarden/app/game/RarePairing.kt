@@ -30,8 +30,13 @@ object RarePairing {
         val eligible: Boolean,
     )
 
-    /** @return uuid → the species that transaction should grow as. Absent means it grows normally. */
-    fun assign(earns: List<Earn>, candidates: List<Candidate>): Map<String, RareSpecies> {
+    /** What a transaction grew as, and what earned it. The album needs both — spec §5 asks for
+     *  the species AND how it was earned — and deriving them separately would risk them
+     *  disagreeing. */
+    data class Award(val earn: Earn, val species: RareSpecies)
+
+    /** @return uuid → the award that transaction grew. Absent means it grows normally. */
+    fun assign(earns: List<Earn>, candidates: List<Candidate>): Map<String, Award> {
         // Landmarks are island features, not plants (spec §8). They belong to the album and,
         // from 4B, to the island itself — they must never consume a plant slot.
         val plantable = earns
@@ -40,7 +45,7 @@ object RarePairing {
         if (plantable.isEmpty()) return emptyMap()
 
         val ordered = candidates.sortedWith(compareBy({ it.occurredAt }, { it.uuid }))
-        val out = LinkedHashMap<String, RareSpecies>()
+        val out = LinkedHashMap<String, Award>()
         var next = 0
 
         for (c in ordered) {
@@ -54,7 +59,7 @@ object RarePairing {
             // Declines purchases this tier has no honest form for — the seed waits rather than
             // turning your groceries into someone else's flower.
             val species = earn.speciesFor(c.archetype) ?: continue
-            out[c.uuid] = species
+            out[c.uuid] = Award(earn, species)
             next++
         }
         return out

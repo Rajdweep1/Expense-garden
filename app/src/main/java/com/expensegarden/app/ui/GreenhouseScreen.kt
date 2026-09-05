@@ -30,6 +30,7 @@ import com.expensegarden.app.core.Money
 import com.expensegarden.app.game.CollectionState
 import com.expensegarden.app.game.RareCatalog
 import com.expensegarden.app.game.RareTier
+import com.expensegarden.app.game.RareTrigger
 import com.expensegarden.app.game.GardenState
 import com.expensegarden.app.render.GardenCanvas
 import com.expensegarden.app.render.PlantPainter
@@ -142,11 +143,18 @@ private fun CollectionCard(state: CollectionState) {
                         modifier = Modifier.padding(top = 6.dp),
                     )
                     for (species in RareCatalog.pool(tier)) {
-                        val found = species.id in state.foundIds
+                        val earnedBy = state.foundBy[species.id]
                         Text(
-                            if (found) "\u2022 ${species.displayName}" else "\u2022 ???",
+                            if (earnedBy != null) {
+                                // Spec §5 asks for the species AND how it was earned. Showing
+                                // the specific trigger beats the tier's generic condition line:
+                                // it tells you what YOU did, not what someone could do.
+                                "\u2022 ${species.displayName} — ${howEarned(earnedBy)}"
+                            } else {
+                                "\u2022 ???"
+                            },
                             style = MaterialTheme.typography.bodySmall,
-                            color = if (found) MaterialTheme.colorScheme.onSurface
+                            color = if (earnedBy != null) MaterialTheme.colorScheme.onSurface
                                     else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
@@ -167,4 +175,17 @@ private fun conditionFor(tier: RareTier): String = when (tier) {
     RareTier.UNCOMMON -> "a 7-day streak, 3 gate dodges, a no-spend week, or redeeming a regret"
     RareTier.RARE -> "close a month under budget, a 30-day streak, or spend across 8 categories"
     RareTier.LANDMARK -> "keep tracking — 6 months, then 12"
+}
+
+/** How a species you already have was earned. Past tense on purpose — this is a record of
+ *  something you did, not an instruction. */
+private fun howEarned(trigger: RareTrigger): String = when (trigger) {
+    RareTrigger.STREAK_7 -> "a 7-day streak"
+    RareTrigger.STREAK_30 -> "a 30-day streak"
+    RareTrigger.GATE_DODGES -> "backing out at the gate"
+    RareTrigger.NO_SPEND_DAYS -> "a no-spend week"
+    RareTrigger.MONTH_UNDER_BUDGET -> "a month under budget"
+    RareTrigger.CATEGORY_BREADTH -> "a broad month"
+    RareTrigger.REDEEMED -> "redeeming a regret"
+    RareTrigger.HOUSE_LEVEL -> "months tracked"
 }
