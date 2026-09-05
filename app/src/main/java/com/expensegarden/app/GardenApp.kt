@@ -15,8 +15,11 @@ import com.expensegarden.app.data.LedgerRepository
 import com.expensegarden.app.data.QuipRepository
 import com.expensegarden.app.game.Archetype
 import com.expensegarden.app.render.SpriteLoader
+import com.expensegarden.app.sync.SyncClient
 import com.expensegarden.app.sync.SyncClock
 import com.expensegarden.app.sync.SyncPrefs
+import com.expensegarden.app.sync.SyncRepository
+import com.expensegarden.app.sync.SyncScheduler
 
 class GardenApp : Application() {
     lateinit var container: AppContainer
@@ -35,9 +38,14 @@ class AppContainer(private val app: Application) {
     // declaration order, so moving these below `ledger` would hand it a null clock.
     val syncPrefs: SyncPrefs = SyncPrefs(app)
     val clock: SyncClock = SyncClock({ System.currentTimeMillis() }, syncPrefs)
+    val syncClient: SyncClient = SyncClient(syncPrefs)
+    val sync: SyncRepository = SyncRepository(db, syncClient, syncPrefs)
+    val scheduler: SyncScheduler = SyncScheduler(sync)
 
-    val ledger: LedgerRepository = LedgerRepository(db, clock)
-    val budgets: BudgetRepository = BudgetRepository(db, clock)
+    // Every ledger write signals the scheduler, which debounces into one push (spec §4).
+    // The repositories stay unaware that sync exists — they just report that something changed.
+    val ledger: LedgerRepository = LedgerRepository(db, clock) { scheduler.signal() }
+    val budgets: BudgetRepository = BudgetRepository(db, clock) { scheduler.signal() }
     val quips: QuipRepository = QuipRepository(db)
     val garden: GardenRepository = GardenRepository(db, ledger)
     val digests: DigestRepository = DigestRepository(db, ledger)

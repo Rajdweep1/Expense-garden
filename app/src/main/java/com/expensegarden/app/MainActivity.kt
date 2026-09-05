@@ -50,6 +50,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // One push per open, on top of the per-write signals (spec §4).
+        (application as GardenApp).container.scheduler.signal()
         setContent {
             MaterialTheme {
                 Surface { GardenNav(vm, dashVm, gardenVm, aiVm) }

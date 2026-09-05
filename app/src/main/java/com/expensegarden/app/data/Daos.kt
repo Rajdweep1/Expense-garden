@@ -8,6 +8,10 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface CategoryDao {
+    /** Restore only: preserves ids, overwriting the seed rows in place. */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(categories: List<CategoryEntity>)
+
     @Query("SELECT * FROM category ORDER BY isNecessity DESC, name")
     fun observeAll(): Flow<List<CategoryEntity>>
 
@@ -20,6 +24,10 @@ interface CategoryDao {
 
 @Dao
 interface PayeeDao {
+    /** Restore only: explicit ids, because txn.payeeId is a real foreign key. */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(payees: List<PayeeEntity>)
+
     @Query("SELECT * FROM payee WHERE vpa = :vpa LIMIT 1")
     suspend fun byVpa(vpa: String): PayeeEntity?
 
@@ -48,6 +56,10 @@ data class CategoryUsage(val categoryId: Long, val uses: Int)
 
 @Dao
 interface TransactionDao {
+    /** Restore only. */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(txns: List<TransactionEntity>)
+
     @Insert
     suspend fun insert(txn: TransactionEntity)
 
@@ -133,6 +145,10 @@ interface TransactionDao {
 
 @Dao
 interface BudgetDao {
+    /** Restore only. */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(budgets: List<BudgetEntity>)
+
     @Query("SELECT * FROM budget WHERE categoryId IS NULL AND month = :month LIMIT 1")
     suspend fun overallForMonth(month: String): BudgetEntity?
 
@@ -158,6 +174,10 @@ interface BudgetDao {
 
 @Dao
 interface GameEventDao {
+    /** Restore only: explicit ids, because the garden's month markers depend on event order. */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(events: List<GameEventEntity>)
+
     @Insert
     suspend fun insert(event: GameEventEntity)
 
@@ -279,4 +299,13 @@ interface SyncDao {
      *  trip carries a higher stamp and survives to be pushed next time. */
     @Query("DELETE FROM sync_tombstone WHERE deletedAt <= :upTo")
     suspend fun clearTombstonesUpTo(upTo: Long)
+
+    /** Restore only (spec §3.3). Reverse foreign-key order; `category` is deliberately absent
+     *  because the seed already created it with stable ids and the snapshot upserts over it. */
+    @Query("DELETE FROM game_event") suspend fun wipeEvents()
+    @Query("DELETE FROM budget") suspend fun wipeBudgets()
+    @Query("DELETE FROM txn") suspend fun wipeTxns()
+    @Query("DELETE FROM payee") suspend fun wipePayees()
+
+    @Query("SELECT COUNT(*) FROM txn") suspend fun txnCount(): Int
 }
