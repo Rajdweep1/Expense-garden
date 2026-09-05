@@ -46,14 +46,9 @@ class DashboardViewModel(private val container: AppContainer) : ViewModel() {
     /** amountPaise null = clear. categoryId null = overall. Same delete+insert idiom as 1A. */
     fun setBudget(categoryId: Long?, amountPaise: Long?) {
         viewModelScope.launch {
-            val monthKey = ledger.currentMonthKey()   // at call time, not VM birth
-            container.db.withTransaction {
-                if (categoryId == null) container.db.budgetDao().deleteOverallForMonth(monthKey)
-                else container.db.budgetDao().deleteForCategory(categoryId, monthKey)
-                if (amountPaise != null && amountPaise > 0) {
-                    container.db.budgetDao().insert(BudgetEntity(categoryId = categoryId, month = monthKey, amountPaise = amountPaise))
-                }
-            }
+            // Month key resolved at call time, not VM birth. The delete+insert idiom and the
+            // sync tombstone rule both live in BudgetRepository now (spec §2.5).
+            container.budgets.setBudget(categoryId, ledger.currentMonthKey(), amountPaise)
         }
     }
 

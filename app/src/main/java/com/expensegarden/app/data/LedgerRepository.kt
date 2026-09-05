@@ -6,6 +6,7 @@ import com.expensegarden.app.gate.GateEvaluator
 import com.expensegarden.app.gate.GateVerdict
 import com.expensegarden.app.gate.ScopeInput
 import com.expensegarden.app.stats.CategoryTree
+import com.expensegarden.app.sync.SyncClock
 import org.json.JSONObject
 import java.time.Instant
 import java.time.LocalDate
@@ -14,7 +15,11 @@ import java.time.ZoneId
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 
-class LedgerRepository(private val db: AppDatabase) {
+class LedgerRepository(
+    private val db: AppDatabase,
+    private val clock: SyncClock = SyncClock.inMemory(),
+    private val onChanged: () -> Unit = {},
+) {
     private val zone: ZoneId = ZoneId.systemDefault()
 
     data class Draft(
@@ -36,13 +41,17 @@ class LedgerRepository(private val db: AppDatabase) {
 
     suspend fun confirm(uuid: String) {
         db.withTransaction {
-            db.transactionDao().setStatus(uuid, TxnStatus.LOGGED)
+            db.transactionDao().setStatus(uuid, TxnStatus.LOGGED, updatedAt = clock.next())
             db.gameEventDao().insert(loggedEvent(uuid))
             db.transactionDao().byUuid(uuid)?.let { emitCrossings(it) }
         }
+        onChanged()
     }
 
-    suspend fun discard(uuid: String) = db.transactionDao().setStatus(uuid, TxnStatus.DISCARDED)
+    suspend fun discard(uuid: String) {
+        db.transactionDao().setStatus(uuid, TxnStatus.DISCARDED, updatedAt = clock.next())
+        onChanged()
+    }
 
     /** Regret is re-taggable; only transitions touching REGRET leave history (spec §4).
      *  Never punishes the log — this feeds garden rendering only. */
@@ -50,7 +59,7 @@ class LedgerRepository(private val db: AppDatabase) {
         db.withTransaction {
             val txn = db.transactionDao().byUuid(uuid) ?: return@withTransaction
             if (txn.regret == value) return@withTransaction
-            db.transactionDao().setRegret(uuid, value)
+            db.transactionDao().setRegret(uuid, value, updatedAt = clock.next())
             if (value == Regret.REGRET) {
                 val payload = JSONObject().put("uuid", uuid)
                     .put("categoryId", txn.categoryId).put("amountPaise", txn.amountPaise)
@@ -65,6 +74,7 @@ class LedgerRepository(private val db: AppDatabase) {
                 ))
             }
         }
+        onChanged()
     }
 
     /** User backed out at the gate — record the dodge; the game rewards it later (1C). */
@@ -73,6 +83,7 @@ class LedgerRepository(private val db: AppDatabase) {
         db.gameEventDao().insert(
             GameEventEntity(type = "gate.dodged", payloadJson = payload.toString(), transactionUuid = null, createdAt = now())
         )
+        onChanged()
     }
 
     fun observePendingConfirm(): Flow<List<TransactionEntity>> = db.transactionDao().observePendingConfirm()
@@ -150,15 +161,16 @@ class LedgerRepository(private val db: AppDatabase) {
                     uuid = uuid, amountPaise = draft.amountPaise, payeeId = payeeId,
                     categoryId = draft.categoryId, source = source, status = status,
                     breachedAtLogging = breached, note = draft.note,
-                    occurredAt = draft.occurredAt, createdAt = now(),
+                    occurredAt = draft.occurredAt, createdAt = now(), updatedAt = clock.next(),
                 )
             )
-            db.payeeDao().setDefaultCategory(payeeId, draft.categoryId)      // payee->category map learns
+            db.payeeDao().setDefaultCategory(payeeId, draft.categoryId, updatedAt = clock.next())   // payee->category map learns
             if (status == TxnStatus.LOGGED) {
                 db.gameEventDao().insert(loggedEvent(uuid))
                 db.transactionDao().byUuid(uuid)?.let { emitCrossings(it) }
             }
         }
+        onChanged()
         return uuid
     }
 
@@ -167,7 +179,7 @@ class LedgerRepository(private val db: AppDatabase) {
                        else db.payeeDao().cashPayeeByName(draft.payeeName)
         if (existing != null) return existing.id
         return db.payeeDao().insert(
-            PayeeEntity(name = draft.payeeName, vpa = draft.vpa, defaultCategoryId = draft.categoryId)
+            PayeeEntity(name = draft.payeeName, vpa = draft.vpa, defaultCategoryId = draft.categoryId, updatedAt = clock.next())
         )
     }
 

@@ -29,8 +29,8 @@ interface PayeeDao {
     @Insert
     suspend fun insert(payee: PayeeEntity): Long
 
-    @Query("UPDATE payee SET defaultCategoryId = :categoryId WHERE id = :payeeId")
-    suspend fun setDefaultCategory(payeeId: Long, categoryId: Long)
+    @Query("UPDATE payee SET defaultCategoryId = :categoryId, updatedAt = :updatedAt WHERE id = :payeeId")
+    suspend fun setDefaultCategory(payeeId: Long, categoryId: Long, updatedAt: Long)
 }
 
 data class TxnRow(
@@ -51,8 +51,8 @@ interface TransactionDao {
     @Insert
     suspend fun insert(txn: TransactionEntity)
 
-    @Query("UPDATE txn SET status = :status WHERE uuid = :uuid")
-    suspend fun setStatus(uuid: String, status: TxnStatus)
+    @Query("UPDATE txn SET status = :status, updatedAt = :updatedAt WHERE uuid = :uuid")
+    suspend fun setStatus(uuid: String, status: TxnStatus, updatedAt: Long)
 
     @Query("SELECT * FROM txn WHERE status = 'PENDING_CONFIRM' ORDER BY createdAt")
     fun observePendingConfirm(): Flow<List<TransactionEntity>>
@@ -83,8 +83,8 @@ interface TransactionDao {
     @Query("SELECT * FROM txn WHERE uuid = :uuid")
     suspend fun byUuid(uuid: String): TransactionEntity?
 
-    @Query("UPDATE txn SET regret = :regret WHERE uuid = :uuid")
-    suspend fun setRegret(uuid: String, regret: Regret)
+    @Query("UPDATE txn SET regret = :regret, updatedAt = :updatedAt WHERE uuid = :uuid")
+    suspend fun setRegret(uuid: String, regret: Regret, updatedAt: Long)
 
     @Query(
         """SELECT categoryId, COALESCE(SUM(amountPaise), 0) AS totalPaise FROM txn
@@ -244,4 +244,39 @@ interface DigestDao {
 
     @Query("UPDATE digest SET dismissedAt = :now WHERE id = :id")
     suspend fun dismiss(id: Long, now: Long)
+}
+
+/** Reads for the push batch (spec §3.2). Every predicate is `> cursor`, never `>=`: cursors
+ *  hold the highest value already accepted by the server, so re-sending it would be waste. */
+@Dao
+interface SyncDao {
+    @Query("SELECT * FROM category WHERE updatedAt > :since ORDER BY updatedAt")
+    suspend fun categoriesChangedSince(since: Long): List<CategoryEntity>
+
+    @Query("SELECT * FROM payee WHERE updatedAt > :since ORDER BY updatedAt")
+    suspend fun payeesChangedSince(since: Long): List<PayeeEntity>
+
+    @Query("SELECT * FROM txn WHERE updatedAt > :since ORDER BY updatedAt")
+    suspend fun txnsChangedSince(since: Long): List<TransactionEntity>
+
+    @Query("SELECT * FROM budget WHERE updatedAt > :since ORDER BY updatedAt")
+    suspend fun budgetsChangedSince(since: Long): List<BudgetEntity>
+
+    @Query("SELECT * FROM game_event WHERE id > :sinceId ORDER BY id")
+    suspend fun eventsAfter(sinceId: Long): List<GameEventEntity>
+
+    @Query("SELECT * FROM sync_tombstone ORDER BY deletedAt")
+    suspend fun tombstones(): List<SyncTombstoneEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun putTombstone(tombstone: SyncTombstoneEntity)
+
+    @Query("DELETE FROM sync_tombstone WHERE tableName = :tableName AND rowKey = :rowKey")
+    suspend fun deleteTombstone(tableName: String, rowKey: String)
+
+    /** Called after a successful push: a tombstone the server has accepted has done its job.
+     *  Bounded by the stamp that was actually sent, so a clear that happened during the round
+     *  trip carries a higher stamp and survives to be pushed next time. */
+    @Query("DELETE FROM sync_tombstone WHERE deletedAt <= :upTo")
+    suspend fun clearTombstonesUpTo(upTo: Long)
 }

@@ -7,6 +7,7 @@ import com.expensegarden.app.ai.LlmClient
 import com.expensegarden.app.ai.NoopLlmClient
 import com.expensegarden.app.data.AiPrefs
 import com.expensegarden.app.data.AppDatabase
+import com.expensegarden.app.data.BudgetRepository
 import com.expensegarden.app.data.DigestRepository
 import com.expensegarden.app.data.GardenPrefs
 import com.expensegarden.app.data.GardenRepository
@@ -14,6 +15,8 @@ import com.expensegarden.app.data.LedgerRepository
 import com.expensegarden.app.data.QuipRepository
 import com.expensegarden.app.game.Archetype
 import com.expensegarden.app.render.SpriteLoader
+import com.expensegarden.app.sync.SyncClock
+import com.expensegarden.app.sync.SyncPrefs
 
 class GardenApp : Application() {
     lateinit var container: AppContainer
@@ -27,7 +30,14 @@ class GardenApp : Application() {
 
 class AppContainer(private val app: Application) {
     val db: AppDatabase = AppDatabase.build(app)
-    val ledger: LedgerRepository = LedgerRepository(db)
+
+    // Declared before every repository that takes them: Kotlin initialises properties in
+    // declaration order, so moving these below `ledger` would hand it a null clock.
+    val syncPrefs: SyncPrefs = SyncPrefs(app)
+    val clock: SyncClock = SyncClock({ System.currentTimeMillis() }, syncPrefs)
+
+    val ledger: LedgerRepository = LedgerRepository(db, clock)
+    val budgets: BudgetRepository = BudgetRepository(db, clock)
     val quips: QuipRepository = QuipRepository(db)
     val garden: GardenRepository = GardenRepository(db, ledger)
     val digests: DigestRepository = DigestRepository(db, ledger)
