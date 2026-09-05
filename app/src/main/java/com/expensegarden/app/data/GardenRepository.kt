@@ -6,6 +6,7 @@ import com.expensegarden.app.game.Reconciler
 import com.expensegarden.app.game.StreakMath
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import com.expensegarden.app.game.RareSignal
 import org.json.JSONObject
 import java.time.Instant
 import java.time.LocalDate
@@ -40,12 +41,52 @@ class GardenRepository(private val db: AppDatabase, private val ledger: LedgerRe
             db.transactionDao().observeLoggedBetween(0L, Long.MAX_VALUE),
             db.categoryDao().observeAll(),
             db.budgetDao().observeAllForMonth(monthKey),
-            db.gameEventDao().observeEventsBetween(from, to),
+            // 4A needs the WHOLE log, not just this month: the once-ever guarantee in spec §3.3
+            // can only be enforced by a fold that sees all of history. The current month's
+            // slice is filtered back out below, so butterflies are unaffected.
+            db.gameEventDao().observeEventsBetween(0L, Long.MAX_VALUE),
             db.transactionDao().observeLoggedCountIn(investmentIds()),
-        ) { txns, cats, budgets, events, sips ->
-            GardenFolder.foldAllTime(txns, cats, budgets, events, sips, LocalDate.now(zone), zone, houseLevelOverride)
+        ) { txns, cats, budgets, allEvents, sips ->
+            GardenFolder.foldAllTime(
+                txns, cats, budgets,
+                allEvents.filter { it.createdAt in from..to },
+                sips, LocalDate.now(zone), zone, houseLevelOverride,
+                rareSignals = projectRareSignals(allEvents),
+            )
         }
     }
+
+    /** Turns raw rows into the typed signals [RareEngine] consumes (spec §4A).
+     *
+     *  This lives here, in the data layer, precisely because it touches `org.json` — the same
+     *  boundary `DigestRepository.project` observes. Keeping it out of the `game` package is
+     *  what lets the earning rules be unit-tested off-device at all.
+     *
+     *  A row whose payload will not parse is skipped rather than taking the whole fold down;
+     *  one malformed event should cost you one trigger, not your entire garden. */
+    private fun projectRareSignals(events: List<GameEventEntity>): List<RareSignal> =
+        events.mapNotNull { e ->
+            runCatching {
+                when (e.type) {
+                    "streak.hit" -> JSONObject(e.payloadJson).let { o ->
+                        RareSignal.StreakHit(e.id, e.createdAt, o.getInt("days"), o.getString("month"))
+                    }
+                    "month.closed" -> JSONObject(e.payloadJson).let { o ->
+                        RareSignal.MonthClosed(
+                            e.id, e.createdAt, o.getString("month"),
+                            o.getLong("spentPaise"),
+                            // Absent or JSON null means no budget was set that month. It must
+                            // stay null, never 0 — see RareEngine.
+                            if (o.isNull("overallBudgetPaise")) null else o.getLong("overallBudgetPaise"),
+                        )
+                    }
+                    "gate.dodged" -> RareSignal.GateDodged(e.id, e.createdAt)
+                    "transaction.regret_cleared" ->
+                        e.transactionUuid?.let { RareSignal.RegretCleared(e.id, e.createdAt, it) }
+                    else -> null
+                }
+            }.getOrNull()
+        }
 
     suspend fun foldMonth(monthKey: String): GardenState {
         val (from, to) = ledger.boundsOfMonth(monthKey)
