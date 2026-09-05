@@ -1,0 +1,5 @@
+# Nothing outside the module needs to enter the build context.
+.git
+.gitignore
+README.md
+*_test.go
