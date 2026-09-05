@@ -35,7 +35,12 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @Composable
-fun GreenhouseScreen(gardenVm: GardenViewModel, painter: PlantPainter, onBack: () -> Unit = {}) {
+fun GreenhouseScreen(
+    gardenVm: GardenViewModel,
+    aiVm: AiViewModel,
+    painter: PlantPainter,
+    onBack: () -> Unit = {},
+) {
     var months by remember { mutableStateOf<List<GardenState>?>(null) }
     var selected by remember { mutableStateOf<GardenState?>(null) }
     LaunchedEffect(Unit) { months = gardenVm.archivedGardens() }
@@ -65,6 +70,15 @@ fun GreenhouseScreen(gardenVm: GardenViewModel, painter: PlantPainter, onBack: (
                             ) {
                                 Text(monthFmt.format(YearMonth.parse(g.monthKey).atDay(1)), style = MaterialTheme.typography.titleMedium)
                                 Text(Money.display(g.spentPaise), style = MaterialTheme.typography.titleMedium)
+                            }
+                            var monthly by remember(g.monthKey) { mutableStateOf<String?>(null) }
+                            LaunchedEffect(g.monthKey) { monthly = aiVm.monthlyFor(g.monthKey)?.text }
+                            monthly?.let {
+                                Text(
+                                    it,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+                                )
                             }
                         }
                     }

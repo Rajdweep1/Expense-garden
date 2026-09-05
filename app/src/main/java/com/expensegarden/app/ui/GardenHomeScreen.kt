@@ -60,6 +60,7 @@ import kotlinx.coroutines.launch
 fun GardenHomeScreen(
     gardenVm: GardenViewModel,
     vm: MainViewModel,
+    aiVm: AiViewModel,
     painter: PlantPainter,
     structures: Map<String, ImageBitmap> = emptyMap(),
     onScan: () -> Unit,
@@ -129,6 +130,19 @@ fun GardenHomeScreen(
             val pendingTxn = pending.firstOrNull()
             var lastPending by remember { mutableStateOf<TransactionEntity?>(null) }
             LaunchedEffect(pendingTxn) { if (pendingTxn != null) lastPending = pendingTxn }
+            val digest by aiVm.dailyCard.collectAsState()
+            digest?.let { d ->
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(d.text, style = MaterialTheme.typography.bodyMedium)
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            TextButton(onClick = { aiVm.dismiss() }) { Text("ok") }
+                            // Spec §8 / parent §10: mutes the persona 24h, never logging.
+                            TextButton(onClick = { aiVm.notToday() }) { Text("not today") }
+                        }
+                    }
+                }
+            }
             AnimatedVisibility(
                 visible = pendingTxn != null,
                 enter = expandVertically(spring(dampingRatio = 0.85f, stiffness = 300f)) + fadeIn(spring(stiffness = Spring.StiffnessMedium)),

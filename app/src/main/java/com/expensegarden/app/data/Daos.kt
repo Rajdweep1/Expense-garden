@@ -60,6 +60,15 @@ interface TransactionDao {
     @Query("SELECT COALESCE(SUM(amountPaise), 0) FROM txn WHERE status = 'LOGGED' AND occurredAt BETWEEN :fromMillis AND :toMillis")
     suspend fun loggedSumBetween(fromMillis: Long, toMillis: Long): Long
 
+    /** Feeds PromptFacts.topCategories. Returns seeded taxonomy names, which PromptFacts
+     *  whitelists — the table is `txn`, not `transaction`. */
+    @Query(
+        "SELECT c.name FROM txn t JOIN category c ON c.id = t.categoryId " +
+            "WHERE t.status = 'LOGGED' AND t.occurredAt BETWEEN :fromMillis AND :toMillis " +
+            "GROUP BY c.id ORDER BY SUM(t.amountPaise) DESC LIMIT 3"
+    )
+    suspend fun topCategoryNames(fromMillis: Long, toMillis: Long): List<String>
+
     @Query("SELECT COALESCE(SUM(amountPaise), 0) FROM txn WHERE status = 'LOGGED' AND occurredAt BETWEEN :fromMillis AND :toMillis")
     fun observeLoggedSumBetween(fromMillis: Long, toMillis: Long): Flow<Long>
 

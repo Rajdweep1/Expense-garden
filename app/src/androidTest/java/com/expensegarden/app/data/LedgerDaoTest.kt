@@ -65,4 +65,24 @@ class LedgerDaoTest {
         // second must be a different, still-unused quip
         assertEquals(null, second.usedAt)
     }
+
+    @Test fun top_category_names_orders_by_logged_sum_and_caps_at_three() = runBlocking {
+        val payeeId = db.payeeDao().insert(PayeeEntity(name = "Mixed", vpa = null, defaultCategoryId = null))
+        fun txn(categoryId: Long, paise: Long, at: Long, status: TxnStatus = TxnStatus.LOGGED) = TransactionEntity(
+            uuid = UUID.randomUUID().toString(), amountPaise = paise, payeeId = payeeId,
+            categoryId = categoryId, source = TxnSource.MANUAL, status = status,
+            breachedAtLogging = false, note = null, occurredAt = at, createdAt = at,
+        )
+        // Sums inside [1000, 2000]: Fuel 900, Restaurants 500 (two rows), Streaming 300, Chai 100.
+        db.transactionDao().insert(txn(301, 900, 1000))
+        db.transactionDao().insert(txn(101, 200, 1100))
+        db.transactionDao().insert(txn(101, 300, 1200))
+        db.transactionDao().insert(txn(601, 300, 1300))
+        db.transactionDao().insert(txn(103, 100, 1400))
+        // Excluded: pending-confirm inside the window, and LOGGED but outside it.
+        db.transactionDao().insert(txn(2, 5000, 1500, status = TxnStatus.PENDING_CONFIRM))
+        db.transactionDao().insert(txn(303, 9000, 3000))
+
+        assertEquals(listOf("Fuel", "Restaurants", "Streaming"), db.transactionDao().topCategoryNames(1000L, 2000L))
+    }
 }

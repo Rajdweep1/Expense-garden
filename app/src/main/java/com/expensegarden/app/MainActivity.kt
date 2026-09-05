@@ -22,6 +22,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.expensegarden.app.capture.UpiUriParser
+import com.expensegarden.app.ui.AiViewModel
 import com.expensegarden.app.ui.DashboardScreen
 import com.expensegarden.app.ui.DashboardViewModel
 import com.expensegarden.app.ui.EntryScreen
@@ -43,19 +44,27 @@ class MainActivity : ComponentActivity() {
     private val gardenVm: GardenViewModel by viewModels {
         GardenViewModel.factory((application as GardenApp).container)
     }
+    private val aiVm: AiViewModel by viewModels {
+        AiViewModel.factory((application as GardenApp).container)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme {
-                Surface { GardenNav(vm, dashVm, gardenVm) }
+                Surface { GardenNav(vm, dashVm, gardenVm, aiVm) }
             }
         }
     }
 }
 
 @Composable
-private fun GardenNav(vm: MainViewModel, dashVm: DashboardViewModel, gardenVm: GardenViewModel) {
+private fun GardenNav(
+    vm: MainViewModel,
+    dashVm: DashboardViewModel,
+    gardenVm: GardenViewModel,
+    aiVm: AiViewModel,
+) {
     val nav = rememberNavController()
     val context = LocalContext.current
 
@@ -80,6 +89,7 @@ private fun GardenNav(vm: MainViewModel, dashVm: DashboardViewModel, gardenVm: G
             GardenHomeScreen(
                 gardenVm = gardenVm,
                 vm = vm,
+                aiVm = aiVm,
                 painter = remember {
                     val container = (context.applicationContext as GardenApp).container
                     if (container.sprites.isEmpty()) com.expensegarden.app.render.ProceduralPainter()
@@ -111,6 +121,7 @@ private fun GardenNav(vm: MainViewModel, dashVm: DashboardViewModel, gardenVm: G
         composable("greenhouse") {
             GreenhouseScreen(
                 gardenVm = gardenVm,
+                aiVm = aiVm,
                 painter = remember {
                     val container = (context.applicationContext as GardenApp).container
                     if (container.sprites.isEmpty()) com.expensegarden.app.render.ProceduralPainter()
