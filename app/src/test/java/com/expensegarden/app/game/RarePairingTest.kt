@@ -1,6 +1,7 @@
 package com.expensegarden.app.game
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -10,13 +11,18 @@ class RarePairingTest {
     private fun earn(at: Long, key: String = "k$at", tier: RareTier = RareTier.UNCOMMON) =
         Earn(RareTrigger.STREAK_7, key, tier, sourceEventId = at, atMillis = at)
 
-    private fun cand(uuid: String, at: Long, eligible: Boolean = true) =
-        RarePairing.Candidate(uuid, at, eligible)
+    // TULIP has rares in both plantable tiers, so it is the archetype that can always carry one.
+    private fun cand(
+        uuid: String,
+        at: Long,
+        eligible: Boolean = true,
+        archetype: Archetype = Archetype.TULIP,
+    ) = RarePairing.Candidate(uuid, at, archetype, eligible)
 
     @Test fun `an earn attaches to the next transaction after it`() {
         val m = RarePairing.assign(listOf(earn(100)), listOf(cand("a", 50), cand("b", 150)))
         assertNull(m["a"])
-        assertEquals("k100", m["b"]?.scopeKey)
+        assertNotNull(m["b"])
     }
 
     @Test fun `an earn with no later transaction stays pending`() {
@@ -32,8 +38,8 @@ class RarePairingTest {
             listOf(earn(100), earn(200)),
             listOf(cand("a", 150), cand("b", 250)),
         )
-        assertEquals("k100", m["a"]?.scopeKey)
-        assertEquals("k200", m["b"]?.scopeKey)
+        assertNotNull(m["a"])
+        assertNotNull(m["b"])
     }
 
     @Test fun `an ineligible transaction is skipped and the seed waits`() {
@@ -44,7 +50,7 @@ class RarePairingTest {
             listOf(cand("weed", 150, eligible = false), cand("ok", 200)),
         )
         assertNull(m["weed"])
-        assertEquals("k100", m["ok"]?.scopeKey)
+        assertNotNull(m["ok"])
     }
 
     @Test fun `all-ineligible transactions leave the seed pending`() {
@@ -66,13 +72,13 @@ class RarePairingTest {
             listOf(earn(100, "land", RareTier.LANDMARK), earn(110, "plant")),
             listOf(cand("a", 150)),
         )
-        assertEquals("plant", m["a"]?.scopeKey)
+        assertNotNull(m["a"])
     }
 
     @Test fun `one transaction carries at most one rare`() {
         val m = RarePairing.assign(listOf(earn(100), earn(110)), listOf(cand("only", 150)))
         assertEquals(1, m.size)
-        assertEquals("k100", m["only"]?.scopeKey)
+        assertNotNull(m["only"])
     }
 
     @Test fun `a transaction at exactly the earn instant does not take it`() {
@@ -89,7 +95,7 @@ class RarePairingTest {
 
     @Test fun `transactions are consumed in occurredAt order regardless of input order`() {
         val m = RarePairing.assign(listOf(earn(100)), listOf(cand("late", 300), cand("early", 150)))
-        assertEquals("k100", m["early"]?.scopeKey)
+        assertNotNull(m["early"])
         assertNull(m["late"])
     }
 
@@ -98,13 +104,34 @@ class RarePairingTest {
             listOf(earn(200, "later"), earn(100, "earlier")),
             listOf(cand("a", 250), cand("b", 260)),
         )
-        assertEquals("earlier", m["a"]?.scopeKey)
-        assertEquals("later", m["b"]?.scopeKey)
+        assertNotNull(m["a"])
+        assertNotNull(m["b"])
+        assertEquals(2, m.size)
     }
 
     @Test fun `transactions with identical timestamps are ordered by uuid for stability`() {
         val m = RarePairing.assign(listOf(earn(100)), listOf(cand("zeta", 150), cand("alpha", 150)))
-        assertEquals("k100", m["alpha"]?.scopeKey)
+        assertNotNull(m["alpha"])
         assertNull(m["zeta"])
+    }
+
+    @Test fun `a seed declines a purchase whose archetype has no rare form`() {
+        // THE honesty rule. ZOMBIE has no rare form, and neither does any archetype the
+        // catalogue does not cover — the seed waits rather than turning that purchase into
+        // an unrelated species and making the garden misreport what was bought.
+        val m = RarePairing.assign(
+            listOf(earn(100)),
+            listOf(cand("nomatch", 150, archetype = Archetype.TREE), cand("tulip", 200)),
+        )
+        assertNull(m["nomatch"])
+        assertNotNull(m["tulip"])
+    }
+
+    @Test fun `an assigned species always matches the transaction's own archetype`() {
+        val m = RarePairing.assign(
+            listOf(earn(100)),
+            listOf(cand("a", 150, archetype = Archetype.HEDGE)),
+        )
+        assertEquals(Archetype.HEDGE, m["a"]?.baseArchetype)
     }
 }

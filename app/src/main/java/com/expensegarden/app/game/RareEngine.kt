@@ -17,6 +17,8 @@ import java.time.ZoneId
 object RareEngine {
 
     const val DODGES_FOR_EARN = 3
+    /** CONSECUTIVE no-spend days. A total count would be nearly free — nobody spends daily —
+     *  so this is a run length, and seven of them is an actual no-spend week. */
     const val NO_SPEND_DAYS_FOR_EARN = 7
     const val ROOT_CATEGORIES_FOR_EARN = 8
 
@@ -28,7 +30,7 @@ object RareEngine {
 
     /**
      * @param signals every projected signal in the log, any order.
-     * @param noSpendByMonth month key → no-spend days elapsed that month.
+     * @param noSpendByMonth month key → LONGEST CONSECUTIVE no-spend run that month.
      * @param breadthByMonth month key → distinct root categories spent in that month.
      * @param houseLevel the current level from `GardenFolder.houseLevel`.
      */
@@ -91,8 +93,8 @@ object RareEngine {
 
         // Derived month facts. These have no originating event, so the scope key itself seeds
         // the species roll — stable forever, because the key never changes for a given month.
-        for ((month, days) in noSpendByMonth.toSortedMap()) {
-            if (days < NO_SPEND_DAYS_FOR_EARN) continue
+        for ((month, longestRun) in noSpendByMonth.toSortedMap()) {
+            if (longestRun < NO_SPEND_DAYS_FOR_EARN) continue
             val key = "nospend:$month"
             out += Earn(RareTrigger.NO_SPEND_DAYS, key, RareTier.UNCOMMON, seedFrom(key), monthStart(month, zone))
         }

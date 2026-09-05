@@ -27,6 +27,10 @@ data class Plant(
     val tile: Tile,
     val seed: Int,                                           // uuid hash — all jitter derives from this
     val variant: Int = 0,                                    // which look within the archetype's sprite set
+    /** 4A: non-null when this purchase grew as an earned rare. Null for every ordinary plant,
+     *  which is all of them before this phase — the field is additive and the renderer falls
+     *  back to the archetype sprite whenever it is absent. */
+    val rare: RareSpecies? = null,
 )
 
 /** Where a month's first plant stands — the all-time island renders a signpost here. */

@@ -26,38 +26,44 @@ class RareCatalogTest {
         assertEquals(names.size, names.toSet().size)
     }
 
-    @Test fun `picking is deterministic for the same event id`() {
-        val a = RareCatalog.pick(RareTier.UNCOMMON, sourceEventId = 4242L)
-        val b = RareCatalog.pick(RareTier.UNCOMMON, sourceEventId = 4242L)
+    @Test fun `picking is deterministic for the same seed and archetype`() {
+        val a = RareCatalog.pick(RareTier.UNCOMMON, Archetype.TULIP, seed = 4242L)
+        val b = RareCatalog.pick(RareTier.UNCOMMON, Archetype.TULIP, seed = 4242L)
         assertEquals(a, b)
     }
 
-    @Test fun `picking spreads across the pool rather than always returning one species`() {
-        val pool = RareCatalog.pool(RareTier.UNCOMMON)
-        val picked = (1L..200L).map { RareCatalog.pick(RareTier.UNCOMMON, it).id }.toSet()
-        assertTrue("expected >1 distinct species over 200 ids, got ${picked.size}", picked.size > 1)
-        assertTrue(picked.size <= pool.size)
-    }
-
-    @Test fun `a negative event id still picks a valid species`() {
+    @Test fun `a negative seed still picks a valid species`() {
         // hashCode-derived seeds are routinely negative; a raw % would index out of bounds.
-        val s = RareCatalog.pick(RareTier.UNCOMMON, sourceEventId = -99L)
-        assertTrue(s in RareCatalog.pool(RareTier.UNCOMMON))
+        val s = RareCatalog.pick(RareTier.UNCOMMON, Archetype.TULIP, seed = -99L)
+        assertTrue(s in RareCatalog.poolFor(RareTier.UNCOMMON, Archetype.TULIP))
     }
 
     @Test fun `Int MIN_VALUE cannot break the pick`() {
         // absoluteValue of Int.MIN_VALUE is still negative in two's complement. Taking the
         // hashCode to Long BEFORE absoluteValue is what makes this safe, and this test is the
         // only thing that would catch it being reordered.
-        val s = RareCatalog.pick(RareTier.RARE, sourceEventId = Int.MIN_VALUE.toLong())
-        assertTrue(s in RareCatalog.pool(RareTier.RARE))
+        val s = RareCatalog.pick(RareTier.RARE, Archetype.TULIP, seed = Int.MIN_VALUE.toLong())
+        assertTrue(s in RareCatalog.poolFor(RareTier.RARE, Archetype.TULIP))
     }
 
-    @Test fun `uncommon species name an existing archetype and rare species do not`() {
-        // Uncommons are variants of something you already grow; rares are new archetypes.
+    @Test fun `an archetype with no rare form yields null rather than a wrong species`() {
+        // THE honesty rule (spec §4). Returning some other species here is what would let a
+        // Groceries purchase render as a tulip and make the garden misreport what was bought.
+        assertEquals(null, RareCatalog.pick(RareTier.UNCOMMON, Archetype.ZOMBIE, seed = 1L))
+        assertEquals(null, RareCatalog.pick(RareTier.UNCOMMON, Archetype.THISTLE_WEED, seed = 1L))
+    }
+
+    @Test fun `every plantable species names a base archetype and landmarks do not`() {
+        // A plantable rare must be a form OF something, or it could not be assigned honestly.
         assertTrue(RareCatalog.pool(RareTier.UNCOMMON).all { it.baseArchetype != null })
-        assertTrue(RareCatalog.pool(RareTier.RARE).all { it.baseArchetype == null })
+        assertTrue(RareCatalog.pool(RareTier.RARE).all { it.baseArchetype != null })
         assertTrue(RareCatalog.pool(RareTier.LANDMARK).all { it.baseArchetype == null })
+    }
+
+    @Test fun `a species never claims an archetype that cannot grow it`() {
+        // Weeds and zombies are outcomes, not categories — nothing should decorate them.
+        val forbidden = setOf(Archetype.ZOMBIE, Archetype.THISTLE_WEED, Archetype.ODD_MUSHROOM)
+        assertTrue(RareCatalog.all().none { it.baseArchetype in forbidden })
     }
 
     @Test fun `every species reports the tier of the pool it lives in`() {

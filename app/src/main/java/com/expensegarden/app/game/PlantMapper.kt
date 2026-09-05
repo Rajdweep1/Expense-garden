@@ -6,7 +6,16 @@ import com.expensegarden.app.stats.CategoryTree
 import kotlin.math.abs
 
 /** Everything before tiling: txn → what grows. Returns null for investments (they go to the back row). */
-data class MappedPlant(val txnUuid: String, val archetype: Archetype, val sizeTier: SizeTier, val isWeed: Boolean, val seed: Int, val variant: Int = 0)
+data class MappedPlant(
+    val txnUuid: String,
+    val archetype: Archetype,
+    val sizeTier: SizeTier,
+    val isWeed: Boolean,
+    val seed: Int,
+    val variant: Int = 0,
+    /** 4A: the earned rare this purchase grew as, if any. */
+    val rare: RareSpecies? = null,
+)
 
 object PlantMapper {
     const val INVESTMENTS_ROOT = 10L
@@ -48,7 +57,7 @@ object PlantMapper {
         9L to Archetype.BERRY_BUSH,     // Family      (1C.7: was HEDGE)
     )
 
-    fun map(txn: TransactionEntity, tree: CategoryTree): MappedPlant? {
+    fun map(txn: TransactionEntity, tree: CategoryTree, rare: RareSpecies? = null): MappedPlant? {
         val chain = tree.ancestorChain(txn.categoryId)
         val root = chain.lastOrNull() ?: txn.categoryId
         if (root == INVESTMENTS_ROOT) return null
@@ -77,6 +86,12 @@ object PlantMapper {
             isWeed -> 0
             else -> variantBySubcat[txn.categoryId] ?: (abs(seed / 31) % variantCount(archetype))
         }
-        return MappedPlant(txn.uuid, archetype, tier, isWeed, seed, variant)
+        // A rare decorates; it never re-labels. The archetype is left exactly as the category
+        // decided, so the garden cannot misreport what was bought — a rare is the plant you
+        // would have grown anyway, grown better. And a rare later tagged as a regret still
+        // becomes a zombie (spec §6): the honesty of the garden outranks the prettiness of the
+        // collection, so the zombie and weed branches above win outright.
+        val effective = if (isZombie || isWeed) null else rare
+        return MappedPlant(txn.uuid, archetype, tier, isWeed, seed, variant, rare = effective)
     }
 }

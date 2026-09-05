@@ -158,7 +158,12 @@ class RareEngineTest {
         val a = RareEngine.earns(signals, emptyMap(), emptyMap(), 1, zone)
         val b = RareEngine.earns(signals, emptyMap(), emptyMap(), 1, zone)
         assertEquals(a, b)
-        assertEquals(a.map { it.species.id }, b.map { it.species.id })
+        // The species now depends on which purchase carries it, so compare the resolution
+        // for a fixed archetype — that is what must be stable across folds.
+        assertEquals(
+            a.map { it.speciesFor(Archetype.TULIP)?.id },
+            b.map { it.speciesFor(Archetype.TULIP)?.id },
+        )
     }
 
     @Test fun `input order does not change the result`() {

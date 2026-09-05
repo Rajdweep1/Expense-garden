@@ -77,26 +77,54 @@ object GardenFolder {
         houseLevelOverride: Int? = null,                     // 1C.7: fold the SAME txns at a
                                                              // previous house level, for the
                                                              // expansion tween's "before" state
+        // 4A: already projected by the caller. This function stays JSON-free by construction —
+        // reading a payload means org.json, which throws "not mocked" in JVM tests, and that
+        // would make the whole fold untestable off-device.
+        rareSignals: List<RareSignal> = emptyList(),
     ): GardenState {
         val ym = YearMonth.from(today)
         val daysInMonth = ym.lengthOfMonth()
 
         val tree = CategoryTree(categories)
         val ordered = allTxns.sortedWith(compareBy({ it.occurredAt }, { it.uuid }))
-        // Pair each planted txn with its month — markers fall out of the same chronological pass.
-        val mapped = ordered.mapNotNull { t ->
-            PlantMapper.map(t, tree)?.let { m ->
-                m to YearMonth.from(Instant.ofEpochMilli(t.occurredAt).atZone(zone)).toString()
-            }
-        }
         // Months tracked = distinct months with any LOGGED txn (investments count — showing
         // up is showing up). The house is the monument to sticking with it.
         val monthsTracked = ordered.map { YearMonth.from(Instant.ofEpochMilli(it.occurredAt).atZone(zone)) }.distinct().size
         // 1C.7: the house's footprint drives the tiling, so the level must be resolved first.
+        // 4A also needs it before the earn pass, since house level is itself a landmark trigger.
         val level = houseLevelOverride ?: houseLevel(monthsTracked)
+
+        // 4A: earns are derived on every fold, never stored (spec §4.2). A first mapping pass
+        // establishes which purchases could carry a rare — a weed or a zombie must not consume
+        // a seed earned by restraint — then the assignment feeds the real mapping pass.
+        val eligibility = ordered.mapNotNull { t ->
+            PlantMapper.map(t, tree)?.let { m ->
+                RarePairing.Candidate(
+                    t.uuid, t.occurredAt, m.archetype,
+                    eligible = !m.isWeed && m.archetype != Archetype.ZOMBIE,
+                )
+            }
+        }
+        val earns = RareEngine.earns(
+            rareSignals,
+            noSpendByMonth(ordered, today, zone),
+            breadthByMonth(ordered, tree, zone),
+            level,
+            zone,
+        )
+        val assignment = RarePairing.assign(earns, eligibility)
+
+        // Pair each planted txn with its month — markers fall out of the same chronological pass.
+        val mapped = ordered.mapNotNull { t ->
+            PlantMapper.map(t, tree, rare = assignment[t.uuid])?.let { m ->
+                m to YearMonth.from(Instant.ofEpochMilli(t.occurredAt).atZone(zone)).toString()
+            }
+        }
         val foot = SpiralTiler.footprint(level)
         val tiles = SpiralTiler.tiles(mapped.size, foot)
-        val plants = mapped.mapIndexed { i, (m, _) -> Plant(m.txnUuid, m.archetype, m.sizeTier, m.isWeed, tiles[i], m.seed, m.variant) }
+        val plants = mapped.mapIndexed { i, (m, _) ->
+            Plant(m.txnUuid, m.archetype, m.sizeTier, m.isWeed, tiles[i], m.seed, m.variant, rare = m.rare)
+        }
         val markers = mapped.mapIndexedNotNull { i, (_, mk) ->
             if (i == 0 || mapped[i - 1].second != mk) MonthMarker(mk, tiles[i]) else null
         }
@@ -125,6 +153,49 @@ object GardenFolder {
             houseLevel = level,
         )
     }
+
+    /** The longest CONSECUTIVE no-spend run per month (4A).
+     *
+     *  Consecutive, not counted — and the difference is the whole trigger. A total count is
+     *  nearly free: nobody spends every day, so with one purchase in a twenty-day stretch you
+     *  already have nineteen no-spend days. That is arithmetic, not restraint. A seven-day
+     *  unbroken run is a real thing you had to do.
+     *
+     *  Only ELAPSED days count, matching StreakMath: a month still in progress cannot claim
+     *  its remaining days. */
+    private fun noSpendByMonth(
+        ordered: List<TransactionEntity>,
+        today: LocalDate,
+        zone: ZoneId,
+    ): Map<String, Int> {
+        val currentMonth = YearMonth.from(today)
+        return ordered.groupBy { YearMonth.from(Instant.ofEpochMilli(it.occurredAt).atZone(zone)) }
+            .mapValues { (month, txns) ->
+                val spentDays = txns.map { Instant.ofEpochMilli(it.occurredAt).atZone(zone).dayOfMonth }.toSet()
+                val elapsed = if (month == currentMonth) today.dayOfMonth - 1 else month.lengthOfMonth()
+                var longest = 0
+                var run = 0
+                for (day in 1..elapsed) {
+                    if (day in spentDays) run = 0 else run++
+                    if (run > longest) longest = run
+                }
+                longest
+            }
+            .mapKeys { it.key.toString() }
+    }
+
+    /** Distinct ROOT categories spent in, per month (4A) — the variety trigger. Roots, not
+     *  leaves: eleven roots exist, so eight of them is genuine breadth, whereas eight leaves
+     *  could all sit under Food & Drinks. */
+    private fun breadthByMonth(
+        ordered: List<TransactionEntity>,
+        tree: CategoryTree,
+        zone: ZoneId,
+    ): Map<String, Int> =
+        ordered.groupBy { YearMonth.from(Instant.ofEpochMilli(it.occurredAt).atZone(zone)).toString() }
+            .mapValues { (_, txns) ->
+                txns.mapNotNull { tree.ancestorChain(it.categoryId).lastOrNull() }.distinct().size
+            }
 
     /** Hut → cottage → brick house → villa. Thresholds in months tracked (spec §5). */
     private fun houseLevel(monthsTracked: Int) = when {

@@ -13,10 +13,17 @@ enum class RareTier { UNCOMMON, RARE, LANDMARK }
 /**
  * One collectable.
  *
- * @param baseArchetype non-null for UNCOMMON — the species this is a special variant OF. That
- *   is why uncommons need no renderer change at all: `SpritePainter` already loads
- *   `<archetype>_<variant>.png`, so a golden tulip is just a higher variant index on TULIP.
- *   Null for RARE and LANDMARK, which are archetypes in their own right.
+ * @param baseArchetype the species this is a special form OF — non-null for every *plantable*
+ *   rare, null only for LANDMARKs, which are island features rather than plants.
+ *
+ *   This is load-bearing, not bookkeeping. A rare must be the plant that purchase would
+ *   already have grown, only better: if a Groceries purchase could render as a Golden Tulip,
+ *   the garden would be lying about what you bought, and "the garden is your spending" — the
+ *   single property that makes it worth looking at — would stop being true. So a rare is only
+ *   ever assigned to a transaction whose natural archetype already matches.
+ *
+ *   It is also why rares need no renderer change: `SpritePainter` loads
+ *   `<archetype>_<variant>.png`, so a golden tulip is just a further variant of TULIP.
  * @param spriteName the asset base name under `assets/garden/`, without the `.png`. Must match
  *   the generated sprite exactly — `SpritePainter` looks up by name and a typo renders nothing
  *   with no error anywhere.
@@ -96,7 +103,10 @@ data class Earn(
     val sourceEventId: Long,
     val atMillis: Long,
 ) {
-    val species: RareSpecies get() = RareCatalog.pick(tier, sourceEventId)
+    /** The species is NOT known from the earn alone — it depends on which purchase ends up
+     *  carrying it, because a rare must match that purchase's natural archetype (see
+     *  [RareSpecies.baseArchetype]). [RarePairing] resolves it. */
+    fun speciesFor(archetype: Archetype): RareSpecies? = RareCatalog.pick(tier, archetype, sourceEventId)
 }
 
 object RareCatalog {
@@ -112,11 +122,15 @@ object RareCatalog {
         RareSpecies("ripe_row", "Ripe Vegetable Row", RareTier.UNCOMMON, "vegetable_row_2", Archetype.VEGETABLE_ROW),
     )
 
+    /** Rares are dramatic forms, but still forms OF something — a lotus is what a flower can
+     *  become, not a flower replaced by an unrelated object. */
     private val RARES = listOf(
-        RareSpecies("bonsai", "Bonsai", RareTier.RARE, "bonsai_0"),
-        RareSpecies("lotus", "Lotus", RareTier.RARE, "lotus_0"),
-        RareSpecies("night_orchid", "Night Orchid", RareTier.RARE, "night_orchid_0"),
-        RareSpecies("firefly_fern", "Firefly Fern", RareTier.RARE, "firefly_fern_0"),
+        RareSpecies("lotus", "Lotus", RareTier.RARE, "petal_flower_4", Archetype.PETAL_FLOWER),
+        RareSpecies("night_orchid", "Night Orchid", RareTier.RARE, "tulip_4", Archetype.TULIP),
+        RareSpecies("firefly_fern", "Firefly Fern", RareTier.RARE, "herb_tuft_2", Archetype.HERB_TUFT),
+        RareSpecies("bonsai", "Bonsai", RareTier.RARE, "bush_2", Archetype.BUSH),
+        RareSpecies("topiary_crane", "Topiary Crane", RareTier.RARE, "hedge_4", Archetype.HEDGE),
+        RareSpecies("heirloom_row", "Heirloom Row", RareTier.RARE, "vegetable_row_3", Archetype.VEGETABLE_ROW),
     )
 
     /** Specified now so the earning engine is built once, but not rendered until 4B: a pond is
@@ -137,7 +151,15 @@ object RareCatalog {
 
     fun byId(id: String): RareSpecies? = all().firstOrNull { it.id == id }
 
-    /** Which rare you get — derived, never rolled (spec §4.1).
+    /** Every plantable rare available for a given archetype. Empty means a purchase of that
+     *  kind cannot carry this tier — the seed waits for one that can. */
+    fun poolFor(tier: RareTier, archetype: Archetype): List<RareSpecies> =
+        pool(tier).filter { it.baseArchetype == archetype }
+
+    /** Which rare a given purchase grows as — derived, never rolled (spec §4.1).
+     *
+     *  Returns null when no species of this tier exists for that archetype, which is how a
+     *  seed declines a purchase it cannot honestly decorate.
      *
      *  `Math.random()` here would be a real bug, not a style choice: the garden is a pure fold,
      *  so a runtime roll makes every replay of the log produce a different island and the
@@ -147,9 +169,10 @@ object RareCatalog {
      *  The `.toLong()` before `.absoluteValue` is load-bearing. `Int.MIN_VALUE.absoluteValue`
      *  is still `Int.MIN_VALUE` in two's complement, so taking the absolute value while still
      *  an Int would yield a negative index for one unlucky seed. */
-    fun pick(tier: RareTier, sourceEventId: Long): RareSpecies {
-        val p = pool(tier)
-        val index = (sourceEventId.hashCode().toLong().absoluteValue % p.size).toInt()
+    fun pick(tier: RareTier, archetype: Archetype, seed: Long): RareSpecies? {
+        val p = poolFor(tier, archetype)
+        if (p.isEmpty()) return null
+        val index = (seed.hashCode().toLong().absoluteValue % p.size).toInt()
         return p[index]
     }
 }
