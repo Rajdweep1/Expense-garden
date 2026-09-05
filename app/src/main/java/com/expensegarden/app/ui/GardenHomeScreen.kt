@@ -122,7 +122,7 @@ fun GardenHomeScreen(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             TextButton(onClick = onOpenGreenhouse) { Text("🏡 greenhouse") }
-            TextButton(onClick = onOpenSettings) { Text("⚙️") }
+            TextButton(onClick = onOpenSettings) { Text("⚙️ settings") }
         }
 
         Column(Modifier.align(Alignment.BottomCenter).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {

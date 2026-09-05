@@ -2,11 +2,16 @@ package com.expensegarden.app.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
@@ -21,6 +26,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.expensegarden.app.data.AiPrefs
@@ -33,16 +40,21 @@ import com.expensegarden.app.game.Tone
  *  written to Room, because Room replicates to the Phase 2 backend. */
 @Composable
 fun SettingsScreen(aiPrefs: AiPrefs, onBack: () -> Unit) {
+    // `remember`, not `rememberSaveable`, on purpose: a secret does not belong in the saved-state
+    // Bundle, so an unsaved edit is dropped on rotation and re-seeded from prefs. Deliberate.
     var key by remember { mutableStateOf(aiPrefs.apiKey) }
     var tone by remember { mutableStateOf(aiPrefs.tone) }
     var saved by remember { mutableStateOf(false) }
 
+    // Scrolls and pads for the keyboard: Save must never be unreachable on this screen, since it
+    // is the only way a key gets into the app (spec §3). Edge-to-edge on targetSdk 35 means
+    // adjustResize no longer shrinks the content for us, and landscape has no room at all.
     Column(
-        Modifier.statusBarsPadding().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        Modifier.statusBarsPadding().imePadding().verticalScroll(rememberScrollState()).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onBack) { Text("← garden") }
+            TextButton(onClick = onBack, contentPadding = PaddingValues(horizontal = 8.dp)) { Text("← garden") }
             Text("Settings", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(start = 8.dp))
         }
 
@@ -59,6 +71,8 @@ fun SettingsScreen(aiPrefs: AiPrefs, onBack: () -> Unit) {
                     onValueChange = { key = it; saved = false },
                     label = { Text("key") },
                     singleLine = true,
+                    // Masking is visual; this tells the IME too, so it does not learn the key.
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -76,11 +90,15 @@ fun SettingsScreen(aiPrefs: AiPrefs, onBack: () -> Unit) {
                 Tone.values().forEach { option ->
                     Row(
                         Modifier.fillMaxWidth()
-                            .selectable(selected = tone == option, onClick = { tone = option; saved = false })
+                            .selectable(
+                                selected = tone == option,
+                                role = Role.RadioButton,        // one TalkBack item per option, not two
+                                onClick = { tone = option; saved = false },
+                            )
                             .padding(vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        RadioButton(selected = tone == option, onClick = { tone = option; saved = false })
+                        RadioButton(selected = tone == option, onClick = null)
                         Text(
                             when (option) {
                                 Tone.SHARP -> "Sharp but fair"
