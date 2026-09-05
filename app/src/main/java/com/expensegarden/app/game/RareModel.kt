@@ -24,17 +24,24 @@ enum class RareTier { UNCOMMON, RARE, LANDMARK }
  *
  *   It is also why rares need no renderer change: `SpritePainter` loads
  *   `<archetype>_<variant>.png`, so a golden tulip is just a further variant of TULIP.
- * @param spriteName the asset base name under `assets/garden/`, without the `.png`. Must match
- *   the generated sprite exactly — `SpritePainter` looks up by name and a typo renders nothing
- *   with no error anywhere.
+ * @param variant the sprite variant index within [baseArchetype]. Rares occupy indices ABOVE
+ *   the archetype's ordinary variants, so `PlantMapper`'s seeded roll can never accidentally
+ *   produce one. Because `SpritePainter` already looks sprites up by `(archetype, variant)`,
+ *   expressing a rare this way means the renderer needs no change at all — a golden tulip is
+ *   simply `tulip_3.png`.
  */
 data class RareSpecies(
     val id: String,
     val displayName: String,
     val tier: RareTier,
-    val spriteName: String,
+    val variant: Int,
     val baseArchetype: Archetype? = null,
-)
+) {
+    /** The asset file this expects under `assets/garden/`. Landmarks have no archetype and are
+     *  not rendered until 4B, so they name themselves. */
+    val spriteName: String
+        get() = baseArchetype?.let { "${it.name.lowercase()}_$variant" } ?: id
+}
 
 /**
  * A typed projection of the one game_event kind the engine cares about.
@@ -112,33 +119,33 @@ data class Earn(
 object RareCatalog {
 
     private val UNCOMMONS = listOf(
-        RareSpecies("golden_tulip", "Golden Tulip", RareTier.UNCOMMON, "tulip_3", Archetype.TULIP),
-        RareSpecies("moonlit_bell", "Moonlit Bell", RareTier.UNCOMMON, "bell_flower_2", Archetype.BELL_FLOWER),
-        RareSpecies("flowering_hedge", "Flowering Hedge", RareTier.UNCOMMON, "hedge_3", Archetype.HEDGE),
-        RareSpecies("heavy_berry", "Heavy Berry Bush", RareTier.UNCOMMON, "berry_bush_2", Archetype.BERRY_BUSH),
-        RareSpecies("silver_succulent", "Silver Succulent", RareTier.UNCOMMON, "succulent_2", Archetype.SUCCULENT),
-        RareSpecies("sunlit_petal", "Sunlit Bloom", RareTier.UNCOMMON, "petal_flower_3", Archetype.PETAL_FLOWER),
-        RareSpecies("spiced_chai", "Spiced Chai Cluster", RareTier.UNCOMMON, "chai_cluster_2", Archetype.CHAI_CLUSTER),
-        RareSpecies("ripe_row", "Ripe Vegetable Row", RareTier.UNCOMMON, "vegetable_row_2", Archetype.VEGETABLE_ROW),
+        RareSpecies("golden_tulip", "Golden Tulip", RareTier.UNCOMMON, 3, Archetype.TULIP),
+        RareSpecies("moonlit_bell", "Moonlit Bell", RareTier.UNCOMMON, 2, Archetype.BELL_FLOWER),
+        RareSpecies("flowering_hedge", "Flowering Hedge", RareTier.UNCOMMON, 3, Archetype.HEDGE),
+        RareSpecies("heavy_berry", "Heavy Berry Bush", RareTier.UNCOMMON, 2, Archetype.BERRY_BUSH),
+        RareSpecies("silver_succulent", "Silver Succulent", RareTier.UNCOMMON, 2, Archetype.SUCCULENT),
+        RareSpecies("sunlit_petal", "Sunlit Bloom", RareTier.UNCOMMON, 3, Archetype.PETAL_FLOWER),
+        RareSpecies("spiced_chai", "Spiced Chai Cluster", RareTier.UNCOMMON, 2, Archetype.CHAI_CLUSTER),
+        RareSpecies("ripe_row", "Ripe Vegetable Row", RareTier.UNCOMMON, 2, Archetype.VEGETABLE_ROW),
     )
 
     /** Rares are dramatic forms, but still forms OF something — a lotus is what a flower can
      *  become, not a flower replaced by an unrelated object. */
     private val RARES = listOf(
-        RareSpecies("lotus", "Lotus", RareTier.RARE, "petal_flower_4", Archetype.PETAL_FLOWER),
-        RareSpecies("night_orchid", "Night Orchid", RareTier.RARE, "tulip_4", Archetype.TULIP),
-        RareSpecies("firefly_fern", "Firefly Fern", RareTier.RARE, "herb_tuft_2", Archetype.HERB_TUFT),
-        RareSpecies("bonsai", "Bonsai", RareTier.RARE, "bush_2", Archetype.BUSH),
-        RareSpecies("topiary_crane", "Topiary Crane", RareTier.RARE, "hedge_4", Archetype.HEDGE),
-        RareSpecies("heirloom_row", "Heirloom Row", RareTier.RARE, "vegetable_row_3", Archetype.VEGETABLE_ROW),
+        RareSpecies("lotus", "Lotus", RareTier.RARE, 4, Archetype.PETAL_FLOWER),
+        RareSpecies("night_orchid", "Night Orchid", RareTier.RARE, 4, Archetype.TULIP),
+        RareSpecies("firefly_fern", "Firefly Fern", RareTier.RARE, 2, Archetype.HERB_TUFT),
+        RareSpecies("bonsai", "Bonsai", RareTier.RARE, 2, Archetype.BUSH),
+        RareSpecies("topiary_crane", "Topiary Crane", RareTier.RARE, 4, Archetype.HEDGE),
+        RareSpecies("heirloom_row", "Heirloom Row", RareTier.RARE, 3, Archetype.VEGETABLE_ROW),
     )
 
     /** Specified now so the earning engine is built once, but not rendered until 4B: a pond is
      *  not a grid cell and `SpiralTiler` cannot place one (spec §8). Earned landmarks record
      *  into the album and wait — [RarePairing] never assigns them to a transaction. */
     private val LANDMARKS = listOf(
-        RareSpecies("koi_pond", "Koi Pond", RareTier.LANDMARK, "koi_pond_0"),
-        RareSpecies("stone_lantern", "Stone Lantern", RareTier.LANDMARK, "stone_lantern_0"),
+        RareSpecies("koi_pond", "Koi Pond", RareTier.LANDMARK, 0),
+        RareSpecies("stone_lantern", "Stone Lantern", RareTier.LANDMARK, 0),
     )
 
     fun pool(tier: RareTier): List<RareSpecies> = when (tier) {

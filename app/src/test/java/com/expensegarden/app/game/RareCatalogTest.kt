@@ -2,6 +2,7 @@ package com.expensegarden.app.game
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import com.expensegarden.app.render.SpriteLoader
 import org.junit.Test
 
 class RareCatalogTest {
@@ -64,6 +65,35 @@ class RareCatalogTest {
         // Weeds and zombies are outcomes, not categories — nothing should decorate them.
         val forbidden = setOf(Archetype.ZOMBIE, Archetype.THISTLE_WEED, Archetype.ODD_MUSHROOM)
         assertTrue(RareCatalog.all().none { it.baseArchetype in forbidden })
+    }
+
+    @Test fun `rare variants never collide with an archetype's ordinary variants`() {
+        // THE collision guard. PlantMapper rolls ordinary variants in 0 until variantCount, so
+        // a rare sitting inside that range would be produced by chance for any purchase — the
+        // reward would leak out for free and the collection would be meaningless.
+        for (s in RareCatalog.all()) {
+            val base = s.baseArchetype ?: continue
+            val ordinary = PlantMapper.variantCount(base)
+            assertTrue(
+                "${s.id} uses variant ${s.variant} but ${base.name} rolls 0..${ordinary - 1}",
+                s.variant >= ordinary,
+            )
+        }
+    }
+
+    @Test fun `two rares of the same archetype never share a variant index`() {
+        // They would render identically and be indistinguishable in the album.
+        val byArchetype = RareCatalog.all().filter { it.baseArchetype != null }.groupBy { it.baseArchetype }
+        for ((arch, species) in byArchetype) {
+            val variants = species.map { it.variant }
+            assertEquals("$arch has duplicate rare variants", variants.size, variants.toSet().size)
+        }
+    }
+
+    @Test fun `every rare variant is within the sprite loader's scan range`() {
+        // SpriteLoader only scans variants 0 until MAX_VARIANTS. A rare above that range would
+        // silently fall back to procedural art with nothing to point at.
+        assertTrue(RareCatalog.all().all { it.variant < SpriteLoader.MAX_VARIANTS })
     }
 
     @Test fun `every species reports the tier of the pool it lives in`() {

@@ -18,7 +18,10 @@ object SpriteNames {
 }
 
 object SpriteLoader {
-    private const val MAX_VARIANTS = 4
+    // 4A raised this from 4: rares live at variant indices above each archetype's ordinary
+    // looks (see RareCatalog), and an index the loader never scans renders as procedural with
+    // no error to point at.
+    const val MAX_VARIANTS = 6
 
     /** Decode whatever is present in assets/garden/. Missing dir or files → empty/partial map. */
     fun load(context: Context): Map<Pair<Archetype, Int>, ImageBitmap> {

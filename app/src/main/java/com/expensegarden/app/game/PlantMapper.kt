@@ -92,6 +92,13 @@ object PlantMapper {
         // becomes a zombie (spec §6): the honesty of the garden outranks the prettiness of the
         // collection, so the zombie and weed branches above win outright.
         val effective = if (isZombie || isWeed) null else rare
-        return MappedPlant(txn.uuid, archetype, tier, isWeed, seed, variant, rare = effective)
+        // A rare simply occupies a variant index above the archetype's ordinary ones, which is
+        // why the renderer needs no special case: SpritePainter already keys on
+        // (archetype, variant).
+        return MappedPlant(
+            txn.uuid, archetype, tier, isWeed, seed,
+            effective?.variant ?: variant,
+            rare = effective,
+        )
     }
 }
