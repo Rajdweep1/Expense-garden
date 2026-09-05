@@ -66,6 +66,7 @@ fun GardenHomeScreen(
     onManual: () -> Unit,
     onOpenDashboard: () -> Unit,
     onOpenGreenhouse: () -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
     val homestead by gardenVm.homestead.collectAsState()
     val header by vm.homeHeader.collectAsState()
@@ -116,10 +117,13 @@ fun GardenHomeScreen(
                 }
             }
         }
-        TextButton(
-            onClick = onOpenGreenhouse,
+        Row(
             modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(start = 12.dp, top = 64.dp),
-        ) { Text("🏡 greenhouse") }
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            TextButton(onClick = onOpenGreenhouse) { Text("🏡 greenhouse") }
+            TextButton(onClick = onOpenSettings) { Text("⚙️") }
+        }
 
         Column(Modifier.align(Alignment.BottomCenter).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             val pendingTxn = pending.firstOrNull()

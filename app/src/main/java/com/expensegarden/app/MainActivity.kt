@@ -29,6 +29,7 @@ import com.expensegarden.app.ui.GardenHomeScreen
 import com.expensegarden.app.ui.GardenViewModel
 import com.expensegarden.app.ui.GreenhouseScreen
 import com.expensegarden.app.ui.MainViewModel
+import com.expensegarden.app.ui.SettingsScreen
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 
@@ -97,9 +98,16 @@ private fun GardenNav(vm: MainViewModel, dashVm: DashboardViewModel, gardenVm: G
                 onManual = { vm.startManualDraft(); nav.navigate("entry") },
                 onOpenDashboard = { nav.navigate("dashboard") },
                 onOpenGreenhouse = { nav.navigate("greenhouse") },
+                onOpenSettings = { nav.navigate("settings") },
             )
         }
         composable("dashboard") { DashboardScreen(vm = dashVm, onBack = { nav.popBackStack() }) }
+        composable("settings") {
+            SettingsScreen(
+                aiPrefs = (context.applicationContext as GardenApp).container.aiPrefs,
+                onBack = { nav.popBackStack() },
+            )
+        }
         composable("greenhouse") {
             GreenhouseScreen(
                 gardenVm = gardenVm,
