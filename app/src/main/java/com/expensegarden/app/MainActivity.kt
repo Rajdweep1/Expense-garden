@@ -117,6 +117,8 @@ private fun GardenNav(
         composable("settings") {
             SettingsScreen(
                 aiPrefs = (context.applicationContext as GardenApp).container.aiPrefs,
+                syncPrefs = (context.applicationContext as GardenApp).container.syncPrefs,
+                sync = (context.applicationContext as GardenApp).container.sync,
                 onBack = { nav.popBackStack() },
             )
         }
