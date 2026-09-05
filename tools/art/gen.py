@@ -100,6 +100,46 @@ def key_out(path, screen):
         px[x, y] = (0, 0, 0, 0)
         q.extend(((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)))
 
+    # WARNING before re-keying old art: the files in raw/ do NOT reliably correspond to what
+    # was shipped. Re-keying every sprite from its raw on 2026-09-06 produced a house_3 with a
+    # pale halo the committed one does not have — a different render entirely. Use this pass on
+    # sprites you are generating now; do not bulk-regenerate shipped assets from raw/ and
+    # assume you are only cleaning them.
+
+    # Second pass: ENCLOSED pockets. The border fill above cannot reach a patch of screen
+    # fully surrounded by the character — between a squash and a tomato plant, say — and
+    # vegetable_row_3 shipped a 4%-of-frame magenta blob in the middle of the sprite because
+    # of exactly that.
+    #
+    # This is NOT the paint-anywhere colour match the docstring warns about. That bug came
+    # from using the LOOSE is_bg test everywhere, which eats a warm sprite's pink-drifted
+    # interior. Here the SEED test is near-pure screen colour — the dead channel at ~0, which
+    # no pigment survives shading with — and only once a seed is found does the loose test
+    # grow the region. Strict to start, loose to finish: legitimate art never seeds it.
+    def is_pure_screen(r, g, b):
+        if screen == "cyan":
+            return r < 25 and g > 100 and b > 70
+        return g < 25 and r > 100 and b > 70
+
+    for sy in range(h):
+        for sx in range(w):
+            if seen[sy * w + sx]:
+                continue
+            r, g, b, a = px[sx, sy]
+            if a == 0 or not is_pure_screen(r, g, b):
+                continue
+            pocket = deque([(sx, sy)])
+            while pocket:
+                x, y = pocket.popleft()
+                if x < 0 or y < 0 or x >= w or y >= h or seen[y * w + x]:
+                    continue
+                pr, pg, pb, _ = px[x, y]
+                if not is_bg(pr, pg, pb):
+                    continue
+                seen[y * w + x] = 1
+                px[x, y] = (0, 0, 0, 0)
+                pocket.extend(((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)))
+
     # Gentle despill: desaturate whatever screen tint survived on the edges. An
     # aggressive transparent-drop here ate legitimate pixels in 1C.6 — do not "improve" it.
     for y in range(h):
