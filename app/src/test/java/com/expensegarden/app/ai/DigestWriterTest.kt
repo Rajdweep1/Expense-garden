@@ -46,6 +46,14 @@ class DigestWriterTest {
         )
     }
 
+    @Test fun `an over-long completion is cut at a sentence end, never mid-word`() = runBlocking {
+        val sentence = "The garden held steady through a long and fairly uneventful week of ordinary spending. "  // 87 chars
+        val llm = FakeLlmClient().apply { enqueue(sentence.repeat(9)) }                                    // ~780 chars
+        val out = DigestWriter(llm).compose(daily(Trigger.GateDodged(1)), facts, Tone.SHARP)!!
+        assertTrue(out.length <= 600)
+        assertTrue("must end on a sentence boundary, got: …${out.takeLast(20)}", out.endsWith("."))
+    }
+
     @Test fun `a null completion is a null digest`() = runBlocking {
         assertNull(DigestWriter(FakeLlmClient()).compose(daily(Trigger.GateDodged(1)), facts, Tone.SHARP))
     }

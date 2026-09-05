@@ -199,6 +199,10 @@ interface QuipDao {
     @Query("SELECT COUNT(*) FROM quip WHERE severity = :severity AND tone = :tone AND usedAt IS NULL")
     suspend fun unusedCount(severity: String, tone: String): Int
 
+    /** Dedup guard for the refresher: what this bucket already holds, used or not. */
+    @Query("SELECT text FROM quip WHERE severity = :severity AND tone = :tone")
+    suspend fun textsIn(severity: String, tone: String): List<String>
+
     @Query("UPDATE quip SET usedAt = :now WHERE id = :id")
     suspend fun markUsed(id: Long, now: Long)
 

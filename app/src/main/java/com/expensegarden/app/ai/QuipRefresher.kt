@@ -3,6 +3,7 @@ package com.expensegarden.app.ai
 import com.expensegarden.app.data.AppDatabase
 import com.expensegarden.app.data.QuipEntity
 import com.expensegarden.app.game.Tone
+import com.expensegarden.app.gate.Severity
 
 /** Tops up depleted (severity × tone) buckets (spec §6).
  *
@@ -19,15 +20,20 @@ class QuipRefresher(private val llm: LlmClient, private val sink: Sink) {
 
     /** The seam that keeps this class unit-testable without Room. */
     interface Sink {
-        suspend fun unusedCount(severity: String, tone: Tone): Int
-        suspend fun insert(severity: String, tone: Tone, lines: List<String>)
+        suspend fun unusedCount(severity: Severity, tone: Tone): Int
+        /** Every line already in this bucket, used or not — the model has no memory across
+         *  calls and regenerates its favourites, and a duplicate row would be served back to
+         *  back by the LRU picker. */
+        suspend fun existingTexts(severity: Severity, tone: Tone): Set<String>
+        suspend fun insert(severity: Severity, tone: Tone, lines: List<String>)
     }
 
-    suspend fun refresh(tone: Tone, severities: List<String> = DEFAULT_SEVERITIES) {
+    suspend fun refresh(tone: Tone, severities: List<Severity> = DEFAULT_SEVERITIES) {
         for (severity in severities) {
             if (sink.unusedCount(severity, tone) >= LOW_STOCK) continue
             val raw = llm.complete(Persona.quipPrompt(tone, severity, ASK_FOR)) ?: continue
-            val clean = QuipSanitizer.cleanAll(raw)
+            val existing = sink.existingTexts(severity, tone)
+            val clean = QuipSanitizer.cleanAll(raw).filterNot { it in existing }
             if (clean.isNotEmpty()) sink.insert(severity, tone, clean)
         }
     }
@@ -35,21 +41,25 @@ class QuipRefresher(private val llm: LlmClient, private val sink: Sink) {
     companion object {
         const val LOW_STOCK = 5
         const val ASK_FOR = 8
-        val DEFAULT_SEVERITIES = listOf("PACE_WARNING", "BREACH")
+        /** Every severity the gate shows a line for — derived, so a new one cannot be missed. */
+        val DEFAULT_SEVERITIES: List<Severity> = Severity.values().filter { it != Severity.OK }
     }
 }
 
 /** The production Sink. Kept next to the class it serves rather than in the data package,
  *  because it exists only to adapt Room to QuipRefresher's seam. */
 class RoomQuipSink(private val db: AppDatabase) : QuipRefresher.Sink {
-    override suspend fun unusedCount(severity: String, tone: Tone): Int =
-        db.quipDao().unusedCount(severity, tone.name)
+    override suspend fun unusedCount(severity: Severity, tone: Tone): Int =
+        db.quipDao().unusedCount(severity.name, tone.name)
 
-    override suspend fun insert(severity: String, tone: Tone, lines: List<String>) =
+    override suspend fun existingTexts(severity: Severity, tone: Tone): Set<String> =
+        db.quipDao().textsIn(severity.name, tone.name).toSet()
+
+    override suspend fun insert(severity: Severity, tone: Tone, lines: List<String>) =
         db.quipDao().insertAll(
             lines.map {
                 QuipEntity(
-                    severity = severity, origin = "LLM", tone = tone.name,
+                    severity = severity.name, origin = "LLM", tone = tone.name,
                     text = it, usedAt = null,
                 )
             }

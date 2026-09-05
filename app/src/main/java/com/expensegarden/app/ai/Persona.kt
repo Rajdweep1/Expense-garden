@@ -1,6 +1,7 @@
 package com.expensegarden.app.ai
 
 import com.expensegarden.app.game.Tone
+import com.expensegarden.app.gate.Severity
 
 /** The persona's system prompt (spec §7; parent spec §10).
  *
@@ -39,13 +40,15 @@ object Persona {
     }.trim()
 
     /** One gate line per severity bucket. The model returns lines separated by newlines. */
-    fun quipPrompt(tone: Tone, severity: String, count: Int): String = buildString {
+    fun quipPrompt(tone: Tone, severity: Severity, count: Int): String = buildString {
         appendLine(systemPrompt(tone))
         appendLine()
         appendLine(
+            // Exhaustive on purpose: a fourth Severity must fail here, not silently inherit copy.
             when (severity) {
-                "BREACH" -> "The budget for this month is already gone and another payment is pending."
-                else -> "This month's spending is ahead of pace, though the budget is not gone yet."
+                Severity.BREACH -> "The budget for this month is already gone and another payment is pending."
+                Severity.PACE_WARNING -> "This month's spending is ahead of pace, though the budget is not gone yet."
+                Severity.OK -> error("Severity.OK has no gate line and no quip bucket (spec §6)")
             }
         )
         appendLine(

@@ -8,7 +8,7 @@ import com.expensegarden.app.game.Trigger
 /** Turns a DigestReason into words (spec §3). It does NOT store them.
  *
  *  Everything that decides WHETHER to speak lives in DigestTrigger; this only decides how it
- *  is worded, which is the part that cannot be unit-tested. Every row in a job shares one
+ *  is worded. The prompt IS unit-tested (DigestWriterTest); only the model's reply is not. Every row in a job shares one
  *  watermark, so the job composes all of its reasons first and writes them in a single
  *  transaction, or writes none (spec §9) — a null here means the whole verdict is retried
  *  on the next open. */
@@ -21,6 +21,9 @@ class DigestWriter(private val llm: LlmClient) {
     private fun prompt(reason: DigestReason, facts: PromptFacts, tone: Tone): String = buildString {
         appendLine(Persona.systemPrompt(tone))
         appendLine()
+        // Labelled so that, for a MONTHLY reason fed that month's facts, the block reads as
+        // context rather than contradicting "the month has just closed" below it.
+        appendLine("Where things stand:")
         appendLine(facts.render())
         appendLine()
         appendLine("What changed since you last spoke:")
@@ -54,8 +57,8 @@ class DigestWriter(private val llm: LlmClient) {
         is Trigger.StreakHit ->
             "They hit a ${t.days}-day streak without overspending. This is a win."
         Trigger.FirstRegretOfMonth ->
-            "They tagged their first purchase of the month as a regret. They volunteered " +
-                "that. Be kind about the honesty; never punish the log."
+            "For the first time this month, they tagged a purchase as a regret. They " +
+                "volunteered that. Be kind about the honesty; never punish the log."
         is Trigger.GateDodged ->
             "They backed out at the payment gate ${t.count} time(s). This is a WIN — they " +
                 "chose not to spend. Celebrate it."
@@ -72,8 +75,19 @@ class DigestWriter(private val llm: LlmClient) {
             .trim()
             .trim('"', '“', '”')
             .trim()
-            .take(MAX_LEN)
+            .let(::capAtSentence)
             .takeIf { it.isNotBlank() && !QuipSanitizer.attacksThePerson(it) }
+
+    /** Cut at the last sentence end at or before the cap, else the last space, else hard. A
+     *  digest row is written once and never rewritten, so a mid-word cut would be permanent. */
+    private fun capAtSentence(s: String): String {
+        if (s.length <= MAX_LEN) return s
+        val head = s.take(MAX_LEN)
+        val end = head.lastIndexOfAny(charArrayOf('.', '!', '?'))
+        if (end > MAX_LEN / 2) return head.take(end + 1)
+        val space = head.lastIndexOf(' ')
+        return if (space > 0) head.take(space) + "…" else head
+    }
 
     private companion object {
         const val MAX_LEN = 600
