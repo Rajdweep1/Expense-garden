@@ -27,6 +27,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.expensegarden.app.core.Money
+import com.expensegarden.app.game.CollectionState
+import com.expensegarden.app.game.RareCatalog
+import com.expensegarden.app.game.RareTier
 import com.expensegarden.app.game.GardenState
 import com.expensegarden.app.render.GardenCanvas
 import com.expensegarden.app.render.PlantPainter
@@ -42,8 +45,10 @@ fun GreenhouseScreen(
     onBack: () -> Unit = {},
 ) {
     var months by remember { mutableStateOf<List<GardenState>?>(null) }
+    var collection by remember { mutableStateOf<CollectionState?>(null) }
     var selected by remember { mutableStateOf<GardenState?>(null) }
     LaunchedEffect(Unit) { months = gardenVm.archivedGardens() }
+    LaunchedEffect(Unit) { collection = runCatching { gardenVm.collection() }.getOrNull() }
     val monthFmt = remember { DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ENGLISH) }
 
     Column(Modifier.statusBarsPadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -52,6 +57,7 @@ fun GreenhouseScreen(
             TextButton(onClick = onBack, contentPadding = PaddingValues(horizontal = 8.dp)) { Text("← garden") }
             Text("Greenhouse", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(start = 8.dp))
         }
+        collection?.let { CollectionCard(it) }
         when {
             months == null -> Card(Modifier.fillMaxWidth().height(120.dp)) {}
             months!!.isEmpty() -> Text("No archived months yet — your first bed archives at month end.")
@@ -96,4 +102,69 @@ fun GreenhouseScreen(
             ) { Text("← back") }
         }
     }
+}
+
+/** The album (spec §5). Silhouettes with their condition, because a collection that only shows
+ *  what you already have records rather than invites — and because you would otherwise never
+ *  learn a lotus exists.
+ *
+ *  The nag risk is acceptable here for one specific reason: every condition is a behaviour the
+ *  app already wants. There is nothing on this list a user could reach by spending more. */
+@Composable
+private fun CollectionCard(state: CollectionState) {
+    var expanded by remember { mutableStateOf(false) }
+    val total = RareCatalog.all().size
+
+    Card(Modifier.fillMaxWidth().clickable { expanded = !expanded }) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Collection", style = MaterialTheme.typography.titleMedium)
+                Text("${state.foundIds.size} of $total", style = MaterialTheme.typography.titleMedium)
+            }
+            if (state.pendingCount > 0) {
+                // A banked seed is invisible until a purchase lands on it; saying so stops an
+                // earned reward from looking lost.
+                Text(
+                    "${state.pendingCount} waiting — your next purchase will grow one",
+                    style = MaterialTheme.typography.labelMedium,
+                )
+            }
+            Text(
+                if (expanded) "tap to collapse" else "tap to see what else grows here",
+                style = MaterialTheme.typography.labelSmall,
+            )
+
+            if (expanded) {
+                for (tier in RareTier.values()) {
+                    Text(
+                        tier.name.lowercase().replaceFirstChar { it.uppercase() },
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                    for (species in RareCatalog.pool(tier)) {
+                        val found = species.id in state.foundIds
+                        Text(
+                            if (found) "\u2022 ${species.displayName}" else "\u2022 ???",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (found) MaterialTheme.colorScheme.onSurface
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Text(
+                        conditionFor(tier),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** What a locked slot tells you. Lives next to the UI rather than on RareSpecies so the
+ *  catalogue stays free of presentation strings. */
+private fun conditionFor(tier: RareTier): String = when (tier) {
+    RareTier.UNCOMMON -> "a 7-day streak, 3 gate dodges, a no-spend week, or redeeming a regret"
+    RareTier.RARE -> "close a month under budget, a 30-day streak, or spend across 8 categories"
+    RareTier.LANDMARK -> "keep tracking — 6 months, then 12"
 }

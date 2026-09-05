@@ -114,6 +114,11 @@ data class Earn(
      *  carrying it, because a rare must match that purchase's natural archetype (see
      *  [RareSpecies.baseArchetype]). [RarePairing] resolves it. */
     fun speciesFor(archetype: Archetype): RareSpecies? = RareCatalog.pick(tier, archetype, sourceEventId)
+
+    /** Landmarks are the exception: they belong to no archetype because they are island
+     *  features rather than plants, so they resolve from the earn alone. */
+    val landmarkSpecies: RareSpecies?
+        get() = if (tier == RareTier.LANDMARK) RareCatalog.pickLandmark(sourceEventId) else null
 }
 
 object RareCatalog {
@@ -156,6 +161,10 @@ object RareCatalog {
 
     fun all(): List<RareSpecies> = UNCOMMONS + RARES + LANDMARKS
 
+    /** Landmarks resolve without an archetype — see [Earn.landmarkSpecies]. */
+    fun pickLandmark(seed: Long): RareSpecies =
+        LANDMARKS[(seed.hashCode().toLong().absoluteValue % LANDMARKS.size).toInt()]
+
     fun byId(id: String): RareSpecies? = all().firstOrNull { it.id == id }
 
     /** Every plantable rare available for a given archetype. Empty means a purchase of that
@@ -183,3 +192,11 @@ object RareCatalog {
         return p[index]
     }
 }
+
+/** What the greenhouse album renders (spec §5).
+ *
+ *  @param foundIds species actually grown on the island, plus earned landmarks.
+ *  @param pendingCount plantable earns still waiting for a qualifying purchase — shown so a
+ *    banked reward never looks lost.
+ */
+data class CollectionState(val foundIds: Set<String>, val pendingCount: Int)

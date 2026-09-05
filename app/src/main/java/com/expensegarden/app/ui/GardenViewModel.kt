@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.expensegarden.app.AppContainer
 import com.expensegarden.app.data.TxnRow
+import com.expensegarden.app.game.CollectionState
 import com.expensegarden.app.game.GardenState
 import com.expensegarden.app.game.SpiralTiler
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -75,6 +76,11 @@ class GardenViewModel(private val container: AppContainer) : ViewModel() {
 
     suspend fun archivedGardens(): List<GardenState> =
         container.garden.monthsWithData().dropLast(1).map { container.garden.foldMonth(it) }.reversed()
+
+    /** The greenhouse album's data (spec §5). Suspend rather than a Flow: the collection is
+     *  read once when the screen opens, and a live stream would re-fold the whole log on every
+     *  transaction for a card the user is usually not looking at. */
+    suspend fun collection(): CollectionState = container.garden.collection()
 
     companion object {
         fun factory(container: AppContainer) = object : ViewModelProvider.Factory {

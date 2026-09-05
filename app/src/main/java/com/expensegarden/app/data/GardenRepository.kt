@@ -4,9 +4,14 @@ import com.expensegarden.app.game.GardenFolder
 import com.expensegarden.app.game.GardenState
 import com.expensegarden.app.game.Reconciler
 import com.expensegarden.app.game.StreakMath
+import com.expensegarden.app.game.CollectionState
+import com.expensegarden.app.game.RareEngine
+import com.expensegarden.app.game.RareSignal
+import com.expensegarden.app.game.RareTier
+import com.expensegarden.app.stats.CategoryTree
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
-import com.expensegarden.app.game.RareSignal
+import kotlinx.coroutines.flow.first
 import org.json.JSONObject
 import java.time.Instant
 import java.time.LocalDate
@@ -87,6 +92,61 @@ class GardenRepository(private val db: AppDatabase, private val ledger: LedgerRe
                 }
             }.getOrNull()
         }
+
+    /** What the greenhouse album shows (spec §5).
+     *
+     *  "Found" means actually GROWN — a species that exists on the island — rather than merely
+     *  earned. That distinction matters because a banked seed waits for a qualifying purchase,
+     *  so claiming it before it has grown would show the user something they cannot go and look
+     *  at. Landmarks are the exception: they are never plants, so an earned landmark counts the
+     *  moment it is earned.
+     *
+     *  Derived from the same fold the island uses, so the album can never disagree with it. */
+    suspend fun collection(): CollectionState {
+        val garden = observeAllTimeGarden().first()
+        val grown = garden.plants.mapNotNull { it.rare?.id }.toSet()
+
+        val events = db.gameEventDao().eventsBetween(0L, Long.MAX_VALUE)
+        val earns = RareEngine.earns(
+            projectRareSignals(events),
+            noSpendRunsByMonth(garden),
+            breadthByMonth(garden),
+            garden.houseLevel,
+            zone,
+        )
+        val landmarks = earns.mapNotNull { it.landmarkSpecies?.id }.toSet()
+        // Plantable earns still waiting for a purchase to land on.
+        val pending = earns.count { it.tier != RareTier.LANDMARK } - grown.size
+        return CollectionState(grown + landmarks, pending.coerceAtLeast(0))
+    }
+
+    /** The album re-derives these from the same transactions the fold saw, so it cannot drift
+     *  from the island. Kept private because nothing outside the album needs them. */
+    private suspend fun noSpendRunsByMonth(garden: GardenState): Map<String, Int> {
+        val txns = db.transactionDao().loggedBetween(0L, Long.MAX_VALUE)
+        val today = LocalDate.now(zone)
+        val currentMonth = YearMonth.from(today)
+        return txns.groupBy { YearMonth.from(Instant.ofEpochMilli(it.occurredAt).atZone(zone)) }
+            .mapValues { (month, list) ->
+                val spentDays = list.map { Instant.ofEpochMilli(it.occurredAt).atZone(zone).dayOfMonth }.toSet()
+                val elapsed = if (month == currentMonth) today.dayOfMonth - 1 else month.lengthOfMonth()
+                var longest = 0
+                var run = 0
+                for (day in 1..elapsed) {
+                    if (day in spentDays) run = 0 else run++
+                    if (run > longest) longest = run
+                }
+                longest
+            }
+            .mapKeys { it.key.toString() }
+    }
+
+    private suspend fun breadthByMonth(garden: GardenState): Map<String, Int> {
+        val txns = db.transactionDao().loggedBetween(0L, Long.MAX_VALUE)
+        val tree = CategoryTree(db.categoryDao().all())
+        return txns.groupBy { YearMonth.from(Instant.ofEpochMilli(it.occurredAt).atZone(zone)).toString() }
+            .mapValues { (_, list) -> list.mapNotNull { tree.ancestorChain(it.categoryId).lastOrNull() }.distinct().size }
+    }
 
     suspend fun foldMonth(monthKey: String): GardenState {
         val (from, to) = ledger.boundsOfMonth(monthKey)
