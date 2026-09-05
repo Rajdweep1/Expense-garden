@@ -41,12 +41,13 @@ class DigestWriter(private val llm: LlmClient) {
     /** Plain-English trigger descriptions. Kept here rather than on Trigger itself so the
      *  game package stays free of prompt-shaped strings. */
     private fun describe(t: Trigger): String = when (t) {
-        // Spec §5: this is calendar-driven and can only ever be an improvement, because
-        // BREACH has no day term. It must read as "a quiet day pulled you back under pace",
-        // never as "you spent differently".
+        // Spec §5: a CALENDAR-driven flip is always an improvement (BREACH has no day term),
+        // but the trigger fires on any change, so only the upward case is hedged. The writer
+        // cannot see spend, so it must never claim spending changed.
         is Trigger.WeatherChanged ->
             "The garden's weather moved from ${t.from} to ${t.to}. If it improved, that may " +
-                "simply be a quiet day letting the month's pace catch up — say so plainly."
+                "simply be a quiet day letting the month's pace catch up — say so plainly, and " +
+                "never say or imply that they spent differently."
         is Trigger.HouseLevelled ->
             "The homestead grew from level ${t.from} to level ${t.to}. This is earned by " +
                 "months tracked, not by spending. Congratulate it."
@@ -62,10 +63,21 @@ class DigestWriter(private val llm: LlmClient) {
             "The month ${t.monthKey} has closed and been archived to the greenhouse."
     }
 
-    /** The model sometimes wraps prose in quotes or a markdown block. Strip, then cap. */
-    private fun tidy(raw: String): String =
-        raw.trim().trim('"', '“', '”').removePrefix("```").removeSuffix("```").trim()
+    /** The model sometimes wraps prose in quotes or a markdown block. Strip, cap, then apply
+     *  the digest-shaped boundary check (spec §11): a person-attack nulls the whole text, and
+     *  because the job writes all-or-nothing, nothing lands and it is retried next open. */
+    private fun tidy(raw: String): String? =
+        raw.trim()
+            .replace(FENCE, "")             // fence FIRST — quotes inside a fence must still go
+            .trim()
+            .trim('"', '“', '”')
+            .trim()
             .take(MAX_LEN)
+            .takeIf { it.isNotBlank() && !QuipSanitizer.attacksThePerson(it) }
 
-    private companion object { const val MAX_LEN = 600 }
+    private companion object {
+        const val MAX_LEN = 600
+        /** A leading fence line, with or without a language tag, and a trailing fence line. */
+        val FENCE = Regex("^```[a-zA-Z]*[ \\t]*\\n?|\\n?```[ \\t]*$")
+    }
 }

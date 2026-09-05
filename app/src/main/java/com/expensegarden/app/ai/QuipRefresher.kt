@@ -11,7 +11,10 @@ import com.expensegarden.app.game.Tone
  *
  *  The seeded STATIC quips are never deleted; LLM lines augment the bank rather than
  *  replacing it. That is what guarantees the gate has content even if every call ever made
- *  fails. */
+ *  fails.
+ *
+ *  Once-a-day throttling is the CALLER's (spec §4): it reads and stamps
+ *  `AiPrefs.lastQuipRefreshAt` before calling [refresh]. This class checks only bucket stock. */
 class QuipRefresher(private val llm: LlmClient, private val sink: Sink) {
 
     /** The seam that keeps this class unit-testable without Room. */

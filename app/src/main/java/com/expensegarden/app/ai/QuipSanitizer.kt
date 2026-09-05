@@ -12,15 +12,22 @@ package com.expensegarden.app.ai
 object QuipSanitizer {
     private const val MAX_LEN = 120
 
-    private val FORBIDDEN = listOf(
+    /** Never acceptable in ANY output, quip or digest (parent spec §10). */
+    private val PERSON_ATTACKS = listOf(
         // income digs
         "salary", "income", "afford", "you earn", "your wage", "paycheck", "paycheque",
         // comparisons to others
         "most people", "everyone else", "other people", "average person", "than others",
-        // necessity shaming — parent spec §10: necessities are never mocked
+    )
+
+    /** Quip-only (spec §11). A one-liner that MENTIONS rent is mocking it; a three-sentence
+     *  month recap that says "groceries were steady" is doing its job. */
+    private val NECESSITY_NOUNS = listOf(
         "rent", "groceries", "grocery", "medicine", "medical", "doctor", "hospital",
         "school fees", "electricity bill",
     )
+
+    private val FORBIDDEN = PERSON_ATTACKS + NECESSITY_NOUNS
 
     /** Cleans one candidate line. Returns null if it must not be inserted. */
     fun clean(raw: String): String? {
@@ -58,4 +65,13 @@ object QuipSanitizer {
      *  an accepted false positive, and the reason the refresher asks for 8 lines at a time. */
     private val FORBIDDEN_AT_WORD_START =
         FORBIDDEN.map { Regex("\\b" + Regex.escape(it)) }
+    private val ATTACKS_AT_WORD_START =
+        PERSON_ATTACKS.map { Regex("\\b" + Regex.escape(it)) }
+
+    /** The digest-shaped boundary check: income digs and comparisons only. Any length,
+     *  line breaks allowed, necessity nouns NOT checked — see [NECESSITY_NOUNS]. */
+    fun attacksThePerson(text: String): Boolean {
+        val lower = text.lowercase()
+        return ATTACKS_AT_WORD_START.any { it.containsMatchIn(lower) }
+    }
 }

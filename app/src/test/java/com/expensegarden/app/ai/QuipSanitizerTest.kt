@@ -47,6 +47,17 @@ class QuipSanitizerTest {
         assertEquals(null, QuipSanitizer.clean("Still affording that, are you?"))
     }
 
+    @Test fun `the digest check catches person attacks across lines`() {
+        assertTrue(QuipSanitizer.attacksThePerson("Solid week.\nThough on your salary, maybe ease off."))
+        assertTrue(QuipSanitizer.attacksThePerson("Most people spend far less than this."))
+    }
+
+    @Test fun `the digest check lets a neutral necessity mention through`() {
+        // A month recap that names groceries or rent is doing its job — only the quip rule
+        // treats a bare mention as mockery.
+        assertEquals(false, QuipSanitizer.attacksThePerson("Groceries were steady. Rent went out on the 3rd."))
+    }
+
     @Test fun `splits a multi-line response and drops only the bad lines`() {
         val raw = """
             1. Bold pace. The garden's getting thirsty.
