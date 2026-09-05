@@ -220,4 +220,93 @@ PROMPTS = {
         "A low tight cluster of many tiny round pale-green buds on short stems, small "
         "and numerous, slightly taller sprigs at the center."
     ),
+    # ================= Phase 4A: rares =================
+    # Earned by restraint, never by spending. Each is deliberately the SAME creature as its
+    # ordinary form, elevated — a rare must be the plant that purchase would already have
+    # grown, or the garden would misreport what was bought (spec §4).
+    #
+    # These are written STANDALONE rather than as `_BASE + " and it is golden"`. The first
+    # attempt did exactly that and produced an ordinary pink tulip: _DIVA opens with "glossy
+    # pink bulb as the whole head", and the model weighted that concrete early clause over the
+    # appended colour. A rare that looks like its common form defeats the entire collection, so
+    # each brief now states its colour once, up front, with the contradicting words removed.
+
+    # ---- Uncommon: "my tulip came up golden" ----
+    "tulip_3": (
+        "Plump tulip-bulb-headed creature whose entire bulb head is burnished metallic GOLD "
+        "with fine engraved veining — golden, not pink, no pink anywhere on the flower. "
+        "Heavy-lidded eyes with elegant lashes, confident smirk, tiny beauty mark, graceful "
+        "curving green stem, one sweeping leaf posed like a hand on a hip. Soft warm glow "
+        "around the golden petals and a few tiny drifting gold motes."
+    ),
+    "bell_flower_2": (
+        "Bluebell-headed creature whose drooping bell blossom is DEEP INDIGO dusted with pale "
+        "star-like speckles — indigo and midnight blue, not periwinkle. The bell brim shades "
+        "big cheerful eyes, mouth open mid-song, slender stem. Faint cool moonlit glow along "
+        "the rim of the bell."
+    ),
+    "hedge_3": (
+        "Neatly clipped dense dark-green topiary hedge creature completely FLUSHED WITH TINY "
+        "WHITE BLOSSOMS across its whole surface, like a flowering hawthorn, a few loose "
+        "petals drifting off. Calm steady eyes set into the foliage, squared-off dignified "
+        "shape, small soil base."
+    ),
+    "berry_bush_2": (
+        "Round bush creature bowing under UNUSUALLY LARGE glossy berries in deep ruby and "
+        "blackcurrant, branches heavy and arching with the weight, rich dark-green leaves, "
+        "wide pleased eyes, plump and abundant."
+    ),
+    "succulent_2": (
+        "Rosette succulent creature with thick pale sage leaves edged in FROSTED SILVER, a "
+        "faint pearlescent sheen across the whole plant, cool-toned and plump, calm sleepy "
+        "eyes at the center of the rosette."
+    ),
+    "petal_flower_3": (
+        "Sun-faced flower creature whose ruff of rounded petals is DEEP AMBER shading to warm "
+        "cream at the tips — amber and honey, not yellow. Brown disc face with rosy cheeks, "
+        "wide happy smile, curving green stem, two fat paddle leaves, strong golden-hour glow "
+        "behind the head."
+    ),
+    "chai_cluster_2": (
+        "Low tight cluster of many tiny round buds in warm CINNAMON and CLOVE BROWN on short "
+        "stems, a few small star-anise-shaped seed pods among them, a faint haze of spice "
+        "dust, small bright eyes peeking from the cluster."
+    ),
+    "vegetable_row_2": (
+        "Short row of plump RIPE vegetables — deep orange carrots and rich purple beets with "
+        "glossy taut skins, clearly at peak ripeness — full healthy leafy tops, cheerful eyes "
+        "on the front vegetable."
+    ),
+
+    # ---- Rare: "what IS that" — still the same family, transformed ----
+    "petal_flower_4": (
+        "Serene LOTUS creature: broad layered pink-and-cream petals opening around a pale "
+        "golden center, calm half-closed meditative eyes, gentle smile, sitting on a single "
+        "round green lily pad with a little still water beneath."
+    ),
+    "tulip_4": (
+        "NIGHT ORCHID creature: sweeping deep-violet orchid petals with pale speckled throats "
+        "instead of a tulip bulb, faint blue-green bioluminescent glow tracing the petal "
+        "edges, elegant half-lidded nocturnal eyes, slender dark stem."
+    ),
+    "herb_tuft_2": (
+        "FERN creature with delicate arching feathery fronds instead of grass blades, deep "
+        "green, small warm GOLDEN FIREFLY LIGHTS hovering and glowing among the fronds, big "
+        "curious eyes peeking through."
+    ),
+    "bush_2": (
+        "Miniature BONSAI TREE creature in a shallow glazed ceramic pot, gnarled sculpted "
+        "trunk with a small wise face in the bark, carefully layered cloud-like foliage pads, "
+        "deliberate and ancient-looking, calm closed eyes."
+    ),
+    "hedge_4": (
+        "Green hedge clipped into an elegant TOPIARY CRANE — long arched neck, folded wings, "
+        "raised beak — unmistakably made of dense clipped foliage with visible leaf texture, "
+        "standing on a small soil base, serene expression."
+    ),
+    "vegetable_row_3": (
+        "Short row of rare HEIRLOOM vegetables with unusual patterned skins — green-and-red "
+        "striped tomatoes, purple-and-white striped beets, speckled squash — lush leafy tops, "
+        "proud little eyes on the front vegetable."
+    ),
 }
