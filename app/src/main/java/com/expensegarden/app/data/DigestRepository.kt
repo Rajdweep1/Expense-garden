@@ -6,9 +6,14 @@ import com.expensegarden.app.game.DigestReason
 import com.expensegarden.app.game.DigestSnapshot
 import com.expensegarden.app.game.MonthFacts
 import com.expensegarden.app.game.Weather
+import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
 import org.json.JSONArray
 import org.json.JSONObject
+
+/** One evaluation's worth of the log. `head` is the watermark every digest row in this job will
+ *  carry; `events` is everything strictly after the previous watermark, up to and including it. */
+data class EventWindow(val head: Long, val events: List<DigestEvent>)
 
 /** Owns the `digest` table and every JSON parse in the digest path (spec §3).
  *
@@ -32,28 +37,33 @@ class DigestRepository(private val db: AppDatabase, private val ledger: LedgerRe
         }.getOrNull()
     }
 
-    /** Projects raw rows into the typed events DigestTrigger consumes.
+    /** Reads the head FIRST, then the events up to it (spec §9). An event inserted between the
+     *  two reads has id > head, stays above the watermark, and is seen next time — that
+     *  ordering is what closes the race.
      *
-     *  `floorMillis` is the first-run floor (spec §5): with no previous digest there is no
-     *  lower bound, and `game_event` is never pruned, so an unfloored read would sweep up
-     *  every event since 1A. A row whose payload will not parse is skipped — one bad row must
-     *  not take the whole fold down. */
-    suspend fun eventsSince(afterId: Long, floorMillis: Long?): List<DigestEvent> =
-        db.gameEventDao().eventsAfterId(afterId)
-            .filter { floorMillis == null || it.createdAt >= floorMillis }
-            .mapNotNull { row ->
-                runCatching {
-                    when (row.type) {
-                        "month.closed" ->
-                            DigestEvent.MonthClosed(row.id, JSONObject(row.payloadJson).getString("month"))
-                        "streak.hit" ->
-                            DigestEvent.StreakHit(row.id, JSONObject(row.payloadJson).getInt("days"))
-                        "gate.dodged" -> DigestEvent.GateDodged(row.id)
-                        "transaction.regretted" -> DigestEvent.Regretted(row.id)
-                        else -> null
-                    }
-                }.getOrNull()
-            }
+     *  The first-run floor lives here so a caller cannot forget it: with no previous digest
+     *  there is no lower id bound, and `game_event` is never pruned, so the window is floored
+     *  at `todayStartMillis` rather than sweeping up every event since 1A. A row whose payload
+     *  will not parse is skipped — one bad row must not take the whole fold down. */
+    suspend fun window(lastDigest: DigestSnapshot?, todayStartMillis: Long): EventWindow {
+        val head = db.gameEventDao().headId()
+        val afterId = lastDigest?.lastEventId ?: 0L
+        val floor = if (lastDigest == null) todayStartMillis else null
+        val events = db.gameEventDao().eventsInIdRange(afterId, head)
+            .filter { floor == null || it.createdAt >= floor }
+            .mapNotNull(::project)
+        return EventWindow(head, events)
+    }
+
+    private fun project(row: GameEventEntity): DigestEvent? = runCatching {
+        when (row.type) {
+            "month.closed" -> DigestEvent.MonthClosed(row.id, JSONObject(row.payloadJson).getString("month"))
+            "streak.hit" -> DigestEvent.StreakHit(row.id, JSONObject(row.payloadJson).getInt("days"))
+            "gate.dodged" -> DigestEvent.GateDodged(row.id)
+            "transaction.regretted" -> DigestEvent.Regretted(row.id)
+            else -> null
+        }
+    }.getOrNull()
 
     /** Month-scoped counts the id window cannot see (spec §5). */
     suspend fun monthFacts(monthKey: String): MonthFacts {
@@ -62,10 +72,6 @@ class DigestRepository(private val db: AppDatabase, private val ledger: LedgerRe
             .count { it.type == "transaction.regretted" }
         return MonthFacts(monthKey, regrets)
     }
-
-    /** The highest id currently in the log — captured BEFORE the LLM call, so an event
-     *  logged during the round trip stays pending rather than falling behind the watermark. */
-    suspend fun currentHeadId(): Long = db.gameEventDao().eventsAfterId(0L).lastOrNull()?.id ?: 0L
 
     suspend fun write(
         reason: DigestReason,
@@ -93,10 +99,16 @@ class DigestRepository(private val db: AppDatabase, private val ledger: LedgerRe
         )
     }
 
+    /** All or nothing (spec §9). Every row in a job carries the same `lastEventId`, so writing
+     *  some reasons and not others would consume the failed reasons' events forever. The job
+     *  composes every text first and only then calls this; one transaction also means a
+     *  process death mid-write cannot leave half a job behind. */
+    suspend fun writeAll(entries: List<Pair<DigestReason, String>>, snapshot: DigestSnapshot, nowMillis: Long) =
+        db.withTransaction { entries.forEach { (reason, text) -> write(reason, text, snapshot, nowMillis) } }
+
     fun observeDaily(day: String): Flow<DigestEntity?> = db.digestDao().observeDaily(day)
 
     suspend fun monthly(monthKey: String): DigestEntity? = db.digestDao().monthly(monthKey)
 
     suspend fun dismiss(id: Long, nowMillis: Long) = db.digestDao().dismiss(id, nowMillis)
-
 }

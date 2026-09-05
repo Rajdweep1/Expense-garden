@@ -1,5 +1,8 @@
 package com.expensegarden.app.game
 
+/** Persisted as `Weather.name` inside every digest row's snapshotJson (1D). Renaming a constant
+ *  makes every old snapshot unparseable and silently drops the persona into first-run behaviour;
+ *  a rename therefore needs a data migration, exactly like [Tone]. */
 enum class Weather { SUNNY, OVERCAST, DROUGHT }
 
 enum class Archetype {

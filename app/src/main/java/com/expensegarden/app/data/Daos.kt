@@ -164,11 +164,17 @@ interface GameEventDao {
     @Query("SELECT * FROM game_event WHERE type = :type ORDER BY id")
     suspend fun ofType(type: String): List<GameEventEntity>
 
-    /** The watermark read (spec §9): strictly after the last digest's lastEventId.
-     *  Bounded by id, not createdAt — runReconciler stamps a whole batch of month.closed
-     *  rows with one System.currentTimeMillis(), so timestamps cannot order them. */
-    @Query("SELECT * FROM game_event WHERE id > :afterId ORDER BY id")
-    suspend fun eventsAfterId(afterId: Long): List<GameEventEntity>
+    /** The watermark head (spec §9): the highest id in the log, read BEFORE the window so
+     *  nothing above it can be mistaken for "seen". O(1) off the primary key. */
+    @Query("SELECT COALESCE(MAX(id), 0) FROM game_event")
+    suspend fun headId(): Long
+
+    /** The evaluation window: strictly after the previous watermark, up to and including the
+     *  head read just before. Bounded by id, not createdAt — runReconciler calls
+     *  System.currentTimeMillis() per row inside a tight loop, so a batch's timestamps
+     *  typically collide and cannot order it. */
+    @Query("SELECT * FROM game_event WHERE id > :afterId AND id <= :upToId ORDER BY id")
+    suspend fun eventsInIdRange(afterId: Long, upToId: Long): List<GameEventEntity>
 }
 
 @Dao
@@ -202,8 +208,10 @@ interface QuipDao {
 
 @Dao
 interface DigestDao {
-    /** The watermark row — the most recent digest of any kind. */
-    @Query("SELECT * FROM digest ORDER BY id DESC LIMIT 1")
+    /** The watermark row — the digest of any kind with the highest watermark. Ordered by
+     *  lastEventId first so a future writer carrying an older head (a synced server digest,
+     *  say) cannot move the baseline backwards and re-evaluate the gap. */
+    @Query("SELECT * FROM digest ORDER BY lastEventId DESC, id DESC LIMIT 1")
     suspend fun latest(): DigestEntity?
 
     @Query("SELECT * FROM digest WHERE kind = :kind AND scopeKey = :scopeKey LIMIT 1")
