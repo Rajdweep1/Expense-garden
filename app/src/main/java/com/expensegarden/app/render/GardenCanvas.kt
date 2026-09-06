@@ -531,6 +531,17 @@ fun GardenCanvas(
             val ds = this
             val drawHomestead = {
                 with(ds) {
+                    // 4B: landmarks first, so anything the house overlaps is already on the
+                    // canvas when the house paints over it. Living inside drawHomestead is
+                    // also what gates them to world mode — its sole call site requires
+                    // houseBmp != null, and houseBmp is null whenever worldMode is false. A
+                    // draw call in the plant loop would leak landmarks onto every greenhouse
+                    // month card, where a landmark tile means nothing in the serpentine layout.
+                    for (l in state.landmarks) {
+                        val lv = vis(l.tile)
+                        val lBase = Offset(iso.tileCenterX(lv), iso.tileCenterY(lv) + iso.tileH * .18f)
+                        landmark(structures[l.species.id], lBase.x, lBase.y, iso.tileW * 1.15f, GardenPalette.shadow)
+                    }
                     val yard = backyardTiles.sortedBy { it.col }
                     repeat(minOf(state.backRowTreeCount, yard.size)) { i ->
                         val bt = yard[i]
@@ -896,6 +907,35 @@ private fun DrawScope.house(bmp: ImageBitmap, cx: Float, baseY: Float, spanW: Fl
         dstOffset = IntOffset((cx - hW / 2f).toInt(), (baseY - hH).toInt()),
         dstSize = IntSize(hW.toInt(), hH.toInt()),
         alpha = alpha,
+    )
+}
+
+/** 4B: an earned landmark on its reserved plot.
+ *
+ *  Bottom-anchored like a plant billboard, but drawn with the homestead rather than in the
+ *  per-plant depth sort: a landmark sits on a reserved plot beside the house, so it belongs in
+ *  the same depth band as the grove. It also never sways — the island's motion vocabulary is
+ *  for living things, and a stone lantern that breathes reads as a bug.
+ *
+ *  Sized from WIDTH, unlike [SpritePainter.drawPlant], which drives off height. A koi pond is
+ *  wider than it is tall, so height-driven sizing would blow it up to swallow the island.
+ *
+ *  Falls back to nothing at all when the sprite is missing, rather than to procedural art.
+ *  There is no procedural koi pond, and a wrong shape would be worse than an empty plot. */
+private fun DrawScope.landmark(bmp: ImageBitmap?, cx: Float, baseY: Float, spanW: Float, shadow: Color) {
+    if (bmp == null) return
+    val w = spanW
+    val h = w * bmp.height / bmp.width
+    drawOval(
+        shadow.copy(alpha = .18f),
+        topLeft = Offset(cx - w * .34f, baseY - h * .06f),
+        size = Size(w * .68f, h * .13f),
+    )
+    drawImage(
+        image = bmp,
+        srcOffset = IntOffset.Zero, srcSize = IntSize(bmp.width, bmp.height),
+        dstOffset = IntOffset((cx - w / 2f).toInt(), (baseY - h).toInt()),
+        dstSize = IntSize(w.toInt(), h.toInt()),
     )
 }
 
