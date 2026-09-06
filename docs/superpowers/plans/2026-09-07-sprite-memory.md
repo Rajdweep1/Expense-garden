@@ -606,3 +606,56 @@ git commit -m "docs: record the sprite memory measurements"
 
 *(Per the repo rule, docs and plans are never auto-committed — run this step only if Rajdweep
 asks for it.)*
+
+---
+
+## Results
+
+Measured 2026-09-07 on `Pixel_8_API_35`, A/B on the same emulator and the same data state:
+baseline is `f473eb9` (the commit immediately before this work), after is `5dfaad2`.
+
+### Memory — the claim holds
+
+| island state | Java heap | Native heap | TOTAL PSS |
+|---|---|---|---|
+| baseline `f473eb9`, eager decode | 14,536 KB | 66,600 KB | **128,938 KB** |
+| after `5dfaad2`, 0 plants | 14,408 KB | 18,424 KB | **79,972 KB** |
+| after `5dfaad2`, 3 archetypes planted | 15,536 KB | 28,752 KB | **97,481 KB** |
+
+The native-heap drop on an empty island is 48,176 KB, against 48 MB of plant sprites — the
+numbers match closely enough to identify the mechanism rather than merely correlate with it.
+Java heap is unchanged throughout, confirming the sprites were never on it.
+
+The saving shrinks as the island fills, as designed and as the "Why" section predicted: 48 MB
+empty, 31 MB at three archetypes. A mature island holding every archetype approaches the
+baseline. This is a fix for cold start and for the early and middle game, not a cap.
+
+### Cold start — NOT measurable on this emulator
+
+Step 2's expected line (a `TotalTime` below the 1.38 s previously recorded) could not be
+evaluated, and the earlier figure could not be reproduced by either build. Five runs of one
+identical build spanned **2,447 ms to 7,339 ms**, and the same build measured a median of
+2,753 ms in one batch and 4,719 ms in another taken at *lower* system load. The variance
+between runs of one build is larger than any plausible difference between builds, so no
+cold-start claim is made in either direction. The emulator threw two "isn't responding" system
+dialogs during the session, which is the likely cause.
+
+Re-measure on the physical phone when it is next out for the Task 12 payment E2E. A device with
+no host contention should resolve this; nothing in the change is emulator-specific.
+
+### Functional checks
+
+- Three transactions logged through the real UI (Food & Drinks, Transport, Shopping). All three
+  plants rendered as **sprites**, not the procedural fallback — the on-demand decode lands and
+  the `SnapshotStateMap` write invalidates the draw, with no visible flash at this island size.
+- Step 4's "no procedural flash" check passed at three plants. It has NOT been checked on a
+  large island where many archetypes warm at once; that is where a flash would first appear.
+
+### Follow-up found while measuring — not implemented
+
+`SpriteDemand.of` warms `(archetype, 0)` alongside every plant's own variant, which roughly
+doubles the per-archetype cost when a plant's variant is not 0. The base look is only ever read
+when the plant's own variant is absent from the pack, so `SpriteCache.warmNow` could decode it
+lazily — only when `decodePlant(a, v)` returns null — and keep identical partial-pack behaviour
+at half the memory per archetype. Deliberately out of scope for this plan; worth doing before
+the next art drop widens the archetype set.
