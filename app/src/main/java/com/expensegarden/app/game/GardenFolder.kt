@@ -114,7 +114,24 @@ object GardenFolder {
             }
         }
         val foot = SpiralTiler.footprint(level)
+        // Hoisted to a local because three things now depend on it agreeing with itself: the
+        // plant tiling, the landmark plots, and gridRows/gridCols below — which each called
+        // gridSide() inline. Same arguments give the same answer, so this is not a fix; it is
+        // removing the chance for a future edit to make one of them disagree, which would put
+        // a landmark plot on a tile the plants think is plantable.
+        val side = SpiralTiler.gridSide(mapped.size, foot)
         val tiles = SpiralTiler.tiles(mapped.size, foot)
+
+        // 4B: landmarks take reserved plots, so they are placed independently of the plant
+        // tiling rather than competing with it. Zipping truncates — a landmark with no plot, or
+        // a plot with no landmark, simply does not appear. The two agree by construction
+        // anyway: RareEngine emits one earn per house level 3..level, and landmarkCount derives
+        // from that same level's footprint. `the reserved plot count always matches the number
+        // of landmarks earned` in RareFoldTest pins that.
+        val landmarks = RareCatalog.landmarkAssignment(earns)
+            .map { it.second }
+            .zip(SpiralTiler.landmarkTiles(side, foot))
+            .map { (species, tile) -> PlacedLandmark(species, tile) }
         val plants = mapped.mapIndexed { i, (m, _) ->
             Plant(m.txnUuid, m.archetype, m.sizeTier, m.isWeed, tiles[i], m.seed, m.variant, rare = m.rare)
         }
@@ -140,10 +157,11 @@ object GardenFolder {
             streakDays = StreakMath.underPaceStreak(dayTotals, overall, today.dayOfMonth, daysInMonth),
             noSpendDays = StreakMath.noSpendDays(dayTotals, today.dayOfMonth),
             archived = false,
-            gridRows = SpiralTiler.gridSide(mapped.size, foot),
-            gridCols = SpiralTiler.gridSide(mapped.size, foot),
+            gridRows = side,
+            gridCols = side,
             monthMarkers = markers,
             houseLevel = level,
+            landmarks = landmarks,
         )
     }
 

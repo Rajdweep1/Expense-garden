@@ -152,6 +152,60 @@ class RareFoldTest {
         assertEquals(first, second)
     }
 
+    // ---------- 4B: landmark placement ----------
+
+    private fun foldAtLevel(level: Int) = GardenFolder.foldAllTime(
+        allTxns = listOf(txn("a", 7, day = 3)),
+        categories = categories,
+        currentBudgets = emptyList(),
+        currentMonthEvents = emptyList(),
+        allTimeInvestmentCount = 0,
+        today = today,
+        zone = zone,
+        houseLevelOverride = level,
+        rareSignals = emptyList(),
+    )
+
+    @Test fun `no landmark is placed below house level three`() {
+        assertTrue(foldAtLevel(2).landmarks.isEmpty())
+    }
+
+    @Test fun `house level three places exactly one landmark`() {
+        assertEquals(1, foldAtLevel(3).landmarks.size)
+    }
+
+    @Test fun `house level four places both landmarks and they differ`() {
+        val placed = foldAtLevel(4).landmarks
+        assertEquals(2, placed.size)
+        assertEquals(2, placed.map { it.species.id }.toSet().size)
+    }
+
+    @Test fun `a placed landmark never shares a tile with a plant or the house`() {
+        val g = foldAtLevel(4)
+        val house = SpiralTiler.houseTiles(g.gridRows, SpiralTiler.footprint(4))
+        for (l in g.landmarks) {
+            assertTrue(g.plants.none { it.tile == l.tile })
+            assertTrue(l.tile !in house)
+        }
+    }
+
+    @Test fun `landmark placement is deterministic across repeated folds`() {
+        // Spec §4.1 — same property the rest of the fold rests on.
+        val first = foldAtLevel(4).landmarks.map { it.species.id to it.tile }
+        val second = foldAtLevel(4).landmarks.map { it.species.id to it.tile }
+        assertEquals(first, second)
+    }
+
+    @Test fun `the reserved plot count always matches the number of landmarks earned`() {
+        // RareEngine emits for every level <= houseLevel while landmarkCount derives from the
+        // footprint. The two agree by construction; this pins that so a change to either ladder
+        // cannot silently strand a landmark with no plot, or reserve a plot with nothing on it.
+        for (level in 1..4) {
+            val f = SpiralTiler.footprint(level)
+            assertEquals(SpiralTiler.landmarkCount(f), foldAtLevel(level).landmarks.size)
+        }
+    }
+
     @Test fun `a landmark earn never becomes a plant`() {
         // House level 4 needs 12 tracked months; one month of txns cannot reach it, so drive
         // it directly through the override.

@@ -36,6 +36,13 @@ data class Plant(
 /** Where a month's first plant stands — the all-time island renders a signpost here. */
 data class MonthMarker(val monthKey: String, val tile: Tile)
 
+/** An earned Landmark standing on its reserved plot (4B).
+ *
+ *  Not a [Plant]: a landmark has no transaction behind it, so it carries no uuid, no size tier
+ *  and no regret state. It is closer to the house — a fixture of the island that the garden
+ *  grew around — which is also why it renders at the house block's depth. */
+data class PlacedLandmark(val species: RareSpecies, val tile: Tile)
+
 data class GardenState(
     val monthKey: String,
     val weather: Weather,
@@ -51,4 +58,7 @@ data class GardenState(
     val gridCols: Int,
     val monthMarkers: List<MonthMarker> = emptyList(),       // all-time fold only; monthly folds leave it empty
     val houseLevel: Int = 1,                                 // 1C.6: hut→cottage→brick→villa by months tracked
+    /** 4B: earned landmarks on their reserved plots. Empty for monthly folds — landmarks are
+     *  an all-time property of the island, like the house, not a property of one month. */
+    val landmarks: List<PlacedLandmark> = emptyList(),
 )
