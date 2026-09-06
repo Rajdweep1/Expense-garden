@@ -61,6 +61,8 @@ TREATMENT = {
     "zombie_0":        ("clear",   "263px at the hand and between the base sprouts"),
     "zombie_2":        ("clear",   "260px in the crook of the raised arm"),
     "vegetable_row_1": ("clear",   "191px in the leaf gaps along the bottom row"),
+    "berry_bush_0":    ("clear",   "1004px cyan sliver under the chin, between stem and leaf"),
+    "berry_bush_1":    ("clear",   "1093px cyan sliver under the chin, between stem and leaf"),
     # --- shapes drawn in the screen colour; clearing them would hole the character ---
     "odd_mushroom_0":  ("despill", "2053px of gill striation under the cap. Clearing cuts "
                                    "a speckled gash through the rim and into the face."),
@@ -74,15 +76,29 @@ def screen_of(name):
 
 
 def is_screen(screen, r, g, b):
-    """The dead channel is the tell, exactly as check_residue.py explains it.
+    """Residue test — deliberately different for the two screens.
 
-    The screens are (255, 0, 255) and (0, 255, 255), so residue always has one channel at
-    essentially zero while the other two stay strong. No pigment holds green at 1 while red
-    sits at 182 — and shading darkens a pocket without ever reviving its dead channel, which
-    is why this cannot be a brightness test.
+    A sprite is shot on whichever screen is least likely to appear in ITS OWN art: warm
+    palettes (tulips, berries) go on cyan, everything else on magenta. That choice makes the
+    two screens unequally safe to detect, and the tests have to reflect it.
+
+    CYAN, relative. A tulip has no business holding a colour where green and blue both tower
+    over red, so anything in the cyan family is screen. Measured across all eight cyan
+    sprites on 2026-09-06, this selects exactly the two genuine pockets and nothing else
+    (tulips: 0, 36, 96, 2, 0 stray pixels of antialiasing).
+
+    MAGENTA, absolute — the dead channel, as check_residue.py explains. The magenta family
+    overlaps real pigment: a relative test here selects 9,507 pixels of odd_mushroom_0 and
+    4,563 of thistle_weed_0, which are their purple gills and eyes, not residue. So this side
+    demands green at essentially zero while red and blue stay strong, which no pigment does.
+
+    The absolute test is also why muted screens hid for so long: FLUX does not always render
+    the screen it was asked for, and a pocket shot on (67, 201, 212) fails `r < 25` outright.
+    gen.py now samples the screen it actually shot; on the shipped side there is no border
+    left to sample, so the cyan branch has to be relative to catch those at all.
     """
     if screen == "cyan":
-        return r < 25 and g > 100 and b > 70
+        return g > r + 55 and b > r + 40
     return g < 25 and r > 100 and b > 70
 
 

@@ -62,3 +62,22 @@ it bleached the tulips white before this rule existed, and berries carry the sam
 - Verify the output files themselves, never the exit code or a completion notification.
   1C.6 saw a "failed" that was really a `pkill` and a "completed exit 0" that masked a
   failed `cd`.
+- **Composite over BLACK before accepting a sprite.** The cast is dark-outlined art on a
+  checkerboard, and against that a pale cast shadow, a ground plate or a leftover patch of
+  sky is nearly invisible. Over black they are obvious. Three of 4A's rare sprites shipped
+  with a baked ground plane — `berry_bush_2` had a mint plate, sky in both top corners and
+  floating debris — and all three had passed the flood-fill, `key_failed`, and
+  `check_residue.py`. Nothing automated caught them.
+- **There is no statistic for a baked ground plane, and looking for one wastes a day.**
+  Two were tried against the whole cast on 2026-09-06 and both failed to separate the three
+  known-bad sprites from good art: base width relative to the body (`berry_bush_2` landed
+  exactly on the cast median while a perfectly good `tulip_1` was the widest), and base
+  saturation (`bush_2` and `vegetable_row_3` sat ABOVE the median; `berry_bush_2` tied with
+  `odd_mushroom_0` and `bell_flower_2`). A gate fitted to three examples would fire on those
+  two good sprites, and a detector that cries wolf gets ignored — which is how
+  `check_residue`'s first version, flagging eight good sprites, nearly got discarded. This
+  one stays a human check.
+- When a brief's CONCEPT contradicts the style block, re-rolling the seed re-rolls the same
+  conflict. `bush_2` asked for a bonsai "in a shallow glazed ceramic pot" while STYLE asks
+  for a creature "standing on a small soil mound" — a pot with nowhere to sit invites the
+  model to invent a table under it. Reconcile the brief, then re-roll.

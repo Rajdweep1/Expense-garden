@@ -8,6 +8,7 @@ Usage:
     python3 tools/art/gen.py                  # every sprite in briefs.py
     python3 tools/art/gen.py berry_bush_0     # just these
     SEED_OFFSET=7 python3 tools/art/gen.py    # re-roll with different seeds
+    python3 tools/art/gen.py --rekey tulip_3  # re-key an existing raw, no render
 """
 
 import os
@@ -58,6 +59,23 @@ def seed_of(name):
     return zlib.crc32(name.encode()) % 100000 + SEED_OFFSET
 
 
+def shot_screen(px, w, h, screen):
+    """The screen colour this frame was actually shot on, sampled from its border.
+
+    Per-channel median rather than the modal colour: mflux lays down a slight gradient, so
+    no single value dominates, but the median is stable even when the character touches an
+    edge. Falls back to the ideal screen when the border is NOT the screen at all — that is
+    the key_failed case, where FLUX painted a scene, and seeding a pocket fill on whatever
+    colour the sky happened to be would eat the picture.
+    """
+    edge = [px[x, 0][:3] for x in range(w)] + [px[x, h - 1][:3] for x in range(w)] \
+        + [px[0, y][:3] for y in range(h)] + [px[w - 1, y][:3] for y in range(h)]
+    med = tuple(sorted(c[i] for c in edge)[len(edge) // 2] for i in range(3))
+    r, g, b = med
+    in_family = (g > r + 55 and b > r + 40) if screen == "cyan" else (r > g + 55 and b > g + 40)
+    return med if in_family else SCREENS[screen]
+
+
 def key_out(path, screen):
     """Drop the chroma screen by BORDER FLOOD-FILL, not a paint-anywhere colour match.
 
@@ -73,6 +91,7 @@ def key_out(path, screen):
     w, h = img.size
     px = img.load()
     br, bgn, bb = SCREENS[screen]
+    shot = shot_screen(px, w, h, screen)
 
     def is_bg(r, g, b):
         if screen == "cyan":
@@ -113,13 +132,19 @@ def key_out(path, screen):
     #
     # This is NOT the paint-anywhere colour match the docstring warns about. That bug came
     # from using the LOOSE is_bg test everywhere, which eats a warm sprite's pink-drifted
-    # interior. Here the SEED test is near-pure screen colour — the dead channel at ~0, which
-    # no pigment survives shading with — and only once a seed is found does the loose test
-    # grow the region. Strict to start, loose to finish: legitimate art never seeds it.
+    # interior. Here the SEED test is the screen colour itself, and only once a seed is found
+    # does the loose test grow the region. Strict to start, loose to finish: legitimate art
+    # never seeds it.
+    #
+    # "The screen colour" means the one ACTUALLY SHOT, not the one that was asked for. FLUX
+    # does not reliably render a saturated screen — berry_bush_2's re-roll on 2026-09-06 came
+    # back on (67, 201, 212) instead of (0, 255, 255). The border fill survived that, because
+    # its is_bg test is relative (g > r + 55) and a muted screen still passes it. But this
+    # seed test used to be absolute (r < 25), and 67 is not: exactly 4 pixels in that entire
+    # 768px raw could seed, so the pass silently did nothing and the pocket shipped.
     def is_pure_screen(r, g, b):
-        if screen == "cyan":
-            return r < 25 and g > 100 and b > 70
-        return g < 25 and r > 100 and b > 70
+        sr, sg, sb = shot
+        return (r - sr) ** 2 + (g - sg) ** 2 + (b - sb) ** 2 < 30**2
 
     for sy in range(h):
         for sx in range(w):
@@ -318,11 +343,37 @@ def facade_gaps(img, thresh=0.30):
     return bad
 
 
+def rekey(name):
+    """Re-run keying on an existing raw, skipping the ~95s render.
+
+    For when the KEYER improved and you want that applied to art you just generated — the
+    raw and the shipped sprite are the same render, so nothing changes but the keying.
+
+    Do NOT reach for this to "clean up" the older cast. The files in raw/ do not reliably
+    correspond to what shipped: re-keying everything from raw/ on 2026-09-06 gave a house_3
+    with a pale halo the committed one does not have, i.e. a different render. Repairing a
+    shipped sprite is fix_screen_residue.py's job, and it works on the shipped PNG.
+    """
+    raw = os.path.join(RAW_DIR, name + ".png")
+    if not os.path.exists(raw):
+        sys.exit("no raw to re-key: " + raw)
+    out = os.path.join(OUT_DIR, name + ".png")
+    img = key_out(raw, screen_of(name))
+    if name.startswith("house"):
+        img = match_palette(img)
+    img.save(out)
+    print("re-keyed", out)
+    if key_failed(img):
+        print(f"  WARNING {name}: the chroma screen was NOT keyed out — the sprite is opaque")
+
+
 if __name__ == "__main__":
     os.makedirs(RAW_DIR, exist_ok=True)
     os.makedirs(OUT_DIR, exist_ok=True)
-    wanted = sys.argv[1:] or sorted(PROMPTS)
+    args = sys.argv[1:]
+    only_key = "--rekey" in args
+    wanted = [a for a in args if a != "--rekey"] or sorted(PROMPTS)
     for n in wanted:
         if n not in PROMPTS:
             sys.exit("unknown sprite: " + n)
-        gen(n, PROMPTS[n])
+        rekey(n) if only_key else gen(n, PROMPTS[n])
