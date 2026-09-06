@@ -137,25 +137,32 @@ private fun CollectionCard(state: CollectionState) {
 
             if (expanded) {
                 for (tier in RareTier.values()) {
+                    val pool = RareCatalog.pool(tier)
+                    val found = pool.count { state.foundBy.containsKey(it.id) }
                     Text(
-                        tier.name.lowercase().replaceFirstChar { it.uppercase() },
+                        CollectionSummary.heading(tier, found, pool.size),
                         style = MaterialTheme.typography.labelMedium,
                         modifier = Modifier.padding(top = 6.dp),
                     )
-                    for (species in RareCatalog.pool(tier)) {
-                        val earnedBy = state.foundBy[species.id]
+                    for (species in pool) {
+                        val earnedBy = state.foundBy[species.id] ?: continue
+                        // Spec §5 asks for the species AND how it was earned. Showing the
+                        // specific trigger beats the tier's generic condition line: it tells
+                        // you what YOU did, not what someone could do.
                         Text(
-                            if (earnedBy != null) {
-                                // Spec §5 asks for the species AND how it was earned. Showing
-                                // the specific trigger beats the tier's generic condition line:
-                                // it tells you what YOU did, not what someone could do.
-                                "\u2022 ${species.displayName} — ${howEarned(earnedBy)}"
-                            } else {
-                                "\u2022 ???"
-                            },
+                            "\u2022 ${species.displayName} — ${howEarned(earnedBy)}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = if (earnedBy != null) MaterialTheme.colorScheme.onSurface
-                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                    // One line replaces one blank row per unearned species. On a fresh install
+                    // that was sixteen identical "???" rows carrying a single count between
+                    // them — a count the card header already showed.
+                    CollectionSummary.hiddenLine(found, pool.size)?.let { hidden ->
+                        Text(
+                            "\u2022 $hidden",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     Text(
