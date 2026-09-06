@@ -17,12 +17,17 @@ class SpiralTilerFootprintTest {
         assertEquals(4, SpiralTiler.footprint(9))    // clamped
     }
 
-    @Test fun `capacity counts the full square minus house and grove`() {
-        // side = f + 2k, so side² − f² − 4 must equal capacity(k, f).
+    @Test fun `capacity counts the full square minus every reserved plot`() {
+        // side = f + 2k, so side² − f² − 4 grove tiles − the landmark plots must equal
+        // capacity(k, f). 4B added the last term: this test parameterises f over {2, 3, 4},
+        // so unlike everything in SpiralTilerTest it does see the new reservation. At f = 2
+        // landmarkCount is 0 and the original identity is unchanged, which is what says the
+        // reservation has not leaked into the 1C.6 case.
         for (f in listOf(2, 3, 4)) {
             for (k in 1..4) {
                 val side = f + 2 * k
-                assertEquals("f=$f k=$k", side * side - f * f - 4, SpiralTiler.capacity(k, f))
+                val reserved = 4 + SpiralTiler.landmarkCount(f)
+                assertEquals("f=$f k=$k", side * side - f * f - reserved, SpiralTiler.capacity(k, f))
             }
         }
     }

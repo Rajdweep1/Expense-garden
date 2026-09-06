@@ -16,6 +16,33 @@ object SpiralTiler {
         else -> 4
     }
 
+    /** How many landmark plots exist at a given footprint (4B spec §1).
+     *
+     *  Landmarks are earned at house levels 3 and 4 — which are exactly the levels where
+     *  [footprint] grows. The count therefore falls out of the f the tiler is already being
+     *  handed, so nothing new has to be threaded through rings/gridSide/capacity, and no
+     *  landmark state is stored anywhere. */
+    fun landmarkCount(f: Int): Int = maxOf(0, f - 2)
+
+    /** The reserved landmark plots, in earn order: index i is the plot for landmark ordinal i.
+     *
+     *  A List, not a Set like [houseTiles] and [backyardTiles]. Those two are pure membership
+     *  tests — is this tile plantable — and a set says that precisely. These need membership
+     *  AND order, and a set would drop exactly the information placement depends on.
+     *
+     *  The specific tiles were chosen by rendering, not by reasoning. Screen-x tracks
+     *  (row + col) and screen-y tracks (col − row), so a tile flanks the house at its own
+     *  height only when col − row matches the house centre's. The obvious-looking pair
+     *  (lo, lo−1) / (lo, lo+f) fails that and puts one landmark visually behind the other.
+     *  Both of these sit on the house's own diagonal, two x-units outside its screen corners.
+     *
+     *  Only the first plot is reserved until the second landmark is earned, so there is never
+     *  an empty plot advertising a reward that has not arrived. */
+    fun landmarkTiles(side: Int, f: Int = 2): List<Tile> {
+        val lo = (side - f) / 2
+        return listOf(Tile(lo - 1, lo - 1), Tile(lo + f, lo + f)).take(landmarkCount(f))
+    }
+
     fun rings(plantCount: Int, f: Int = 2): Int {
         var k = 1
         while (capacity(k, f) < plantCount) k++
@@ -26,8 +53,11 @@ object SpiralTiler {
 
     /** Plantable tiles through ring k around an f×f core. Ring i holds (f+2i)² − (f+2i−2)²
      *  = 4f + 8i − 4 tiles; summing i=1..k gives 4k² + 4fk. Minus the 4 reserved grove tiles.
-     *  f = 2 reduces to the 1C.6 formula 4k² + 8k − 4. */
-    fun capacity(k: Int, f: Int = 2): Int = 4 * k * k + 4 * f * k - 4
+     *  f = 2 reduces to the 1C.6 formula 4k² + 8k − 4.
+     *
+     *  4B: also minus the reserved landmark plots, which is zero at f = 2 — so every 1C.6
+     *  expectation in SpiralTilerTest holds unchanged. */
+    fun capacity(k: Int, f: Int = 2): Int = 4 * k * k + 4 * f * k - 4 - landmarkCount(f)
 
     fun houseTiles(side: Int, f: Int = 2): Set<Tile> {
         val lo = (side - f) / 2
@@ -47,7 +77,12 @@ object SpiralTiler {
         val side = gridSide(plantCount, f)
         val origin = (side - f) / 2                               // house block spans origin..origin+f-1
         val out = ArrayList<Tile>(plantCount)
-        val skip = backyardTiles(side, f).map { Tile(it.row - origin, it.col - origin) }.toSet()
+        // Both reserved plots, in house-relative coords to match the ring walk below.
+        // capacity() only makes the island BIG enough to hold the reservation; refusing to
+        // plant on it is this set's job. Updating one without the other grows the island and
+        // then plants on the plot anyway — which is exactly what happened first time.
+        val skip = (backyardTiles(side, f) + landmarkTiles(side, f))
+            .map { Tile(it.row - origin, it.col - origin) }.toSet()
         var k = 1
         while (out.size < plantCount) {
             // ring k around the house block, in house-relative coords (house cells are 0..f-1)
