@@ -78,14 +78,21 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
+    /** flow{} wrapper for the same reason [homeHeader] has one: the 90-day window was
+     *  evaluated once, at property init, so it drifted on a long-lived process. Same staleness
+     *  class the spec §5 fix addressed for month bounds — this property was simply missed by
+     *  it. Re-derived on every (re)subscription. */
     val chipCategories: StateFlow<List<CategoryEntity>> =
-        combine(
-            container.db.categoryDao().observeAll(),
-            container.db.transactionDao().observeCategoryUsageSince(
-                System.currentTimeMillis() - 90L * 24 * 60 * 60 * 1000
-            ),
-        ) { cats, usage ->
-            ChipOrder.topChips(cats, usage.associate { it.categoryId to it.uses })
+        flow {
+            val since = System.currentTimeMillis() - 90L * 24 * 60 * 60 * 1000
+            emitAll(
+                combine(
+                    container.db.categoryDao().observeAll(),
+                    container.db.transactionDao().observeCategoryUsageSince(since),
+                ) { cats, usage ->
+                    ChipOrder.topChips(cats, usage.associate { it.categoryId to it.uses })
+                }
+            )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val pendingConfirm: StateFlow<List<TransactionEntity>> =
         ledger.observePendingConfirm()

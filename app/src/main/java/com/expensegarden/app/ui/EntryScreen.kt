@@ -1,15 +1,18 @@
 package com.expensegarden.app.ui
 
-import android.widget.Toast
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -33,10 +36,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -59,6 +67,15 @@ fun EntryScreen(vm: MainViewModel, onDone: () -> Unit) {
     val categories by vm.categories.collectAsState()
     var gate by remember { mutableStateOf<GatePrompt?>(null) }
     var allCategoriesOpen by remember { mutableStateOf(false) }
+    // Inline field state rather than Toasts. A Toast appears at the far bottom of the screen,
+    // vanishes, is invisible to TalkBack in the way an error field is not, and surfaces only
+    // one problem per attempt — so a user fixed the amount, tapped again, and only then
+    // learned a category was also needed.
+    var amountError by remember { mutableStateOf(false) }
+    var categoryError by remember { mutableStateOf(false) }
+    val amountFocus = remember { FocusRequester() }
+    // The first input of the app's primary action; every log used to cost an extra tap.
+    LaunchedEffect(Unit) { amountFocus.requestFocus() }
 
     fun fireAndFinish(amountPaise: Long, severity: Severity) {
         scope.launch {
@@ -68,18 +85,34 @@ fun EntryScreen(vm: MainViewModel, onDone: () -> Unit) {
         }
     }
 
-    Column(Modifier.statusBarsPadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(
-            if (draft.fromScan) "Paying ${draft.payeeName}" else "Log an expense",
-            style = MaterialTheme.typography.headlineSmall,
-        )
+    // Scrolls and pads for the keyboard, exactly as SettingsScreen does and for the same
+    // reason: "Log it" must never sit behind the IME. Edge-to-edge on targetSdk 35 means
+    // adjustResize no longer shrinks the content, and autofocusing the amount field makes the
+    // keyboard the DEFAULT state rather than an occasional one — so without this, the primary
+    // action of the app would start every session out of reach.
+    Column(
+        Modifier.statusBarsPadding().imePadding().verticalScroll(rememberScrollState()).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        // Explicit way home, as on dashboard/greenhouse/settings — gesture-nav phones hide the
+        // system back affordance, and this was the one screen without a replacement.
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = onDone, contentPadding = PaddingValues(horizontal = 8.dp)) { Text("← garden") }
+            Text(
+                if (draft.fromScan) "Paying ${draft.payeeName}" else "Log an expense",
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.padding(start = 8.dp),
+            )
+        }
 
         OutlinedTextField(
             value = draft.amountText,
-            onValueChange = { vm.draft.value = draft.copy(amountText = it) },
+            onValueChange = { vm.draft.value = draft.copy(amountText = it); amountError = false },
             label = { Text("Amount (₹)") },
+            isError = amountError,
+            supportingText = if (amountError) ({ Text("Enter an amount") }) else null,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().focusRequester(amountFocus),
         )
 
         if (!draft.fromScan) {
@@ -133,11 +166,18 @@ fun EntryScreen(vm: MainViewModel, onDone: () -> Unit) {
             shown.forEach { cat ->
                 FilterChip(
                     selected = cat.id == selectedId,
-                    onClick = { vm.draft.value = draft.copy(categoryId = cat.id) },
+                    onClick = { vm.draft.value = draft.copy(categoryId = cat.id); categoryError = false },
                     label = { Text(cat.name) },
                 )
             }
             FilterChip(selected = false, onClick = { allCategoriesOpen = true }, label = { Text("All…") })
+        }
+        if (categoryError) {
+            Text(
+                "Pick a category",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
         }
 
         if (allCategoriesOpen) {
@@ -157,6 +197,7 @@ fun EntryScreen(vm: MainViewModel, onDone: () -> Unit) {
                                 .fillMaxWidth()
                                 .clickable {
                                     vm.draft.value = draft.copy(categoryId = cat.id)
+                                    categoryError = false
                                     allCategoriesOpen = false
                                 }
                                 .padding(horizontal = 24.dp, vertical = 12.dp),
@@ -178,9 +219,12 @@ fun EntryScreen(vm: MainViewModel, onDone: () -> Unit) {
         Button(
             onClick = {
                 val amountPaise = Money.parseToPaise(draft.amountText)
+                // Both flags set in one pass, so a user learns about both problems at once
+                // rather than discovering the second after fixing the first.
+                amountError = amountPaise == null
+                categoryError = draft.categoryId == null
                 when {
-                    amountPaise == null -> Toast.makeText(context, "Enter a valid amount", Toast.LENGTH_SHORT).show()
-                    draft.categoryId == null -> Toast.makeText(context, "Pick a category", Toast.LENGTH_SHORT).show()
+                    amountPaise == null || draft.categoryId == null -> Unit
                     draft.fromScan -> scope.launch {
                         val prompt = vm.prepareGate(amountPaise)
                         if (prompt.severity == Severity.OK) fireAndFinish(amountPaise, prompt.severity)

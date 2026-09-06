@@ -111,8 +111,12 @@ fun GardenHomeScreen(
                     Text(Money.display(h.spentPaise), style = MaterialTheme.typography.titleMedium)
                     val streak = homestead?.state?.streakDays ?: 0
                     val streakSuffix = if (streak > 0) " · 🌱${streak}d" else ""   // the streaks-lite counter (spec §1)
+                    // The chevron is unconditional on purpose. This label used to read
+                    // "dashboard →" ONLY while no budget was set, so the one hint that the
+                    // strip is tappable was visible to brand-new users and to nobody else.
                     Text(
-                        (h.overallBudgetPaise?.let { "${Money.display(it)} · ${gardenHint(h.hint)}" } ?: "dashboard →") + streakSuffix,
+                        (h.overallBudgetPaise?.let { "${Money.display(it)} · ${gardenHint(h.hint)}" }
+                            ?: "set a budget") + streakSuffix + "  ›",
                         style = MaterialTheme.typography.labelMedium,
                     )
                 }
