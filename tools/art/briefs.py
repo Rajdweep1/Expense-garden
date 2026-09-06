@@ -252,9 +252,9 @@ PROMPTS = {
         "shape, small soil base."
     ),
     "berry_bush_2": (
-        "Round bush creature bowing under UNUSUALLY LARGE glossy berries in deep ruby and "
-        "blackcurrant, branches heavy and arching with the weight, rich dark-green leaves, "
-        "wide pleased eyes, plump and abundant."
+        "Round compact bush creature bowing under UNUSUALLY LARGE glossy berries in deep ruby "
+        "and blackcurrant, short branches heavy and arching with the weight, rich dark-green "
+        "leaves, wide pleased eyes, plump and abundant, rooted in a small mound of dark soil."
     ),
     "succulent_2": (
         "Rosette succulent creature with thick pale sage leaves edged in FROSTED SILVER, a "
@@ -295,9 +295,10 @@ PROMPTS = {
         "curious eyes peeking through."
     ),
     "bush_2": (
-        "Miniature BONSAI TREE creature in a shallow glazed ceramic pot, gnarled sculpted "
-        "trunk with a small wise face in the bark, carefully layered cloud-like foliage pads, "
-        "deliberate and ancient-looking, calm closed eyes."
+        "Miniature BONSAI TREE creature: a thick gnarled trunk twisting up from a shallow "
+        "glazed ceramic pot, crowned by THREE distinct layered cloud-shaped pads of dense "
+        "green foliage, a small wise face set into the bark of the trunk with calm closed "
+        "eyes, ancient and deliberate. The pot rests on a small mound of dark soil."
     ),
     "hedge_4": (
         "Green hedge clipped into an elegant TOPIARY CRANE — long arched neck, folded wings, "
@@ -307,6 +308,6 @@ PROMPTS = {
     "vegetable_row_3": (
         "Short row of rare HEIRLOOM vegetables with unusual patterned skins — green-and-red "
         "striped tomatoes, purple-and-white striped beets, speckled squash — lush leafy tops, "
-        "proud little eyes on the front vegetable."
+        "proud little eyes on the front vegetable, growing from a low mound of dark soil."
     ),
 }
