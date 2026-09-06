@@ -39,8 +39,8 @@ rejects it. Each shell starts fresh, so export it on *every* command:
 ```bash
 export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 
-./gradlew testDebugUnitTest                 # JVM unit tests (181)
-./gradlew connectedDebugAndroidTest         # instrumented (56) — needs an emulator/device
+./gradlew testDebugUnitTest                 # JVM unit tests (298)
+./gradlew connectedDebugAndroidTest         # instrumented (67) — needs an emulator/device
 ./gradlew installDebug                      # build + install
 ```
 
@@ -110,8 +110,9 @@ LLM outside every read path; moving it server-side would spend the offline guara
 richer context. If Play Store distribution ever needs an API-key proxy, that lands in
 core-api instead.
 
-Phase 4 showcase: gamification depth, read-only web dashboard (needs a deployed core-api),
-Play Store hardening, investments via CAS parsing.
+Phase 4 showcase: **4A collections** (done — rare species earned by restraint, never by
+spending) → **4B landmarks** (done — koi pond and stone lantern on reserved plots) → read-only
+web dashboard (needs a deployed core-api), Play Store hardening, investments via CAS parsing.
 
 The parent spec's Phase 1 acceptance is *"done when it's the default way its user pays
 offline merchants."* That is a usage bar, not a code bar.
