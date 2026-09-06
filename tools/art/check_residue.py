@@ -17,12 +17,22 @@ eight perfectly good shipped sprites:
     (182, 1, 121) — so a brightness threshold misses exactly the pixels that are hardest to
     spot by eye. No natural pigment holds green at 1 while red sits at 182.
 
-Finding, 2026-09-06: this flags six sprites that shipped in 1C.6 — hedge_1 (1.3%),
-odd_mushroom_0, thistle_weed_0, vegetable_row_1, zombie_0, zombie_2. They are not enclosed
-pockets but thin fringe around the silhouette, and the values cluster at (245, 3, 128) /
-(239, 11, 128): magenta after gen.py's despill halves the blue channel. At sprite scale it
-reads as a faint pink halo rather than a blob, which is why it went unnoticed. Fixing it means
-improving the despill and re-rolling that art — deliberately NOT done as part of 4A.
+Finding, 2026-09-06: this flagged ten sprites from 1C.6/1C.7 — hedge_1 (1.3%),
+odd_mushroom_0, thistle_weed_0, bush_0, bush_1, curl_vine_0, chai_cluster_1, vegetable_row_1,
+zombie_0, zombie_2. All ten are repaired; `fix_screen_residue.py` holds the fix and the
+per-sprite reasoning.
+
+Two things that first reading got wrong, both worth keeping:
+
+  * They are NOT fringe. Every residue pixel measured fully opaque and ZERO of them touched
+    a transparent pixel, which is the signature of an ENCLOSED pocket, not a keyed edge. A
+    fringe would hug the silhouette; these sit behind leaves and inside curls, walled off
+    from the border the flood-fill starts at.
+  * The colours cluster at (245, 3, 128) / (239, 11, 128) — blue at almost exactly half of
+    red. That is screen magenta (255, 0, 255) after a despill that halved only blue, which
+    made the residue less obvious rather than removing it: gen.py's suppressor computes
+    m = (r + b) // 2 and then min()s both channels against it, so on balanced magenta it is
+    arithmetically a no-op.
 
 Usage:  python3 check_residue.py [file.png ...]     (default: every sprite in assets/garden)
 """
