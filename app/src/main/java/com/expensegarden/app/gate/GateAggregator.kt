@@ -13,9 +13,22 @@ data class ScopeInput(
 data class GateVerdict(val severity: Severity, val offender: ScopeInput?)
 
 object GateAggregator {
-    fun aggregate(scopes: List<ScopeInput>, candidatePaise: Long, dayOfMonth: Int, daysInMonth: Int): GateVerdict {
+    /** @param fixedPaise this month's spend on recurring payees, applied to the OVERALL scope
+     *    only. A category budget paces that category, and rent is not inside Shopping — giving
+     *    every scope the overall fixed allowance would hand each of them room it has not
+     *    earned, and would quietly disable the per-category gate. */
+    fun aggregate(
+        scopes: List<ScopeInput>,
+        candidatePaise: Long,
+        fixedPaise: Long,
+        dayOfMonth: Int,
+        daysInMonth: Int,
+    ): GateVerdict {
         val evaluated = scopes.map { scope ->
-            scope to GateEvaluator.evaluate(scope.spentPaise, scope.budgetPaise, candidatePaise, dayOfMonth, daysInMonth)
+            val fixedForScope = if (scope.categoryId == null) fixedPaise else 0L
+            scope to GateEvaluator.evaluate(
+                scope.spentPaise, scope.budgetPaise, candidatePaise, fixedForScope, dayOfMonth, daysInMonth,
+            )
         }
         val worst = evaluated.maxOfOrNull { it.second } ?: Severity.OK   // enum order: OK < PACE_WARNING < BREACH
         if (worst == Severity.OK) return GateVerdict(Severity.OK, null)

@@ -6,6 +6,7 @@ import com.expensegarden.app.gate.GateEvaluator
 import com.expensegarden.app.gate.GateVerdict
 import com.expensegarden.app.gate.ScopeInput
 import com.expensegarden.app.stats.CategoryTree
+import com.expensegarden.app.stats.RecurringPayees
 import com.expensegarden.app.sync.SyncClock
 import org.json.JSONObject
 import java.time.Instant
@@ -146,10 +147,31 @@ class LedgerRepository(
         }
     }
 
+    /** This month's spend on recurring payees — rent, utilities, subscriptions, the SIP.
+     *
+     *  Excluded from the overall pace line so a day-1 rent payment does not leave the gate
+     *  raising a dialog on nearly every purchase for three weeks (review, 2026-09-06).
+     *
+     *  Scoped to [monthKey]'s own window, not the current month's, because gate evaluation
+     *  follows the transaction's `occurredAt` month for backdating — a fixed total from the
+     *  wrong month would pace a backdated payment against rent it never saw. */
+    suspend fun fixedSpentPaise(monthKey: String): Long {
+        val ym = YearMonth.parse(monthKey)
+        val lookBackFrom =
+            boundsOfMonth(ym.minusMonths(RecurringPayees.LOOK_BACK_MONTHS.toLong()).toString()).first
+        val (from, to) = boundsOfMonth(monthKey)
+        val window = db.transactionDao().loggedBetween(lookBackFrom, to)
+        val recurring = RecurringPayees.detect(window, ym, zone)
+        return RecurringPayees.fixedSpentPaise(window.filter { it.occurredAt in from..to }, recurring)
+    }
+
     /** Worst severity across scopes, evaluated in the month the txn belongs to (spec §3: backdating). */
     suspend fun evaluateGate(categoryId: Long, amountPaise: Long, occurredAt: Long): GateVerdict {
         val (day, days) = dayAndLengthOf(occurredAt)
-        return GateAggregator.aggregate(scopeInputs(categoryId, occurredAt), amountPaise, day, days)
+        val monthKey = monthKeyOf(occurredAt)
+        return GateAggregator.aggregate(
+            scopeInputs(categoryId, occurredAt), amountPaise, fixedSpentPaise(monthKey), day, days,
+        )
     }
 
     private suspend fun save(draft: Draft, source: TxnSource, status: TxnStatus, breached: Boolean): String {

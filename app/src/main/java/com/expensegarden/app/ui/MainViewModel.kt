@@ -14,6 +14,7 @@ import com.expensegarden.app.data.TxnRow
 import com.expensegarden.app.gate.GateEvaluator
 import com.expensegarden.app.gate.Severity
 import com.expensegarden.app.stats.ChipOrder
+import com.expensegarden.app.stats.RecurringPayees
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -23,6 +24,8 @@ import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.YearMonth
+import java.time.ZoneId
 
 data class EntryDraft(
     val fromScan: Boolean = false,
@@ -41,6 +44,7 @@ data class HomeHeader(val spentPaise: Long, val overallBudgetPaise: Long?, val h
 
 class MainViewModel(private val container: AppContainer) : ViewModel() {
     private val ledger = container.ledger
+    private val zone: ZoneId = ZoneId.systemDefault()
 
     val draft = MutableStateFlow(EntryDraft())
 
@@ -52,14 +56,24 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     val homeHeader: StateFlow<HomeHeader?> =
         flow {
             val monthKey = ledger.currentMonthKey()   // fresh on every (re)subscription
+            val ym = YearMonth.parse(monthKey)
+            val (from, to) = ledger.boundsOfMonth(monthKey)
+            val lookBackFrom =
+                ledger.boundsOfMonth(ym.minusMonths(RecurringPayees.LOOK_BACK_MONTHS.toLong()).toString()).first
             emitAll(
                 combine(
                     ledger.observeMonthSpent(monthKey),
                     container.db.budgetDao().observeAllForMonth(monthKey),
-                ) { spent, budgets ->
+                    // The strip's hint must agree with the dashboard's severity, so it needs the
+                    // same fixed-cost exclusion. Observed rather than read once: a suspend read
+                    // here would go stale the moment a transaction landed.
+                    container.db.transactionDao().observeLoggedBetween(lookBackFrom, to),
+                ) { spent, budgets, window ->
                     val overall = budgets.firstOrNull { it.categoryId == null }?.amountPaise
                     val (day, days) = ledger.today()
-                    HomeHeader(spent, overall, GateEvaluator.evaluate(spent, overall, 0L, day, days))
+                    val recurring = RecurringPayees.detect(window, ym, zone)
+                    val fixed = RecurringPayees.fixedSpentPaise(window.filter { it.occurredAt in from..to }, recurring)
+                    HomeHeader(spent, overall, GateEvaluator.evaluate(spent, overall, 0L, fixed, day, days))
                 }
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)

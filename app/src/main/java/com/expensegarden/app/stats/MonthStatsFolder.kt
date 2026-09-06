@@ -28,6 +28,10 @@ object MonthStatsFolder {
         categories: List<CategoryEntity>,
         leafSums: Map<Long, Long>,
         budgets: List<BudgetEntity>,
+        /** This month's spend on recurring payees — see [RecurringPayees]. Deliberately has no
+         *  default: a default is precisely how a call site silently keeps the old behaviour,
+         *  and the review found the old behaviour projecting 3.5x high. */
+        fixedPaise: Long,
         dayOfMonth: Int,
         daysInMonth: Int,
     ): MonthStats {
@@ -36,6 +40,12 @@ object MonthStatsFolder {
         val budgetByScope = budgets.associateBy { it.categoryId }
         val total = leafSums.values.sum()
         val overall = budgetByScope[null]?.amountPaise
+
+        // Overall scope only. A category budget paces its own spending, and rent does not sit
+        // inside Shopping — handing every category the overall fixed allowance would give each
+        // of them room they have not earned.
+        fun overallSeverity(spent: Long, budget: Long?): Severity =
+            GateEvaluator.evaluate(spent, budget, 0L, fixedPaise, dayOfMonth, daysInMonth)
 
         fun stateSeverity(spent: Long, budget: Long?): Severity =
             GateEvaluator.evaluate(spent, budget, 0L, dayOfMonth, daysInMonth)
@@ -60,8 +70,8 @@ object MonthStatsFolder {
         return MonthStats(
             spentPaise = total,
             overallBudgetPaise = overall,
-            overallSeverity = stateSeverity(total, overall),
-            projectedPaise = PaceProjector.projectedMonthEndPaise(total, dayOfMonth, daysInMonth),
+            overallSeverity = overallSeverity(total, overall),
+            projectedPaise = PaceProjector.projectedMonthEndPaise(total, fixedPaise, dayOfMonth, daysInMonth),
             perDayPaise = overall?.let { PaceProjector.perDayToStayUnderPaise(total, it, dayOfMonth, daysInMonth) },
             rows = rows,
         )

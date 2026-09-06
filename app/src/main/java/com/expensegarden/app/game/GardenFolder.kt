@@ -7,6 +7,7 @@ import com.expensegarden.app.data.TransactionEntity
 import com.expensegarden.app.gate.Severity
 import com.expensegarden.app.stats.CategoryTree
 import com.expensegarden.app.stats.MonthStatsFolder
+import com.expensegarden.app.stats.RecurringPayees
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
@@ -39,7 +40,17 @@ object GardenFolder {
         }
 
         val leafSums = ordered.groupBy { it.categoryId }.mapValues { (_, l) -> l.sumOf { it.amountPaise } }
-        val severity = MonthStatsFolder.fold(categories, leafSums, budgets, effectiveDay, daysInMonth).overallSeverity
+        // fixedPaise = 0 here, and deliberately so rather than by omission. This fold only ever
+        // receives ONE month's transactions, so RecurringPayees could not look back even if it
+        // were called — it would return an empty set every time and merely look like it was
+        // doing the correction.
+        //
+        // It also cannot matter. This path serves archived months, where effectiveDay is the
+        // last day, so the pace allowance is budget * 1.15 — above the budget itself. Anything
+        // exceeding it has already breached, which makes PACE_WARNING unreachable for a closed
+        // month and the fixed term irrelevant to the answer. The live island uses foldAllTime,
+        // which does have the whole ledger and does apply it.
+        val severity = MonthStatsFolder.fold(categories, leafSums, budgets, 0L, effectiveDay, daysInMonth).overallSeverity
         val weather = weatherOf(severity)
 
         val dayTotals = ordered.groupBy { Instant.ofEpochMilli(it.occurredAt).atZone(zone).dayOfMonth }
@@ -141,7 +152,9 @@ object GardenFolder {
 
         val currentTxns = ordered.filter { YearMonth.from(Instant.ofEpochMilli(it.occurredAt).atZone(zone)) == ym }
         val leafSums = currentTxns.groupBy { it.categoryId }.mapValues { (_, l) -> l.sumOf { it.amountPaise } }
-        val severity = MonthStatsFolder.fold(categories, leafSums, currentBudgets, today.dayOfMonth, daysInMonth).overallSeverity
+        val recurring = RecurringPayees.detect(ordered, ym, zone)
+        val fixedPaise = RecurringPayees.fixedSpentPaise(currentTxns, recurring)
+        val severity = MonthStatsFolder.fold(categories, leafSums, currentBudgets, fixedPaise, today.dayOfMonth, daysInMonth).overallSeverity
         val dayTotals = currentTxns.groupBy { Instant.ofEpochMilli(it.occurredAt).atZone(zone).dayOfMonth }
             .mapValues { (_, l) -> l.sumOf { it.amountPaise } }
         val overall = currentBudgets.firstOrNull { it.categoryId == null }?.amountPaise

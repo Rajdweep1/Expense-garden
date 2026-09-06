@@ -30,4 +30,43 @@ class GateEvaluatorTest {
         // 10000₹ budget, day 10/30: 10000 * 10/30 * 1.15 = ₹3,833.33 → 383333 paise (floor)
         assertEquals(383_333L, GateEvaluator.paceAllowancePaise(1_000_000L, 10, 30))
     }
+
+    // ---------- fixed costs (review fix, 2026-09-06) ----------
+
+    @Test fun `rent paid on day one no longer trips the pace warning`() {
+        // The review's core damage. With ₹18,000 rent against a ₹42,000 budget the old
+        // allowance was ₹9,660 on day 6 while spend stood at ₹33,061, so the gate raised a
+        // dialog on essentially every payment from day 1 to day 22. A prompt that always
+        // fires is one people learn to tap through, which spends the attention it exists to buy.
+        val b = 4_200_000L
+        val fixed = 1_800_000L
+        assertEquals(Severity.OK, GateEvaluator.evaluate(fixed + 180_000L, b, 0L, fixed, 6, 30))
+    }
+
+    @Test fun `genuine overspending on the variable half still warns`() {
+        val b = 4_200_000L
+        val fixed = 1_800_000L
+        assertEquals(Severity.PACE_WARNING, GateEvaluator.evaluate(fixed + 1_500_000L, b, 0L, fixed, 6, 30))
+    }
+
+    @Test fun `a breach is still a breach regardless of what is fixed`() {
+        // Over the budget is over the budget. The fixed term only ever moves the PACE line.
+        assertEquals(Severity.BREACH, GateEvaluator.evaluate(4_300_000L, 4_200_000L, 0L, 1_800_000L, 6, 30))
+    }
+
+    @Test fun `fixed spend exceeding the budget leaves no variable allowance`() {
+        // Rent alone blew the budget. Every further payment is a breach, not a pace nudge.
+        assertEquals(Severity.BREACH, GateEvaluator.evaluate(4_500_000L, 4_200_000L, 0L, 4_500_000L, 6, 30))
+    }
+
+    @Test fun `zero fixed spend reproduces the old behaviour exactly`() {
+        // The two-arg overload keeps every pre-existing caller identical, which is what makes
+        // this change safe to land before every call site has been threaded.
+        for (day in 1..30) {
+            assertEquals(
+                GateEvaluator.paceAllowancePaise(budget, day, 30),
+                GateEvaluator.paceAllowancePaise(budget, 0L, day, 30),
+            )
+        }
+    }
 }

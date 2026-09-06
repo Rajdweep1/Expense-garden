@@ -10,6 +10,7 @@ import com.expensegarden.app.data.Regret
 import com.expensegarden.app.data.TxnRow
 import com.expensegarden.app.stats.MonthStats
 import com.expensegarden.app.stats.MonthStatsFolder
+import com.expensegarden.app.stats.RecurringPayees
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -18,23 +19,38 @@ import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.YearMonth
+import java.time.ZoneId
 
 class DashboardViewModel(private val container: AppContainer) : ViewModel() {
     private val ledger = container.ledger
+    private val zone: ZoneId = ZoneId.systemDefault()
 
     /** null = loading (skeleton). flow{} wrapper: re-subscription re-derives the month key (spec §5 staleness fix). */
     val stats: StateFlow<MonthStats?> =
         flow {
             val monthKey = ledger.currentMonthKey()
             val (from, to) = ledger.boundsOfMonth(monthKey)
+            // Recurring detection needs the complete months before this one, so the observed
+            // window starts earlier than the month being folded. It is one query either way,
+            // and it keeps the whole thing reactive rather than a suspend read that would go
+            // stale the moment a transaction lands.
+            val ym = YearMonth.parse(monthKey)
+            val lookBackFrom =
+                ledger.boundsOfMonth(ym.minusMonths(RecurringPayees.LOOK_BACK_MONTHS.toLong()).toString()).first
             emitAll(
                 combine(
                     container.db.categoryDao().observeAll(),
                     container.db.transactionDao().observeLoggedSumsByCategory(from, to),
                     container.db.budgetDao().observeAllForMonth(monthKey),
-                ) { cats, sums, budgets ->
+                    container.db.transactionDao().observeLoggedBetween(lookBackFrom, to),
+                ) { cats, sums, budgets, window ->
                     val (day, days) = ledger.today()
-                    MonthStatsFolder.fold(cats, sums.associate { it.categoryId to it.totalPaise }, budgets, day, days)
+                    val recurring = RecurringPayees.detect(window, ym, zone)
+                    val fixed = RecurringPayees.fixedSpentPaise(window.filter { it.occurredAt in from..to }, recurring)
+                    MonthStatsFolder.fold(
+                        cats, sums.associate { it.categoryId to it.totalPaise }, budgets, fixed, day, days,
+                    )
                 }
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
