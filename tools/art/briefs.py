@@ -31,6 +31,24 @@ BUILDING_STYLE = (
     "watermark, no logo. No drop shadow, no cast shadow, no shadow ellipse."
 )
 
+# Landmarks are neither creatures nor buildings. STYLE opens with "cute cartoon plant creature
+# with an oversized head and huge glossy eyes ... standing on a small soil mound" — that clause
+# is exactly why BUILDING_STYLE exists, because it put googly eyes on the hut during the 1C.6
+# pilot. A koi pond is ground geometry and a lantern is a garden prop; reusing STYLE would
+# reproduce a bug this project has already paid for once.
+#
+# The no-cast-shadow clause is dropped deliberately. For a pond, water and its reflection ARE
+# the subject, and the art review's usual "a pale ellipse on the ground is a baked ground plane"
+# rule would reject correct art here.
+LANDMARK_STYLE = (
+    "2D game sprite for a cozy casual tower-defense-style mobile game. A small ornamental "
+    "GARDEN FEATURE, not a character and not a building: no face, no eyes, no limbs. Soft "
+    "airbrushed shading, rounded chunky volumes, thick clean dark-brown outlines, vibrant "
+    "saturated colors, warm rim light from the upper left. Single object, centered, isolated "
+    "on a solid bright {screen} background. No text, no watermark, no logo. "
+    "This must be an ORIGINAL design."
+)
+
 _SUNNY = (
     "Sun-faced flower creature: giant beaming face wearing a ruff of rounded golden "
     "petals, brown disc face with rosy cheeks, wide open happy smile with tongue, "
@@ -133,7 +151,8 @@ PROMPTS = {
     # house_1 originally carried no solidity clause at all — it predates the lesson — and
     # shipped with creature faces visible through the wall/base junction and through the notch
     # between the main roof and the porch roof. Same fix as the castle: forbid the overhangs.
-    "house_1": _HOMESTEAD + " A STONE COTTAGE with a chimney, a shingled porch roof over the "
+    "house_1": _HOMESTEAD
+    + " A STONE COTTAGE with a chimney, a shingled porch roof over the "
     "door built FLUSH against the wall, and a round window."
     " The building is ONE SOLID CONTINUOUS MASS: solid unbroken walls from the roof down to "
     "the ground, the walls meeting the ground with no gap, no open space beneath the roof "
@@ -230,7 +249,6 @@ PROMPTS = {
     # pink bulb as the whole head", and the model weighted that concrete early clause over the
     # appended colour. A rare that looks like its common form defeats the entire collection, so
     # each brief now states its colour once, up front, with the contradicting words removed.
-
     # ---- Uncommon: "my tulip came up golden" ----
     "tulip_3": (
         "Plump tulip-bulb-headed creature whose entire bulb head is burnished metallic GOLD "
@@ -277,7 +295,6 @@ PROMPTS = {
         "glossy taut skins, clearly at peak ripeness — full healthy leafy tops, cheerful eyes "
         "on the front vegetable."
     ),
-
     # ---- Rare: "what IS that" — still the same family, transformed ----
     "petal_flower_4": (
         "Serene LOTUS creature: broad layered pink-and-cream petals opening around a pale "
@@ -304,6 +321,20 @@ PROMPTS = {
         "Green hedge clipped into an elegant TOPIARY CRANE — long arched neck, folded wings, "
         "raised beak — unmistakably made of dense clipped foliage with visible leaf texture, "
         "standing on a small soil base, serene expression."
+    ),
+    # 4B landmarks. Keys must match RareCatalog's landmark ids exactly — a typo renders
+    # nothing, with no error to point at.
+    "koi_pond": (
+        "A small oval ornamental KOI POND set into a low mound of dark earth, ringed by "
+        "smooth grey stones, still turquoise water with two orange-and-white koi just below "
+        "the surface, three flat lily pads and one pink lotus bloom at the near edge, gentle "
+        "highlights on the water. Seen from a slightly raised three-quarter angle."
+    ),
+    "stone_lantern": (
+        "A carved grey STONE GARDEN LANTERN on a low mound of dark earth: a square weathered "
+        "pedestal, a tapered shaft, an open lamp chamber glowing warm amber from within, and "
+        "a wide pagoda-style capstone with a small finial. A little moss in the crevices, "
+        "two fern fronds at the base."
     ),
     "vegetable_row_3": (
         "Short row of rare HEIRLOOM vegetables with unusual patterned skins — green-and-red "

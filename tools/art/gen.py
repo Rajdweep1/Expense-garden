@@ -19,7 +19,7 @@ from collections import deque
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # runnable from any cwd
 
-from briefs import PROMPTS, STYLE, BUILDING_STYLE  # noqa: E402
+from briefs import PROMPTS, STYLE, BUILDING_STYLE, LANDMARK_STYLE  # noqa: E402
 
 # Resolve the CLI next to whichever interpreter is running us, so
 # `~/.cache/expense-garden-art-venv/bin/python3 gen.py` works without touching PATH.
@@ -38,6 +38,12 @@ SEED_OFFSET = int(os.environ.get("SEED_OFFSET", "0"))
 CYAN_PREFIXES = ("tulip", "berry_bush")
 SCREENS = {"magenta": (255, 0, 255), "cyan": (0, 255, 255)}
 
+# 4B landmarks are props, not creatures — see LANDMARK_STYLE. Named explicitly rather than by
+# prefix because landmark sprite names are RareCatalog ids, which share no prefix. Both stay on
+# magenta: the despill fires only when red and blue BOTH exceed green by 40, which neither
+# turquoise water nor grey stone does.
+LANDMARK_NAMES = ("koi_pond", "stone_lantern")
+
 
 def screen_of(name):
     return "cyan" if name.startswith(CYAN_PREFIXES) else "magenta"
@@ -49,8 +55,12 @@ def size_of(name):
 
 def style_of(name):
     # Houses are props, not creatures — the shared block's "huge glossy eyes" clause
-    # put googly eyes on the hut during the 1C.6 pilot.
-    return BUILDING_STYLE if name.startswith("house") else STYLE
+    # put googly eyes on the hut during the 1C.6 pilot. Landmarks are props too (4B).
+    if name.startswith("house"):
+        return BUILDING_STYLE
+    if name in LANDMARK_NAMES:
+        return LANDMARK_STYLE
+    return STYLE
 
 
 def seed_of(name):
