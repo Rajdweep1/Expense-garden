@@ -5,6 +5,7 @@ import com.expensegarden.app.game.GardenState
 import com.expensegarden.app.game.Reconciler
 import com.expensegarden.app.game.StreakMath
 import com.expensegarden.app.game.CollectionState
+import com.expensegarden.app.game.RareCatalog
 import com.expensegarden.app.game.RareEngine
 import com.expensegarden.app.game.RarePairing
 import com.expensegarden.app.game.RareSignal
@@ -122,7 +123,7 @@ class GardenRepository(private val db: AppDatabase, private val ledger: LedgerRe
         val awards = RarePairing.assign(earns, GardenFolder.rareCandidates(txns, tree))
 
         val foundBy = awards.values.associate { it.species.id to it.earn.trigger }
-        val landmarks = earns.mapNotNull { e -> e.landmarkSpecies?.let { it.id to e.trigger } }.toMap()
+        val landmarks = RareCatalog.landmarkAssignment(earns).associate { (e, s) -> s.id to e.trigger }
         // Plantable earns still waiting for a purchase to land on.
         val pending = earns.count { it.tier != RareTier.LANDMARK } - awards.size
         return CollectionState(foundBy + landmarks, pending.coerceAtLeast(0))

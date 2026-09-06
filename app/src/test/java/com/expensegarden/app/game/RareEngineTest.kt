@@ -181,4 +181,50 @@ class RareEngineTest {
         val e = earns(emptyList(), noSpendByMonth = mapOf("2026-09" to 7, "2026-07" to 7))
         assertEquals(listOf("nospend:2026-07", "nospend:2026-09"), e.map { it.scopeKey })
     }
+
+    // ---------- 4B: landmark species assignment ----------
+
+    @Test fun `the two landmark levels never resolve to the same species`() {
+        // The property pickLandmark only satisfied by luck. It hashed each earn independently
+        // against the pool: "house:3" and "house:4" differ by one character, so their hashes
+        // differ by 1, so % 2 always gave opposite indices. Correct — but only because the
+        // pool is two AND the levels are adjacent. "house:3" with "house:6" share a parity and
+        // would have collided, silently costing a landmark. Assert the property directly so it
+        // survives a third landmark or a renamed scope key.
+        val e = earns(emptyList(), houseLevel = 4)
+        val assigned = RareCatalog.landmarkAssignment(e)
+        assertEquals(2, assigned.size)
+        assertEquals(2, assigned.map { it.second.id }.toSet().size)
+    }
+
+    @Test fun `the first landmark earned is always the same species`() {
+        // Ordinal, not hashed: level 3 alone must give the same species it gives as part of
+        // a level-4 pair, or the album would rename a landmark the user already owns.
+        val atThree = RareCatalog.landmarkAssignment(earns(emptyList(), houseLevel = 3))
+        val atFour = RareCatalog.landmarkAssignment(earns(emptyList(), houseLevel = 4))
+        assertEquals(1, atThree.size)
+        assertEquals(atThree[0].second.id, atFour[0].second.id)
+    }
+
+    @Test fun `landmark assignment is ordered by scope key`() {
+        val assigned = RareCatalog.landmarkAssignment(earns(emptyList(), houseLevel = 4))
+        assertEquals(listOf("house:3", "house:4"), assigned.map { it.first.scopeKey })
+    }
+
+    @Test fun `plantable earns are never assigned a landmark species`() {
+        val e = earns(listOf(streak(7)), houseLevel = 4)
+        val assigned = RareCatalog.landmarkAssignment(e)
+        assertTrue(assigned.all { it.first.tier == RareTier.LANDMARK })
+    }
+
+    @Test fun `no landmarks earned yields no assignment`() {
+        assertTrue(RareCatalog.landmarkAssignment(earns(emptyList(), houseLevel = 2)).isEmpty())
+    }
+
+    @Test fun `landmark assignment never exceeds the catalogue`() {
+        // Defensive: the ladder tops out at two, but a truncating zip means a third earn could
+        // never index past the end of the pool.
+        val e = earns(emptyList(), houseLevel = 4)
+        assertTrue(RareCatalog.landmarkAssignment(e).size <= RareCatalog.pool(RareTier.LANDMARK).size)
+    }
 }

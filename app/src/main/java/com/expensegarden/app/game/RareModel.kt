@@ -114,11 +114,6 @@ data class Earn(
      *  carrying it, because a rare must match that purchase's natural archetype (see
      *  [RareSpecies.baseArchetype]). [RarePairing] resolves it. */
     fun speciesFor(archetype: Archetype): RareSpecies? = RareCatalog.pick(tier, archetype, sourceEventId)
-
-    /** Landmarks are the exception: they belong to no archetype because they are island
-     *  features rather than plants, so they resolve from the earn alone. */
-    val landmarkSpecies: RareSpecies?
-        get() = if (tier == RareTier.LANDMARK) RareCatalog.pickLandmark(sourceEventId) else null
 }
 
 object RareCatalog {
@@ -161,9 +156,27 @@ object RareCatalog {
 
     fun all(): List<RareSpecies> = UNCOMMONS + RARES + LANDMARKS
 
-    /** Landmarks resolve without an archetype — see [Earn.landmarkSpecies]. */
-    fun pickLandmark(seed: Long): RareSpecies =
-        LANDMARKS[(seed.hashCode().toLong().absoluteValue % LANDMARKS.size).toInt()]
+    /** Which landmark each landmark earn resolves to, in a stable order (4B spec §3).
+     *
+     *  Ordinal, not hashed. `pickLandmark` hashed each earn independently against the pool,
+     *  which happened to work and was one edit away from not working. `"house:3"` and
+     *  `"house:4"` differ in one character, so their hashes differ by exactly 1, so `% 2`
+     *  always gives opposite indices — both landmarks were reachable purely because the pool
+     *  is two and the levels are adjacent. Non-adjacent levels collide (`house:3` and
+     *  `house:6` share a parity), and so does a third landmark, and so does renaming the
+     *  scope key. None of those would have failed loudly; a landmark would just never appear.
+     *
+     *  This takes the whole earn LIST rather than one Earn, because "which landmark is this"
+     *  is a question about the set, not about one element — an earn cannot know it is the
+     *  second one. Sorting by scope key ("house:3" before "house:4") keeps it deterministic,
+     *  which is what the fold requires: a runtime roll here would make replays diverge and
+     *  the greenhouse's archived months drift.
+     *
+     *  Zipping truncates, so a landmark earn with no species left simply gets none. */
+    fun landmarkAssignment(earns: List<Earn>): List<Pair<Earn, RareSpecies>> =
+        earns.filter { it.tier == RareTier.LANDMARK }
+            .sortedBy { it.scopeKey }
+            .zip(LANDMARKS)
 
     fun byId(id: String): RareSpecies? = all().firstOrNull { it.id == id }
 
