@@ -25,6 +25,30 @@ object SpriteLoader {
     // no error to point at.
     const val MAX_VARIANTS = 6
 
+    /** Which plant sprites the installed pack contains — file names only, nothing decoded.
+     *
+     *  Split out of [load] because almost every caller wanted this and paid 48 MB of PNG decode
+     *  to get it. `RareSpriteLoadTest` asked purely about keys; `MainActivity` called
+     *  `.isEmpty()`. Listing an asset directory answers both for free. */
+    fun availableKeys(context: Context): Set<Pair<Archetype, Int>> {
+        val present = runCatching { context.assets.list("garden")?.toSet() ?: emptySet() }
+            .getOrDefault(emptySet())
+        return Archetype.entries.flatMap { arch ->
+            (0 until MAX_VARIANTS).mapNotNull { v ->
+                if (SpriteNames.fileFor(arch, v) in present) arch to v else null
+            }
+        }.toSet()
+    }
+
+    /** Decode exactly one plant sprite. Null when absent or undecodable — the painter's
+     *  procedural fallback covers both, so neither is an error. */
+    fun decodePlant(context: Context, archetype: Archetype, variant: Int): ImageBitmap? =
+        runCatching {
+            context.assets.open("garden/${SpriteNames.fileFor(archetype, variant)}").use { s ->
+                BitmapFactory.decodeStream(s).asImageBitmap()
+            }
+        }.getOrNull()
+
     /** Decode whatever is present in assets/garden/. Missing dir or files → empty/partial map. */
     fun load(context: Context): Map<Pair<Archetype, Int>, ImageBitmap> {
         val present = runCatching { context.assets.list("garden")?.toSet() ?: emptySet() }.getOrDefault(emptySet())

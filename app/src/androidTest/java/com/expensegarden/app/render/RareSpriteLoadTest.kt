@@ -29,7 +29,7 @@ class RareSpriteLoadTest {
 
     @Test fun every_shipped_rare_sprite_is_reachable_through_the_loader() {
         val present = shippedAssets()
-        val loaded = SpriteLoader.load(context)
+        val loaded = SpriteLoader.availableKeys(context)
 
         for (species in RareCatalog.all()) {
             val archetype = species.baseArchetype ?: continue     // landmarks are not plants yet
@@ -39,7 +39,7 @@ class RareSpriteLoadTest {
                 "asset $file ships but SpriteLoader has no entry for " +
                     "(${archetype.name}, ${species.variant}) — it would render procedurally " +
                     "with no error. Check SpriteLoader.MAX_VARIANTS.",
-                loaded.containsKey(archetype to species.variant),
+                loaded.contains(archetype to species.variant),
             )
         }
     }
@@ -87,10 +87,10 @@ class RareSpriteLoadTest {
     @Test fun a_generated_rare_does_not_collide_with_an_ordinary_variant() {
         // If a rare shared a variant index with an ordinary look, the ordinary plant would start
         // rendering the reward art for free.
-        val loaded = SpriteLoader.load(context)
+        val loaded = SpriteLoader.availableKeys(context)
         for (species in RareCatalog.pool(RareTier.UNCOMMON) + RareCatalog.pool(RareTier.RARE)) {
             val archetype = species.baseArchetype ?: continue
-            if (!loaded.containsKey(archetype to species.variant)) continue
+            if (!loaded.contains(archetype to species.variant)) continue
             val ordinary = com.expensegarden.app.game.PlantMapper.variantCount(archetype)
             assertTrue(
                 "${species.id} sits at variant ${species.variant} but ${archetype.name} rolls " +
