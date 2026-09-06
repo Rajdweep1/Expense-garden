@@ -57,6 +57,33 @@ class RareSpriteLoadTest {
         }
     }
 
+    @Test fun every_shipped_landmark_sprite_is_reachable_through_the_structure_map() {
+        // A landmark has no archetype, so it cannot key into SpriteLoader's (archetype,
+        // variant) map — it loads by id through loadStructures instead. A mis-keyed landmark
+        // fails exactly as silently as a mis-keyed rare: nothing throws, nothing logs, and the
+        // reward the user waited a year for simply is not on the island.
+        val present = shippedAssets()
+        val structures = SpriteLoader.loadStructures(context)
+        for (species in RareCatalog.pool(RareTier.LANDMARK)) {
+            val file = "${species.spriteName}.png"
+            if (file !in present) continue                 // not generated yet
+            assertTrue(
+                "asset $file ships but loadStructures has no entry for id '${species.id}'",
+                structures.containsKey(species.id),
+            )
+        }
+    }
+
+    @Test fun widening_the_structure_map_did_not_drop_the_house_sprites() {
+        // The house ladder shares this map. Losing house_0 would render the homestead blank.
+        val structures = SpriteLoader.loadStructures(context)
+        val present = shippedAssets()
+        for (i in 0..3) {
+            if ("house_$i.png" !in present) continue
+            assertTrue("house_$i vanished from loadStructures", structures.containsKey("house_$i"))
+        }
+    }
+
     @Test fun a_generated_rare_does_not_collide_with_an_ordinary_variant() {
         // If a rare shared a variant index with an ordinary look, the ordinary plant would start
         // rendering the reward art for free.

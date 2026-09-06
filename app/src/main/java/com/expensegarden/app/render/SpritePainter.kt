@@ -11,6 +11,8 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import com.expensegarden.app.game.Archetype
 import com.expensegarden.app.game.Plant
+import com.expensegarden.app.game.RareCatalog
+import com.expensegarden.app.game.RareTier
 
 object SpriteNames {
     fun fileFor(archetype: Archetype, variant: Int = 0): String =
@@ -39,10 +41,17 @@ object SpriteLoader {
         }.toMap()
     }
 
-    /** Named non-plant structures (house levels). Same graceful partial-pack behavior. */
+    /** Named non-plant structures, keyed by file stem. Same graceful partial-pack behavior.
+     *
+     *  Two kinds live here: the house ladder (house_0..3) and, from 4B, the landmarks. A
+     *  landmark is the only RareSpecies with no archetype — it is an island feature, not a
+     *  plant — so it cannot key into [load]'s (archetype, variant) map and loads by id
+     *  instead. Reusing this map rather than adding a parallel one keeps one loader, one
+     *  partial-pack policy, and one thing to wire through GardenCanvas. */
     fun loadStructures(context: Context): Map<String, ImageBitmap> {
         val present = runCatching { context.assets.list("garden")?.toSet() ?: emptySet() }.getOrDefault(emptySet())
-        return present.filter { it.startsWith("house_") && it.endsWith(".png") }.mapNotNull { name ->
+        val landmarkFiles = RareCatalog.pool(RareTier.LANDMARK).map { it.spriteName + ".png" }.toSet()
+        return present.filter { it.endsWith(".png") && (it.startsWith("house_") || it in landmarkFiles) }.mapNotNull { name ->
             runCatching {
                 context.assets.open("garden/$name").use { s ->
                     name.removeSuffix(".png") to BitmapFactory.decodeStream(s).asImageBitmap()
