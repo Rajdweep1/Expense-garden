@@ -78,6 +78,7 @@ fun GardenCanvas(
     state: GardenState,
     painter: PlantPainter,
     structures: Map<String, ImageBitmap> = emptyMap(),   // 1C.6 house_0..3, keyed by base name
+    spriteCache: SpriteCache? = null,   // null in previews; a null cache degrades to procedural
     modifier: Modifier = Modifier,
     onPlantTap: ((String) -> Unit)? = null,
     topReservePx: Float = 300f,
@@ -110,6 +111,13 @@ fun GardenCanvas(
         expand.animateTo(1f, tween(1500, easing = FastOutSlowInEasing))
         onExpansionShown?.invoke()
     }
+
+    // Warm from state, never from the draw pass: mutating snapshot state while drawing is a
+    // Compose error, and the demand set is fully derivable from the island anyway.
+    LaunchedEffect(state, spriteCache) {
+        spriteCache?.warm(SpriteDemand.of(state))
+    }
+
     val ep = expand.value
 
     // Pop-in: new uuids since last state spring from 0→1 with overshoot; first composition skips the show.

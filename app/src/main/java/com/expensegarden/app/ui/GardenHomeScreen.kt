@@ -51,6 +51,7 @@ import com.expensegarden.app.data.TxnRow
 import com.expensegarden.app.gate.Severity
 import com.expensegarden.app.render.GardenCanvas
 import com.expensegarden.app.render.PlantPainter
+import com.expensegarden.app.render.SpriteCache
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -63,6 +64,7 @@ fun GardenHomeScreen(
     aiVm: AiViewModel,
     painter: PlantPainter,
     structures: Map<String, ImageBitmap> = emptyMap(),
+    spriteCache: SpriteCache? = null,
     onScan: () -> Unit,
     onManual: () -> Unit,
     onOpenDashboard: () -> Unit,
@@ -82,6 +84,7 @@ fun GardenHomeScreen(
             GardenCanvas(
                 state = g,
                 painter = painter,
+                spriteCache = spriteCache,
                 structures = structures,
                 modifier = Modifier.fillMaxSize(),
                 onPlantTap = { uuid -> scope.launch { plantTarget = gardenVm.plantRow(uuid) } },

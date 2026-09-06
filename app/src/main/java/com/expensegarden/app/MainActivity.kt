@@ -94,9 +94,12 @@ private fun GardenNav(
                 aiVm = aiVm,
                 painter = remember {
                     val container = (context.applicationContext as GardenApp).container
-                    if (container.sprites.isEmpty()) com.expensegarden.app.render.ProceduralPainter()
-                    else com.expensegarden.app.render.SpritePainter(container.sprites)
+                    // No isEmpty() check: asking cost the whole 48 MB decode, on the main thread,
+                    // inside composition. SpritePainter already falls back to procedural art per
+                    // plant on a miss, so an uninstalled pack renders exactly as it did before.
+                    com.expensegarden.app.render.SpritePainter(container.spriteCache.sprites)
                 },
+                spriteCache = (context.applicationContext as GardenApp).container.spriteCache,
                 structures = remember { (context.applicationContext as GardenApp).container.structures },
                 onScan = {
                     scanLauncher.launch(
@@ -128,9 +131,12 @@ private fun GardenNav(
                 aiVm = aiVm,
                 painter = remember {
                     val container = (context.applicationContext as GardenApp).container
-                    if (container.sprites.isEmpty()) com.expensegarden.app.render.ProceduralPainter()
-                    else com.expensegarden.app.render.SpritePainter(container.sprites)
+                    // No isEmpty() check: asking cost the whole 48 MB decode, on the main thread,
+                    // inside composition. SpritePainter already falls back to procedural art per
+                    // plant on a miss, so an uninstalled pack renders exactly as it did before.
+                    com.expensegarden.app.render.SpritePainter(container.spriteCache.sprites)
                 },
+                spriteCache = (context.applicationContext as GardenApp).container.spriteCache,
                 onBack = { nav.popBackStack() },
             )
         }

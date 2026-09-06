@@ -27,7 +27,8 @@ object SpriteLoader {
 
     /** Which plant sprites the installed pack contains — file names only, nothing decoded.
      *
-     *  Split out of [load] because almost every caller wanted this and paid 48 MB of PNG decode
+     *  Split out of the old eager `load()` because almost every caller wanted this and
+     *  paid 48 MB of PNG decode
      *  to get it. `RareSpriteLoadTest` asked purely about keys; `MainActivity` called
      *  `.isEmpty()`. Listing an asset directory answers both for free. */
     fun availableKeys(context: Context): Set<Pair<Archetype, Int>> {
@@ -49,27 +50,11 @@ object SpriteLoader {
             }
         }.getOrNull()
 
-    /** Decode whatever is present in assets/garden/. Missing dir or files → empty/partial map. */
-    fun load(context: Context): Map<Pair<Archetype, Int>, ImageBitmap> {
-        val present = runCatching { context.assets.list("garden")?.toSet() ?: emptySet() }.getOrDefault(emptySet())
-        return Archetype.entries.flatMap { arch ->
-            (0 until MAX_VARIANTS).mapNotNull { v ->
-                val name = SpriteNames.fileFor(arch, v)
-                if (name !in present) null
-                else runCatching {
-                    context.assets.open("garden/$name").use { s ->
-                        (arch to v) to BitmapFactory.decodeStream(s).asImageBitmap()
-                    }
-                }.getOrNull()
-            }
-        }.toMap()
-    }
-
     /** Named non-plant structures, keyed by file stem. Same graceful partial-pack behavior.
      *
      *  Two kinds live here: the house ladder (house_0..3) and, from 4B, the landmarks. A
      *  landmark is the only RareSpecies with no archetype — it is an island feature, not a
-     *  plant — so it cannot key into [load]'s (archetype, variant) map and loads by id
+     *  plant — so it cannot key into the (archetype, variant) map and loads by id
      *  instead. Reusing this map rather than adding a parallel one keeps one loader, one
      *  partial-pack policy, and one thing to wire through GardenCanvas. */
     fun loadStructures(context: Context): Map<String, ImageBitmap> {

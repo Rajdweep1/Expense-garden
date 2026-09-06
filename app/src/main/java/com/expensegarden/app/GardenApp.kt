@@ -13,13 +13,16 @@ import com.expensegarden.app.data.GardenPrefs
 import com.expensegarden.app.data.GardenRepository
 import com.expensegarden.app.data.LedgerRepository
 import com.expensegarden.app.data.QuipRepository
-import com.expensegarden.app.game.Archetype
+import com.expensegarden.app.render.SpriteCache
 import com.expensegarden.app.render.SpriteLoader
 import com.expensegarden.app.sync.SyncClient
 import com.expensegarden.app.sync.SyncClock
 import com.expensegarden.app.sync.SyncPrefs
 import com.expensegarden.app.sync.SyncRepository
 import com.expensegarden.app.sync.SyncScheduler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 
 class GardenApp : Application() {
     lateinit var container: AppContainer
@@ -56,8 +59,12 @@ class AppContainer(private val app: Application) {
      *  settings screen, and a cached NoopLlmClient would keep the app silent until restart. */
     val llm: LlmClient get() = if (aiPrefs.hasKey) GeminiClient(aiPrefs) else NoopLlmClient
 
-    /** Lazy: decoded on first painter selection, not app start. Empty map = pack not installed. */
-    val sprites: Map<Pair<Archetype, Int>, ImageBitmap> by lazy { SpriteLoader.load(app) }
+    /** Scope for work that outlives any one screen. Supervisor so one failed sprite decode
+     *  cannot cancel the rest. */
+    val appScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    /** Plant sprites, decoded per-island rather than all 48 at the first garden frame. */
+    val spriteCache: SpriteCache = SpriteCache(app, appScope)
 
     /** House-level sprites (house_0..3), keyed by base name. Empty = not installed → house skipped. */
     val structures: Map<String, ImageBitmap> by lazy { SpriteLoader.loadStructures(app) }

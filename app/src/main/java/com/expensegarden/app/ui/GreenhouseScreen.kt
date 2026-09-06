@@ -34,6 +34,7 @@ import com.expensegarden.app.game.RareTrigger
 import com.expensegarden.app.game.GardenState
 import com.expensegarden.app.render.GardenCanvas
 import com.expensegarden.app.render.PlantPainter
+import com.expensegarden.app.render.SpriteCache
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -43,6 +44,7 @@ fun GreenhouseScreen(
     gardenVm: GardenViewModel,
     aiVm: AiViewModel,
     painter: PlantPainter,
+    spriteCache: SpriteCache? = null,
     onBack: () -> Unit = {},
 ) {
     var months by remember { mutableStateOf<List<GardenState>?>(null) }
@@ -67,7 +69,7 @@ fun GreenhouseScreen(
                     Card(Modifier.fillMaxWidth().clickable { selected = g }) {
                         Column {
                             GardenCanvas(
-                                state = g, painter = painter, animated = false,
+                                state = g, painter = painter, spriteCache = spriteCache, animated = false,
                                 modifier = Modifier.fillMaxWidth().height(180.dp),
                                 topReservePx = 60f, bottomReservePx = 30f,
                             )
@@ -96,7 +98,7 @@ fun GreenhouseScreen(
 
     selected?.let { g ->
         Box(Modifier.fillMaxSize()) {
-            GardenCanvas(state = g, painter = painter, animated = false, modifier = Modifier.fillMaxSize())
+            GardenCanvas(state = g, painter = painter, spriteCache = spriteCache, animated = false, modifier = Modifier.fillMaxSize())
             TextButton(
                 onClick = { selected = null },
                 modifier = Modifier.statusBarsPadding().padding(12.dp),
