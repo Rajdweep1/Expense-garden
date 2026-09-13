@@ -12,12 +12,12 @@ import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
+import androidx.core.view.WindowCompat
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -31,6 +31,7 @@ import com.expensegarden.app.ui.GardenViewModel
 import com.expensegarden.app.ui.GreenhouseScreen
 import com.expensegarden.app.ui.MainViewModel
 import com.expensegarden.app.ui.SettingsScreen
+import com.expensegarden.app.ui.theme.GardenTheme
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 
@@ -50,10 +51,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // targetSdk 35 enforces edge-to-edge anyway; saying so explicitly keeps the layout's
+        // inset handling correct if that target ever moves back.
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         // One push per open, on top of the per-write signals (spec §4).
         (application as GardenApp).container.scheduler.signal()
         setContent {
-            MaterialTheme {
+            GardenTheme {
                 Surface { GardenNav(vm, dashVm, gardenVm, aiVm) }
             }
         }
