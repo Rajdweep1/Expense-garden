@@ -1,15 +1,18 @@
 package com.expensegarden.app.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.PaddingValues
@@ -25,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
 import com.expensegarden.app.core.Money
 import com.expensegarden.app.game.CollectionState
@@ -53,8 +57,12 @@ fun GreenhouseScreen(
     LaunchedEffect(Unit) { months = gardenVm.archivedGardens() }
     LaunchedEffect(Unit) { collection = runCatching { gardenVm.collection() }.getOrNull() }
     val monthFmt = remember { DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ENGLISH) }
+    SystemBarIcons(darkIcons = !isSystemInDarkTheme())
 
-    Column(Modifier.statusBarsPadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(
+        Modifier.windowInsetsPadding(WindowInsets.safeDrawing).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
         // Explicit way home — gesture-nav phones hide the system back affordance.
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onBack, contentPadding = PaddingValues(horizontal = 8.dp)) { Text("← garden") }
@@ -62,7 +70,7 @@ fun GreenhouseScreen(
         }
         collection?.let { CollectionCard(it) }
         when {
-            months == null -> Card(Modifier.fillMaxWidth().height(120.dp)) {}
+            months == null -> Card(Modifier.fillMaxWidth().height(120.dp).alpha(0.3f)) {}
             months!!.isEmpty() -> Text("No archived months yet — your first bed archives at month end.")
             else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(months!!, key = { it.monthKey }) { g ->
@@ -101,7 +109,7 @@ fun GreenhouseScreen(
             GardenCanvas(state = g, painter = painter, spriteCache = spriteCache, animated = false, modifier = Modifier.fillMaxSize())
             TextButton(
                 onClick = { selected = null },
-                modifier = Modifier.statusBarsPadding().padding(12.dp),
+                modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing).padding(12.dp),
             ) { Text("← back") }
         }
     }

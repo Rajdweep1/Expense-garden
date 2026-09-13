@@ -16,10 +16,17 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -43,6 +50,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.expensegarden.app.core.Money
 import com.expensegarden.app.data.Regret
@@ -77,6 +85,8 @@ fun GardenHomeScreen(
     val scope = rememberCoroutineScope()
     var plantTarget by remember { mutableStateOf<TxnRow?>(null) }
     val dateFmt = remember { DateTimeFormatter.ofPattern("dd MMM") }
+    // The garden sky is always light, in both themes — the canvas does not follow the scheme.
+    SystemBarIcons(darkIcons = true)
 
     Box(Modifier.fillMaxSize()) {
         homestead?.let { h ->
@@ -96,44 +106,61 @@ fun GardenHomeScreen(
 
         // Translucent stats strip — the same homeHeader the 1B home used.
         val stripSrc = remember { MutableInteractionSource() }
-        Surface(
-            color = Color.White.copy(alpha = .82f),
-            modifier = Modifier.statusBarsPadding().padding(horizontal = 12.dp, vertical = 6.dp)
-                .fillMaxWidth().align(Alignment.TopCenter)
-                .then(pressBounce(stripSrc, down = .97f))
-                .clickable(interactionSource = stripSrc, indication = LocalIndication.current, onClick = onOpenDashboard),
-            shape = MaterialTheme.shapes.medium,
+        Column(
+            Modifier
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
+                .align(Alignment.TopCenter),
         ) {
-            Row(
-                Modifier.padding(horizontal = 14.dp, vertical = 10.dp).fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically,
+            Surface(
+                color = Color.White.copy(alpha = .82f),
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    .fillMaxWidth()
+                    .then(pressBounce(stripSrc, down = .97f))
+                    .clickable(interactionSource = stripSrc, indication = LocalIndication.current, onClick = onOpenDashboard),
+                shape = MaterialTheme.shapes.medium,
             ) {
-                val h = header
-                if (h == null) Text(" ", style = MaterialTheme.typography.titleMedium)
-                else {
-                    Text(Money.display(h.spentPaise), style = MaterialTheme.typography.titleMedium)
-                    val streak = homestead?.state?.streakDays ?: 0
-                    val streakSuffix = if (streak > 0) " · 🌱${streak}d" else ""   // the streaks-lite counter (spec §1)
-                    // The chevron is unconditional on purpose. This label used to read
-                    // "dashboard →" ONLY while no budget was set, so the one hint that the
-                    // strip is tappable was visible to brand-new users and to nobody else.
-                    Text(
-                        (h.overallBudgetPaise?.let { "${Money.display(it)} · ${gardenHint(h.hint)}" }
-                            ?: "set a budget") + streakSuffix + "  ›",
-                        style = MaterialTheme.typography.labelMedium,
-                    )
+                Row(
+                    Modifier.padding(horizontal = 14.dp, vertical = 10.dp).fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    val h = header
+                    if (h == null) Text(" ", style = MaterialTheme.typography.titleMedium)
+                    else {
+                        Text(Money.display(h.spentPaise), style = MaterialTheme.typography.titleMedium)
+                        val streak = homestead?.state?.streakDays ?: 0
+                        val streakSuffix = if (streak > 0) " · 🌱${streak}d" else ""   // the streaks-lite counter (spec §1)
+                        // The chevron is unconditional on purpose. This label used to read
+                        // "dashboard →" ONLY while no budget was set, so the one hint that the
+                        // strip is tappable was visible to brand-new users and to nobody else.
+                        //
+                        // weight + End alignment so a long label wraps inside its own slot. With
+                        // two unbounded Texts, SpaceBetween let this one overrun the amount on
+                        // its left at large font scales.
+                        Text(
+                            (h.overallBudgetPaise?.let { "${Money.display(it)} · ${gardenHint(h.hint)}" }
+                                ?: "set a budget") + streakSuffix + "  ›",
+                            style = MaterialTheme.typography.labelMedium,
+                            textAlign = TextAlign.End,
+                            modifier = Modifier.weight(1f).padding(start = 8.dp),
+                        )
+                    }
                 }
             }
-        }
-        Row(
-            modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(start = 12.dp, top = 64.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            TextButton(onClick = onOpenGreenhouse) { Text("🏡 greenhouse") }
-            TextButton(onClick = onOpenSettings) { Text("⚙️ settings") }
+            Row(
+                modifier = Modifier.padding(start = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                TextButton(onClick = onOpenGreenhouse) { Text("🏡 greenhouse") }
+                TextButton(onClick = onOpenSettings) { Text("⚙️ settings") }
+            }
         }
 
-        Column(Modifier.align(Alignment.BottomCenter).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(
+            Modifier.align(Alignment.BottomCenter)
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             val pendingTxn = pending.firstOrNull()
             var lastPending by remember { mutableStateOf<TransactionEntity?>(null) }
             LaunchedEffect(pendingTxn) { if (pendingTxn != null) lastPending = pendingTxn }
@@ -167,14 +194,24 @@ fun GardenHomeScreen(
                     }
                 }
             }
-            Row(Modifier.align(Alignment.CenterHorizontally), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            // IntrinsicSize.Max + fillMaxHeight so the two buttons match even when only the
+            // longer label wraps. weight(1f) alone equalises WIDTH only, which at font scale
+            // 2.0 left "Log manually" two lines tall beside a one-line "Scan & pay".
+            Row(
+                Modifier.fillMaxWidth().height(IntrinsicSize.Max),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 val scanSrc = remember { MutableInteractionSource() }
                 val manualSrc = remember { MutableInteractionSource() }
                 ExtendedFloatingActionButton(
-                    onClick = onScan, modifier = pressBounce(scanSrc), interactionSource = scanSrc,
+                    onClick = onScan,
+                    modifier = Modifier.weight(1f).fillMaxHeight().then(pressBounce(scanSrc)),
+                    interactionSource = scanSrc,
                 ) { Text("Scan & pay") }
                 ExtendedFloatingActionButton(
-                    onClick = onManual, modifier = pressBounce(manualSrc), interactionSource = manualSrc,
+                    onClick = onManual,
+                    modifier = Modifier.weight(1f).fillMaxHeight().then(pressBounce(manualSrc)),
+                    interactionSource = manualSrc,
                 ) { Text("Log manually") }
             }
         }

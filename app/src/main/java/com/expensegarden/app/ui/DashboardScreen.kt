@@ -2,6 +2,7 @@ package com.expensegarden.app.ui
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -9,14 +10,17 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
@@ -43,6 +47,7 @@ import com.expensegarden.app.data.Regret
 import com.expensegarden.app.data.TxnRow
 import com.expensegarden.app.gate.Severity
 import com.expensegarden.app.stats.ScopeStat
+import com.expensegarden.app.ui.theme.GardenStatus
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -57,8 +62,12 @@ fun DashboardScreen(vm: DashboardViewModel, onBack: () -> Unit = {}) {
     val recent by vm.recent.collectAsState(initial = emptyList())
     var regretTarget by remember { mutableStateOf<TxnRow?>(null) }
     val dateFmt = remember { DateTimeFormatter.ofPattern("dd MMM") }
+    SystemBarIcons(darkIcons = !isSystemInDarkTheme())
 
-    Column(Modifier.statusBarsPadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(
+        Modifier.windowInsetsPadding(WindowInsets.safeDrawing).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
         // Explicit way home — gesture-nav phones hide the system back affordance.
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onBack, contentPadding = PaddingValues(horizontal = 8.dp)) { Text("← garden") }
@@ -192,8 +201,15 @@ private fun CategoryRow(row: ScopeStat, modifier: Modifier = Modifier, onClick: 
             )
         }
         row.budgetPaise?.let { budget ->
+            // Same spring as the odometer above it, so two adjacent widgets stop disagreeing
+            // about whether this app animates.
+            val fraction by animateFloatAsState(
+                targetValue = (row.spentPaise.toFloat() / budget).coerceIn(0f, 1f),
+                animationSpec = spring(dampingRatio = 0.8f, stiffness = 380f),
+                label = "budgetBar",
+            )
             LinearProgressIndicator(
-                progress = { (row.spentPaise.toFloat() / budget).coerceIn(0f, 1f) },
+                progress = { fraction },
                 color = severityColor(row.severity),
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -207,9 +223,11 @@ private fun severityLine(s: Severity) = when (s) {
     Severity.BREACH -> "over budget"
 }
 
+/** Green / amber / red. Never `primary`/`tertiary` again — those are brand slots, and using
+ *  them here rendered "on pace" and "ahead of pace" as two purples 1.00:1 apart. */
 @Composable
 private fun severityColor(s: Severity): Color = when (s) {
-    Severity.OK -> MaterialTheme.colorScheme.primary
-    Severity.PACE_WARNING -> MaterialTheme.colorScheme.tertiary
-    Severity.BREACH -> MaterialTheme.colorScheme.error
+    Severity.OK -> GardenStatus.colors.onPace
+    Severity.PACE_WARNING -> GardenStatus.colors.warning
+    Severity.BREACH -> GardenStatus.colors.over
 }

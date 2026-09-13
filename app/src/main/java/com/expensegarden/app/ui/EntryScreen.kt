@@ -1,6 +1,7 @@
 package com.expensegarden.app.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -10,11 +11,12 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
@@ -38,7 +40,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -76,6 +77,7 @@ fun EntryScreen(vm: MainViewModel, onDone: () -> Unit) {
     val amountFocus = remember { FocusRequester() }
     // The first input of the app's primary action; every log used to cost an extra tap.
     LaunchedEffect(Unit) { amountFocus.requestFocus() }
+    SystemBarIcons(darkIcons = !isSystemInDarkTheme())
 
     fun fireAndFinish(amountPaise: Long, severity: Severity) {
         scope.launch {
@@ -89,9 +91,12 @@ fun EntryScreen(vm: MainViewModel, onDone: () -> Unit) {
     // reason: "Log it" must never sit behind the IME. Edge-to-edge on targetSdk 35 means
     // adjustResize no longer shrinks the content, and autofocusing the amount field makes the
     // keyboard the DEFAULT state rather than an occasional one — so without this, the primary
-    // action of the app would start every session out of reach.
+    // action of the app would start every session out of reach. safeDrawing is the union of the
+    // system bars, the cutout and the IME, so this one modifier keeps "Log it" clear of the
+    // keyboard AND of the navigation bar, and cannot double-pad either.
     Column(
-        Modifier.statusBarsPadding().imePadding().verticalScroll(rememberScrollState()).padding(16.dp),
+        Modifier.windowInsetsPadding(WindowInsets.safeDrawing)
+            .verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         // Explicit way home, as on dashboard/greenhouse/settings — gesture-nav phones hide the

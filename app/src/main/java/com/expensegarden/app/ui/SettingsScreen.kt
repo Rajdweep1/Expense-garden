@@ -1,13 +1,15 @@
 package com.expensegarden.app.ui
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.text.KeyboardOptions
@@ -65,6 +67,8 @@ fun SettingsScreen(
     var restoreResult by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
+    SystemBarIcons(darkIcons = !isSystemInDarkTheme())
+
     LaunchedEffect(saved, restoreResult) {
         pending = runCatching { sync.pendingCount() }.getOrNull()
         lastSuccessAt = syncPrefs.lastSuccessAt
@@ -73,8 +77,11 @@ fun SettingsScreen(
     // Scrolls and pads for the keyboard: Save must never be unreachable on this screen, since it
     // is the only way a key gets into the app (spec §3). Edge-to-edge on targetSdk 35 means
     // adjustResize no longer shrinks the content for us, and landscape has no room at all.
+    // safeDrawing is the union of the system bars, the cutout and the IME, so this one inset holds
+    // the keyboard and the navigation bar off the content at once and cannot double-pad either.
     Column(
-        Modifier.statusBarsPadding().imePadding().verticalScroll(rememberScrollState()).padding(16.dp),
+        Modifier.windowInsetsPadding(WindowInsets.safeDrawing)
+            .verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
