@@ -39,7 +39,7 @@ rejects it. Each shell starts fresh, so export it on *every* command:
 ```bash
 export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 
-./gradlew testDebugUnitTest                 # JVM unit tests (310)
+./gradlew testDebugUnitTest                 # JVM unit tests (324)
 ./gradlew connectedDebugAndroidTest         # instrumented (71) — needs an emulator/device
 ./gradlew installDebug                      # build + install
 ```
@@ -111,7 +111,10 @@ richer context. If Play Store distribution ever needs an API-key proxy, that lan
 core-api instead.
 
 Phase 4 showcase: **4A collections** (done — rare species earned by restraint, never by
-spending) → **4B landmarks** (done — koi pond and stone lantern on reserved plots) → read-only
+spending) → **4B landmarks** (done — koi pond and stone lantern on reserved plots) → **the design
+pass** (done 2026-09-13 — `GardenTheme` derived from `GardenPalette`, window insets, launcher
+icon; contrast/chroma floors are enforced by JVM tests, so never hand-pick a chrome colour
+without running `GardenTokensTest`) → read-only
 web dashboard (needs a deployed core-api), Play Store hardening, investments via CAS parsing.
 
 The parent spec's Phase 1 acceptance is *"done when it's the default way its user pays
