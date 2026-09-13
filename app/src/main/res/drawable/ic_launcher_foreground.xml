@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A two-leaf sprout. Vector rather than raster: no new art pipeline, no asset weight, every
+     density for free. All geometry sits inside the 66/108 adaptive-icon safe circle centred on
+     (54,54), so nothing is clipped by an OEM mask shape. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- stem: GardenTokens.DarkPrimaryContainer -->
+    <path
+        android:fillColor="#2F5423"
+        android:pathData="M51,84 L57,84 L57,48 L51,48 Z" />
+    <!-- lower-left leaf: GardenPalette.leaf -->
+    <path
+        android:fillColor="#6FB54A"
+        android:pathData="M52,62 C52,52 45,44 34,42 C32,54 39,63 52,64 Z" />
+    <!-- upper-right leaf: GardenPalette.grassA -->
+    <path
+        android:fillColor="#A7DD7F"
+        android:pathData="M56,54 C56,43 63,35 74,33 C76,45 69,54 56,56 Z" />
+</vector>

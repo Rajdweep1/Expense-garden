@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches GardenTokens.LightSurface, so the launch window does not flash a different
+         colour before Compose draws. -->
+    <color name="window_background">#FAF8F2</color>
+    <color name="ic_launcher_background">#EEF9E0</color>
+</resources>

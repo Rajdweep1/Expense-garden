@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Replaces @android:style/Theme.Material.Light.NoActionBar, which is the platform theme
+         from Android 5.0 and predates windowLightStatusBar entirely. That is why the status bar
+         glyphs rendered white on a near-white surface at 1.05:1. -->
+    <style name="Theme.ExpenseGarden" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>
