@@ -651,11 +651,36 @@ no host contention should resolve this; nothing in the change is emulator-specif
 - Step 4's "no procedural flash" check passed at three plants. It has NOT been checked on a
   large island where many archetypes warm at once; that is where a flash would first appear.
 
-### Follow-up found while measuring — not implemented
+### Follow-up found while measuring — RETRACTED 2026-09-13
 
-`SpriteDemand.of` warms `(archetype, 0)` alongside every plant's own variant, which roughly
-doubles the per-archetype cost when a plant's variant is not 0. The base look is only ever read
-when the plant's own variant is absent from the pack, so `SpriteCache.warmNow` could decode it
-lazily — only when `decodePlant(a, v)` returns null — and keep identical partial-pack behaviour
-at half the memory per archetype. Deliberately out of scope for this plan; worth doing before
-the next art drop widens the archetype set.
+The original note here proposed making `SpriteDemand.of` stop warming `(archetype, 0)` alongside
+each plant's own variant, on the grounds that it roughly doubles per-archetype cost. Quantified
+against `PlantMapper.variantCounts`, that recommendation does not hold up and should not be
+acted on.
+
+Ordinary archetypes have 2 variants (a few have 3), and a plant's variant is
+`abs(seed / 31) % variantCount`. So `P(variant = 0)` is 1/2 or 1/3 per plant, and the chance
+that *no* plant of an archetype is variant 0 is `((c-1)/c)^N` — at c=2, N=3 that is 12.5%. The
+base look is therefore already needed, not wasted, as soon as an archetype has more than a
+couple of plants. The saving is real only for archetypes with one or two plants, which is
+precisely the island where memory is not a problem. It optimises the case that does not matter.
+
+### What actually bounds the endgame
+
+Worth stating plainly, because the measurements above could be read as more than they are.
+Ordinary variants total 32 across the 14 archetypes in `variantCounts`, plus 14 rares that sit
+at variant indices above them — roughly 46 of the 48 shipped plant sprites. A fully-collected
+mature island therefore converges on the old resident set. **On-demand decoding fixes cold start
+and the early and middle game; it does not cap the endgame.** The ceiling is the art pack.
+
+Two levers that do move the ceiling, and why neither is taken here:
+
+- **Downsampling** was rejected in the "Why" section above: the max-trunk tree draws at 478 px
+  at `MAX_ZOOM`, so a 256 px decode is visibly soft exactly where a user has zoomed in to look.
+- **Per-archetype downsampling** — shrinking only archetypes that never render large — does not
+  work either, and the reason is worth recording so nobody re-derives it. `SizeTier` comes from
+  the transaction *amount*, not the archetype (`PlantMapper.map`), so any archetype can be L on
+  a large enough purchase. There is no archetype that is safe to shrink.
+
+The honest remaining lever is shipping fewer or smaller sprites, which is an art decision rather
+than a code one.

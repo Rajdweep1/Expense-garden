@@ -39,8 +39,8 @@ rejects it. Each shell starts fresh, so export it on *every* command:
 ```bash
 export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 
-./gradlew testDebugUnitTest                 # JVM unit tests (298)
-./gradlew connectedDebugAndroidTest         # instrumented (67) — needs an emulator/device
+./gradlew testDebugUnitTest                 # JVM unit tests (310)
+./gradlew connectedDebugAndroidTest         # instrumented (71) — needs an emulator/device
 ./gradlew installDebug                      # build + install
 ```
 
