@@ -12,6 +12,8 @@ import com.expensegarden.app.data.Regret
 import com.expensegarden.app.data.TransactionEntity
 import com.expensegarden.app.data.TxnRow
 import com.expensegarden.app.gate.GateEvaluator
+import com.expensegarden.app.gate.GatePresentation
+import com.expensegarden.app.gate.GateView
 import com.expensegarden.app.gate.Severity
 import com.expensegarden.app.stats.ChipOrder
 import com.expensegarden.app.stats.RecurringPayees
@@ -126,6 +128,42 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
             container.quips.pick(verdict.severity, container.aiPrefs.tone)
         val label = verdict.offender?.takeIf { it.categoryId != null }?.label
         return GatePrompt(verdict.severity, quip, label)
+    }
+
+    /** Everything the dialog needs, decided in GatePresentation. OK yields None, and the caller
+     *  proceeds without interrupting (the silence rule at the gate).
+     *
+     *  The streak is fetched for every non-OK verdict rather than only for the case that prints
+     *  it. Branching on severity here would put the same rule in two places, and keeping it in
+     *  exactly one is the point of GateView — the extra cost is a single MIN aggregate beside the
+     *  several queries evaluateGate already ran. */
+    suspend fun prepareGateView(amountPaise: Long): GateView {
+        val d = draft.value
+        val verdict = ledger.evaluateGate(d.categoryId!!, amountPaise, d.occurredAt)
+        if (verdict.severity == Severity.OK) return GateView.None
+
+        val isNecessity = categories.value.firstOrNull { it.id == d.categoryId }?.isNecessity ?: false
+        // Necessities never ASK for a quip — not "ask and discard". QuipRepository.pick marks the
+        // row used, so asking here would consume one from the no-repeat rotation for a dialog
+        // that never shows it.
+        val quip = if (isNecessity) "" else container.quips.pick(verdict.severity, container.aiPrefs.tone)
+        val offender = verdict.offender
+
+        return GatePresentation.of(
+            severity = verdict.severity,
+            isNecessity = isNecessity,
+            streakDays = container.garden.currentUnderPaceStreak(),
+            txnUuid = d.txnUuid ?: UUID.randomUUID().toString(),
+            quip = quip,
+            scopeLabel = offender?.takeIf { it.categoryId != null }?.label,
+            spentPaise = offender?.spentPaise ?: 0L,
+            budgetPaise = offender?.budgetPaise ?: 0L,
+            candidatePaise = amountPaise,
+            allowancePaise = offender?.let {
+                val (day, days) = ledger.dayAndLengthOf(d.occurredAt)
+                GateEvaluator.paceAllowancePaise(it.budgetPaise, day, days)
+            } ?: 0L,
+        )
     }
 
     /** QR path: persist pending + record breach flag; caller then fires the intent. */
