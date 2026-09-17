@@ -36,8 +36,14 @@ The machine is globally wired to his **company** GitHub. This repo must never to
 Every Gradle command needs JDK 17 — the default `java` on this machine is 11 and AGP 8.5.2
 rejects it. Each shell starts fresh, so export it on *every* command:
 
+**Do NOT point this at Android Studio's bundled JBR.** It used to work, then Android Studio
+auto-updated its JBR to JDK 25 and every Gradle command started dying with
+`java.lang.IllegalArgumentException: 25.0.3` from Kotlin 2.0.20's embedded IntelliJ version
+parser — before compiling a single line. An app bundle that silently self-updates is not a
+toolchain pin. Use the keg-only Homebrew JDK, whose path is stable across 17.x patches:
+
 ```bash
-export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
 
 ./gradlew testDebugUnitTest                 # JVM unit tests (324)
 ./gradlew connectedDebugAndroidTest         # instrumented (71) — needs an emulator/device
