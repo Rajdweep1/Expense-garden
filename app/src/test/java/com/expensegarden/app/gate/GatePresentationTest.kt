@@ -117,6 +117,15 @@ class GatePresentationTest {
     }
 
     @Test
+    fun `a zero streak has nothing to end`() {
+        // A fresh ledger reports 0, and "this ends a 0-day streak" is nonsense. Found on device.
+        val fresh = view(Severity.PACE_WARNING, isNecessity = false, streakDays = 0) as GateView.Streak
+        assertEquals(false, fresh.endsAStreak)
+        val earned = view(Severity.PACE_WARNING, isNecessity = false, streakDays = 1) as GateView.Streak
+        assertEquals(true, earned.endsAStreak)
+    }
+
+    @Test
     fun `the streak card reports the overshoot against today's allowance`() {
         val v = view(Severity.PACE_WARNING, isNecessity = false) as GateView.Streak
         assertEquals(612_000L, v.overPaise)       // 624000 after - 12000 allowance

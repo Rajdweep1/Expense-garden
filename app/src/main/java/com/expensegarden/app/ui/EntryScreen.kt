@@ -316,7 +316,11 @@ private fun GateDialog(
                         )
                     }
                     is GateView.Streak -> {
-                        Text("This ends a ${view.days}-day streak", style = MaterialTheme.typography.titleLarge)
+                        Text(
+                            if (view.endsAStreak) "This ends a ${view.days}-day streak"
+                            else "This puts you ahead of pace",
+                            style = MaterialTheme.typography.titleLarge,
+                        )
                         Text(view.quip, style = MaterialTheme.typography.bodyMedium)
                         Text(
                             "${Money.display(view.overPaise)} over today's ${Money.display(view.allowancePaise)}",

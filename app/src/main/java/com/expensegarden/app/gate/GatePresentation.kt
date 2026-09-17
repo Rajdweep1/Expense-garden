@@ -46,6 +46,10 @@ sealed interface GateView {
         val allowancePaise: Long,
     ) : GateView {
         override val recordsDodge: Boolean get() = true
+
+        /** A brand-new ledger has no streak yet, and "this ends a 0-day streak" is nonsense.
+         *  At zero there is simply nothing to lose but the pace itself. */
+        val endsAStreak: Boolean get() = days > 0
     }
 
     /**

@@ -45,7 +45,7 @@ toolchain pin. Use the keg-only Homebrew JDK, whose path is stable across 17.x p
 ```bash
 export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
 
-./gradlew testDebugUnitTest                 # JVM unit tests (324)
+./gradlew testDebugUnitTest                 # JVM unit tests (347)
 ./gradlew connectedDebugAndroidTest         # instrumented (71) — needs an emulator/device
 ./gradlew installDebug                      # build + install
 ```
@@ -120,7 +120,11 @@ Phase 4 showcase: **4A collections** (done — rare species earned by restraint,
 spending) → **4B landmarks** (done — koi pond and stone lantern on reserved plots) → **the design
 pass** (done 2026-09-13 — `GardenTheme` derived from `GardenPalette`, window insets, launcher
 icon; contrast/chroma floors are enforced by JVM tests, so never hand-pick a chrome colour
-without running `GardenTokensTest`) → read-only
+without running `GardenTokensTest`) → **the gate redesign** (done 2026-09-17 — necessities get a
+neutral card with no quip and no gate-dodge credit, breaches preview the actual weed, pace
+warnings name the streak; `StreakMath` and `GardenFolder.noSpendByMonth` now floor at the day the
+ledger began, so a fresh install stops earning rares and streaks for days it wasn't there) →
+read-only
 web dashboard (needs a deployed core-api), Play Store hardening, investments via CAS parsing.
 
 The parent spec's Phase 1 acceptance is *"done when it's the default way its user pays
