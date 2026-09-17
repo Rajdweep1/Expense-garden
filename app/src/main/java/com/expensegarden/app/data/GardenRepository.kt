@@ -3,6 +3,7 @@ package com.expensegarden.app.data
 import com.expensegarden.app.game.GardenFolder
 import com.expensegarden.app.game.GardenState
 import com.expensegarden.app.game.Reconciler
+import com.expensegarden.app.game.StreakBaseline
 import com.expensegarden.app.game.StreakMath
 import com.expensegarden.app.game.CollectionState
 import com.expensegarden.app.game.RareCatalog
@@ -21,8 +22,21 @@ import java.time.YearMonth
 import java.time.ZoneId
 
 /** Assembles fold inputs from Room and appends reconciler events. All game logic lives in game/ (pure). */
-class GardenRepository(private val db: AppDatabase, private val ledger: LedgerRepository) {
+class GardenRepository(
+    private val db: AppDatabase,
+    private val ledger: LedgerRepository,
+    private val prefs: GardenPrefs,
+) {
     private val zone: ZoneId = ZoneId.systemDefault()
+
+    /** The streak baseline for `month`, from the device's first run and the oldest ledger event. */
+    private suspend fun firstObservedDayOf(month: YearMonth): Int =
+        StreakBaseline.firstObservedDay(
+            installedAtMillis = prefs.firstObservedAt,
+            earliestEventMillis = db.gameEventDao().earliestCreatedAt(),
+            month = month,
+            zone = zone,
+        )
 
     /** Live garden for the current month. Re-collection re-derives the month key (same idiom as the VMs). */
     fun observeCurrentGarden(): Flow<GardenState> {
@@ -35,7 +49,7 @@ class GardenRepository(private val db: AppDatabase, private val ledger: LedgerRe
             db.gameEventDao().observeEventsBetween(from, to),
             db.transactionDao().observeLoggedCountIn(investmentIds()),
         ) { txns, cats, budgets, events, sips ->
-            GardenFolder.fold(monthKey, txns, cats, budgets, events, sips, LocalDate.now(zone), zone)
+            GardenFolder.fold(monthKey, txns, cats, budgets, events, sips, LocalDate.now(zone), zone, firstObservedDayOf(YearMonth.parse(monthKey)))
         }
     }
 
@@ -59,6 +73,7 @@ class GardenRepository(private val db: AppDatabase, private val ledger: LedgerRe
                 allEvents.filter { it.createdAt in from..to },
                 sips, LocalDate.now(zone), zone, houseLevelOverride,
                 rareSignals = projectRareSignals(allEvents),
+                firstObservedDay = firstObservedDayOf(YearMonth.now(zone)),
             )
         }
     }
@@ -170,6 +185,7 @@ class GardenRepository(private val db: AppDatabase, private val ledger: LedgerRe
                 .count { it.categoryId in investmentIds() },
             today = LocalDate.now(zone),
             zone = zone,
+            firstObservedDay = firstObservedDayOf(YearMonth.parse(monthKey)),
         )
     }
 
@@ -202,7 +218,7 @@ class GardenRepository(private val db: AppDatabase, private val ledger: LedgerRe
             .mapValues { (_, l) -> l.sumOf { it.amountPaise } }
         val overall = db.budgetDao().allForMonth(monthKey).firstOrNull { it.categoryId == null }?.amountPaise
         val today = LocalDate.now(zone)
-        val streak = StreakMath.underPaceStreak(dayTotals, overall, today.dayOfMonth, nowMonth.lengthOfMonth())
+        val streak = StreakMath.underPaceStreak(dayTotals, overall, today.dayOfMonth, nowMonth.lengthOfMonth(), firstObservedDayOf(nowMonth))
         val hitAlready = db.gameEventDao().ofType("streak.hit")
             .mapNotNull { runCatching { JSONObject(it.payloadJson) }.getOrNull() }
             .filter { it.optString("month") == monthKey }

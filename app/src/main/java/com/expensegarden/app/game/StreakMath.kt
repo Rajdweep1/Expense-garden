@@ -4,8 +4,9 @@ import com.expensegarden.app.gate.GateEvaluator
 
 /** Day-level derivations for the live month. `today` is 1-based; only fully-past days (1..today-1) count. */
 object StreakMath {
-    fun noSpendDays(dayTotalsPaise: Map<Int, Long>, today: Int): Int =
-        (1 until today).count { (dayTotalsPaise[it] ?: 0L) == 0L }
+    /** @param firstObservedDay see [underPaceStreak] — an unobserved day is not a no-spend day. */
+    fun noSpendDays(dayTotalsPaise: Map<Int, Long>, today: Int, firstObservedDay: Int = 1): Int =
+        (maxOf(1, firstObservedDay) until today).count { (dayTotalsPaise[it] ?: 0L) == 0L }
 
     /** Consecutive days ending yesterday whose cumulative spend stayed ≤ that day's pace allowance.
      *

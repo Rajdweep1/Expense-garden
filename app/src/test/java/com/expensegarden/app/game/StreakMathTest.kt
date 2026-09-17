@@ -47,6 +47,13 @@ class StreakMathTest {
         assertEquals(19, StreakMath.underPaceStreak(emptyMap(), budget, today = 20, daysInMonth = 30, firstObservedDay = 1))
     }
 
+    @Test fun `no-spend days ignore days before the ledger began`() {
+        // Same rule as the streak: an unobserved day is not a no-spend day. Four sparkles for
+        // days the app was not installed is the cosmetic half of the same lie.
+        assertEquals(3, StreakMath.noSpendDays(emptyMap(), today = 13, firstObservedDay = 10))
+        assertEquals(0, StreakMath.noSpendDays(emptyMap(), today = 13, firstObservedDay = 13))
+    }
+
     @Test fun `the baseline only trims the start, it does not rescue a breach`() {
         // Observed from day 2; day 3 blows the allowance, so only day 4 survives.
         val totals = mapOf(3 to 40_000L)

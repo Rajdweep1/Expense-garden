@@ -97,6 +97,31 @@ class RareFoldTest {
         RareSignal.GateDodged(eventId = (day * 10 + i).toLong(), atMillis = at(day))
     }
 
+    @Test fun `days before the ledger began cannot earn a no-spend rare`() {
+        // The whole reason `today` above is pinned to the 8th: a ledger whose first entry is late
+        // in the month shows a long "no-spend run" over days nobody was watching, and NO_SPEND_DAYS
+        // hands out a rare for being absent. Rares are earned by restraint, never by absence.
+        val lateToday = LocalDate.of(2026, 9, 18)
+        val txns = listOf(txn("a", 103, day = 17))
+
+        fun foldObservedFrom(day: Int) = GardenFolder.foldAllTime(
+            allTxns = txns,
+            categories = categories,
+            currentBudgets = emptyList(),
+            currentMonthEvents = emptyList(),
+            allTimeInvestmentCount = 0,
+            today = lateToday,
+            zone = zone,
+            rareSignals = emptyList(),
+            firstObservedDay = day,
+        )
+
+        // Days 1..16 counted: a 16-day run clears NO_SPEND_DAYS_FOR_EARN and grows a rare.
+        assertEquals(1, foldObservedFrom(1).plants.count { it.rare != null })
+        // Observed only from the 17th, there is no run at all.
+        assertEquals(0, foldObservedFrom(17).plants.count { it.rare != null })
+    }
+
     @Test fun `no signals means no rare plants`() {
         val g = fold(listOf(txn("a", 7, day = 3)), emptyList())
         assertTrue(g.plants.all { it.rare == null })

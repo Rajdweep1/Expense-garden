@@ -193,6 +193,11 @@ interface GameEventDao {
     @Query("SELECT * FROM game_event WHERE type = :type ORDER BY id")
     suspend fun ofType(type: String): List<GameEventEntity>
 
+    /** Oldest event in the ledger; null when empty. Half of the streak baseline — a restored
+     *  device has old events and a genuinely new one has none. See StreakBaseline. */
+    @Query("SELECT MIN(createdAt) FROM game_event")
+    suspend fun earliestCreatedAt(): Long?
+
     /** The watermark head (spec §9): the highest id in the log, read BEFORE the window so
      *  nothing above it can be mistaken for "seen". O(1) off the primary key. */
     @Query("SELECT COALESCE(MAX(id), 0) FROM game_event")

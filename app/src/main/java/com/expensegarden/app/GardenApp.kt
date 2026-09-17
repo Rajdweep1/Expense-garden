@@ -50,10 +50,19 @@ class AppContainer(private val app: Application) {
     val ledger: LedgerRepository = LedgerRepository(db, clock) { scheduler.signal() }
     val budgets: BudgetRepository = BudgetRepository(db, clock) { scheduler.signal() }
     val quips: QuipRepository = QuipRepository(db)
-    val garden: GardenRepository = GardenRepository(db, ledger)
-    val digests: DigestRepository = DigestRepository(db, ledger)
+    // Declared above `garden`, which now takes it. Same declaration-order hazard as the clock
+    // above: leaving it below would hand GardenRepository a null GardenPrefs.
     val prefs: GardenPrefs = GardenPrefs(app)
+    val garden: GardenRepository = GardenRepository(db, ledger, prefs)
+    val digests: DigestRepository = DigestRepository(db, ledger)
     val aiPrefs: AiPrefs = AiPrefs(app)
+
+    init {
+        // Stamped once, on the first launch this build ever sees. A device upgrading from an
+        // older build gets "now", which is why StreakBaseline also consults the oldest
+        // game_event — for an existing user that is the correct, earlier answer.
+        prefs.recordFirstRunIfAbsent(System.currentTimeMillis())
+    }
 
     /** Re-read per call rather than cached: the key can be entered at any moment from the
      *  settings screen, and a cached NoopLlmClient would keep the app silent until restart. */

@@ -35,7 +35,13 @@ class RareDeterminismTest {
             .addCallback(SeedCallback)
             .allowMainThreadQueries()
             .build()
-        garden = GardenRepository(db, LedgerRepository(db))
+        // These fixtures are all built at "now", so the ledger genuinely begins today. Pinning it
+        // keeps the streak deterministic instead of inheriting whatever this device happens to
+        // have recorded — and a same-day baseline is what stops STREAK_7 firing and growing a
+        // rare these tests never asked for (which is exactly what failed from the 8th onward).
+        garden = GardenRepository(db, LedgerRepository(db), GardenPrefs(ctx).apply {
+            firstObservedAt = System.currentTimeMillis()
+        })
     }
 
     @After fun tearDown() = db.close()

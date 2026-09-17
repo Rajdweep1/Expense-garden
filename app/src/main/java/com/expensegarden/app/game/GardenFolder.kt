@@ -24,6 +24,8 @@ object GardenFolder {
         allTimeInvestmentCount: Int,
         today: LocalDate,
         zone: ZoneId,
+        /** First day of this month the ledger covers; 1 = all of it. See StreakBaseline. */
+        firstObservedDay: Int = 1,
     ): GardenState {
         val ym = YearMonth.parse(monthKey)
         val archived = YearMonth.from(today) > ym
@@ -66,8 +68,8 @@ object GardenFolder {
             backRowTreeCount = treeCount(allTimeInvestmentCount),
             trunkTier = allTimeInvestmentCount,
             butterflies = minOf(5, monthEvents.count { it.type == "gate.dodged" }),
-            streakDays = StreakMath.underPaceStreak(dayTotals, overall, streakToday, daysInMonth),
-            noSpendDays = StreakMath.noSpendDays(dayTotals, streakToday),
+            streakDays = StreakMath.underPaceStreak(dayTotals, overall, streakToday, daysInMonth, firstObservedDay),
+            noSpendDays = StreakMath.noSpendDays(dayTotals, streakToday, firstObservedDay),
             archived = archived,
             gridRows = SerpentineTiler.gridRows(mapped.size),
             gridCols = SerpentineTiler.COLS,
@@ -92,6 +94,8 @@ object GardenFolder {
         // reading a payload means org.json, which throws "not mocked" in JVM tests, and that
         // would make the whole fold untestable off-device.
         rareSignals: List<RareSignal> = emptyList(),
+        /** First day of this month the ledger covers; 1 = all of it. See StreakBaseline. */
+        firstObservedDay: Int = 1,
     ): GardenState {
         val ym = YearMonth.from(today)
         val daysInMonth = ym.lengthOfMonth()
@@ -111,7 +115,7 @@ object GardenFolder {
         val eligibility = rareCandidates(ordered, tree)
         val earns = RareEngine.earns(
             rareSignals,
-            noSpendByMonth(ordered, today, zone),
+            noSpendByMonth(ordered, today, zone, firstObservedDay),
             breadthByMonth(ordered, tree, zone),
             level,
             zone,
@@ -167,8 +171,8 @@ object GardenFolder {
             backRowTreeCount = treeCount(allTimeInvestmentCount),
             trunkTier = allTimeInvestmentCount,
             butterflies = minOf(5, currentMonthEvents.count { it.type == "gate.dodged" }),
-            streakDays = StreakMath.underPaceStreak(dayTotals, overall, today.dayOfMonth, daysInMonth),
-            noSpendDays = StreakMath.noSpendDays(dayTotals, today.dayOfMonth),
+            streakDays = StreakMath.underPaceStreak(dayTotals, overall, today.dayOfMonth, daysInMonth, firstObservedDay),
+            noSpendDays = StreakMath.noSpendDays(dayTotals, today.dayOfMonth, firstObservedDay),
             archived = false,
             gridRows = side,
             gridCols = side,
@@ -205,19 +209,25 @@ object GardenFolder {
      *
      *  Only ELAPSED days count, matching StreakMath: a month still in progress cannot claim
      *  its remaining days. */
+    /** @param firstObservedDay first day of the CURRENT month the ledger covers. A day before the
+     *   ledger existed is unobserved, not no-spend — counting it would earn a NO_SPEND_DAYS rare
+     *   for being absent, which is the opposite of the restraint the tier is meant to reward.
+     *   Past months need no floor: a month only appears here because it holds transactions. */
     private fun noSpendByMonth(
         ordered: List<TransactionEntity>,
         today: LocalDate,
         zone: ZoneId,
+        firstObservedDay: Int,
     ): Map<String, Int> {
         val currentMonth = YearMonth.from(today)
         return ordered.groupBy { YearMonth.from(Instant.ofEpochMilli(it.occurredAt).atZone(zone)) }
             .mapValues { (month, txns) ->
                 val spentDays = txns.map { Instant.ofEpochMilli(it.occurredAt).atZone(zone).dayOfMonth }.toSet()
                 val elapsed = if (month == currentMonth) today.dayOfMonth - 1 else month.lengthOfMonth()
+                val from = if (month == currentMonth) maxOf(1, firstObservedDay) else 1
                 var longest = 0
                 var run = 0
-                for (day in 1..elapsed) {
+                for (day in from..elapsed) {
                     if (day in spentDays) run = 0 else run++
                     if (run > longest) longest = run
                 }

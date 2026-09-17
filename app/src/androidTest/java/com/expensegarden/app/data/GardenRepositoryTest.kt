@@ -1,6 +1,7 @@
 package com.expensegarden.app.data
 
 import androidx.room.Room
+import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.expensegarden.app.game.Weather
@@ -23,10 +24,14 @@ class GardenRepositoryTest {
     private val zone = ZoneId.systemDefault()
 
     @Before fun setup() {
-        db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), AppDatabase::class.java)
+        val ctx = ApplicationProvider.getApplicationContext<Context>()
+        db = Room.inMemoryDatabaseBuilder(ctx, AppDatabase::class.java)
             .addCallback(SeedCallback).allowMainThreadQueries().build()
         ledger = LedgerRepository(db)
-        garden = GardenRepository(db, ledger)
+        // Fixtures are built relative to "now", so the ledger begins today. Pinned for determinism.
+        garden = GardenRepository(db, ledger, GardenPrefs(ctx).apply {
+            firstObservedAt = System.currentTimeMillis()
+        })
     }
 
     @After fun teardown() = db.close()
