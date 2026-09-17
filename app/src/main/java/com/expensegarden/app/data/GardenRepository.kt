@@ -205,6 +205,23 @@ class GardenRepository(
             }
     }
 
+    /** Today's under-pace streak for the live month. The gate reads this to say what a purchase
+     *  costs; the reconciler reads it to decide whether a streak.hit threshold was crossed. Both
+     *  need the same number, so it is derived in one place rather than two. */
+    suspend fun currentUnderPaceStreak(): Int {
+        val nowMonth = YearMonth.now(zone)
+        val monthKey = nowMonth.toString()
+        val (from, to) = ledger.boundsOfMonth(monthKey)
+        val dayTotals = db.transactionDao().loggedBetween(from, to)
+            .groupBy { Instant.ofEpochMilli(it.occurredAt).atZone(zone).dayOfMonth }
+            .mapValues { (_, l) -> l.sumOf { it.amountPaise } }
+        val overall = db.budgetDao().allForMonth(monthKey).firstOrNull { it.categoryId == null }?.amountPaise
+        return StreakMath.underPaceStreak(
+            dayTotals, overall, LocalDate.now(zone).dayOfMonth, nowMonth.lengthOfMonth(),
+            firstObservedDayOf(nowMonth),
+        )
+    }
+
     /** On-open reconciler: append month.closed for elapsed months and streak.hit thresholds, idempotently. */
     suspend fun runReconciler() {
         val nowMonth = YearMonth.now(zone)
@@ -212,13 +229,7 @@ class GardenRepository(
             .mapNotNull { runCatching { JSONObject(it.payloadJson).getString("month") }.getOrNull() }
             .toSet()
         val monthKey = nowMonth.toString()
-        val (from, to) = ledger.boundsOfMonth(monthKey)
-        val monthTxns = db.transactionDao().loggedBetween(from, to)
-        val dayTotals = monthTxns.groupBy { Instant.ofEpochMilli(it.occurredAt).atZone(zone).dayOfMonth }
-            .mapValues { (_, l) -> l.sumOf { it.amountPaise } }
-        val overall = db.budgetDao().allForMonth(monthKey).firstOrNull { it.categoryId == null }?.amountPaise
-        val today = LocalDate.now(zone)
-        val streak = StreakMath.underPaceStreak(dayTotals, overall, today.dayOfMonth, nowMonth.lengthOfMonth(), firstObservedDayOf(nowMonth))
+        val streak = currentUnderPaceStreak()
         val hitAlready = db.gameEventDao().ofType("streak.hit")
             .mapNotNull { runCatching { JSONObject(it.payloadJson) }.getOrNull() }
             .filter { it.optString("month") == monthKey }
