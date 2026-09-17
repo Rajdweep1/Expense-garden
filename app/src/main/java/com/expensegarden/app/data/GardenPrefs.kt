@@ -17,7 +17,23 @@ class GardenPrefs(context: Context) {
         get() = prefs.getInt(KEY_LAST_SEEN_HOUSE_LEVEL, 0)
         set(value) = prefs.edit().putInt(KEY_LAST_SEEN_HOUSE_LEVEL, value).apply()
 
+    /** Device first-run wall clock, 0 until recorded. Half of the streak baseline (the other half
+     *  is the oldest game_event) — see StreakBaseline for why neither alone is enough.
+     *
+     *  Wall clock is correct here despite the sync-cursor rule: this is not a cursor and never
+     *  orders anything. It answers "roughly when did this device start watching", and is compared
+     *  only against a day boundary. */
+    var firstObservedAt: Long
+        get() = prefs.getLong(KEY_FIRST_OBSERVED_AT, 0L)
+        set(value) = prefs.edit().putLong(KEY_FIRST_OBSERVED_AT, value).apply()
+
+    /** Stamps the first run exactly once; later calls are no-ops. */
+    fun recordFirstRunIfAbsent(nowMillis: Long) {
+        if (firstObservedAt == 0L) firstObservedAt = nowMillis
+    }
+
     private companion object {
         const val KEY_LAST_SEEN_HOUSE_LEVEL = "lastSeenHouseLevel"
+        const val KEY_FIRST_OBSERVED_AT = "firstObservedAt"
     }
 }
