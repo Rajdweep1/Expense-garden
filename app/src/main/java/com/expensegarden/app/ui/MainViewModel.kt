@@ -43,8 +43,6 @@ data class EntryDraft(
     val txnUuid: String? = null,
 )
 
-data class GatePrompt(val severity: Severity, val quip: String, val scopeLabel: String?)
-
 /** Home header: null while Room's first emission is in flight (loading skeleton). */
 data class HomeHeader(val spentPaise: Long, val overallBudgetPaise: Long?, val hint: Severity)
 
@@ -118,16 +116,6 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
 
     fun startManualDraft() {
         draft.value = EntryDraft(fromScan = false)
-    }
-
-    /** Compute severity + quip across all budget scopes. OK never shows a dialog (silence rule at the gate). */
-    suspend fun prepareGate(amountPaise: Long): GatePrompt {
-        val d = draft.value
-        val verdict = ledger.evaluateGate(d.categoryId!!, amountPaise, d.occurredAt)
-        val quip = if (verdict.severity == Severity.OK) "" else
-            container.quips.pick(verdict.severity, container.aiPrefs.tone)
-        val label = verdict.offender?.takeIf { it.categoryId != null }?.label
-        return GatePrompt(verdict.severity, quip, label)
     }
 
     /** Everything the dialog needs, decided in GatePresentation. OK yields None, and the caller

@@ -61,6 +61,21 @@ sealed interface GateView {
     }
 }
 
+/**
+ * What to flag on the saved transaction. Only a breach flags it — that flag is what grows the weed.
+ *
+ * `Neutral` deliberately reports PACE_WARNING rather than BREACH even when the verdict was a
+ * breach: `PlantMapper` already exempts necessities via `!ownNecessity`, so the flag is inert
+ * there either way, and this keeps `breachedAtLogging` meaning "this grew a weed" rather than
+ * "this was over budget" — which is what the garden actually reads it for.
+ */
+fun GateView.severityForLogging(): Severity = when (this) {
+    is GateView.Weed -> Severity.BREACH
+    is GateView.Streak -> Severity.PACE_WARNING
+    is GateView.Neutral -> Severity.PACE_WARNING
+    GateView.None -> Severity.OK
+}
+
 object GatePresentation {
 
     /**

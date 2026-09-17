@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -51,6 +50,16 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.expensegarden.app.capture.UpiIntents
 import com.expensegarden.app.core.Money
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Surface
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.window.Dialog
+import com.expensegarden.app.gate.GateView
+import com.expensegarden.app.gate.severityForLogging
+import com.expensegarden.app.render.SpriteLoader
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.expensegarden.app.gate.Severity
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -66,7 +75,7 @@ fun EntryScreen(vm: MainViewModel, onDone: () -> Unit) {
     val scope = rememberCoroutineScope()
     val draft by vm.draft.collectAsState()
     val categories by vm.categories.collectAsState()
-    var gate by remember { mutableStateOf<GatePrompt?>(null) }
+    var gate by remember { mutableStateOf<GateView?>(null) }
     var allCategoriesOpen by remember { mutableStateOf(false) }
     // Inline field state rather than Toasts. A Toast appears at the far bottom of the screen,
     // vanishes, is invisible to TalkBack in the way an error field is not, and surfaces only
@@ -231,9 +240,9 @@ fun EntryScreen(vm: MainViewModel, onDone: () -> Unit) {
                 when {
                     amountPaise == null || draft.categoryId == null -> Unit
                     draft.fromScan -> scope.launch {
-                        val prompt = vm.prepareGate(amountPaise)
-                        if (prompt.severity == Severity.OK) fireAndFinish(amountPaise, prompt.severity)
-                        else gate = prompt
+                        val view = vm.prepareGateView(amountPaise)
+                        if (view == GateView.None) fireAndFinish(amountPaise, Severity.OK)
+                        else gate = view
                     }
                     else -> {
                         vm.saveManualFromDraft(amountPaise)
@@ -247,28 +256,104 @@ fun EntryScreen(vm: MainViewModel, onDone: () -> Unit) {
         }
     }
 
-    gate?.let { prompt ->
+    gate?.let { view ->
         val amountPaise = Money.parseToPaise(draft.amountText) ?: return@let
-        AlertDialog(
-            onDismissRequest = { gate = null },
-            title = {
-                val base = if (prompt.severity == Severity.BREACH) "Over budget" else "Ahead of pace"
-                Text(prompt.scopeLabel?.let { "$base — $it" } ?: base)
+        GateDialog(
+            view = view,
+            onProceed = {
+                val severity = view.severityForLogging()
+                gate = null
+                fireAndFinish(amountPaise, severity)
             },
-            text = { Text(prompt.quip) },
-            confirmButton = {
-                TextButton(onClick = {
-                    gate = null
-                    fireAndFinish(amountPaise, prompt.severity)
-                }) { Text("Pay anyway") }
+            onBackOut = {
+                if (view.recordsDodge) vm.recordDodge(amountPaise)
+                gate = null
+                onDone()
             },
-            dismissButton = {
-                TextButton(onClick = {
-                    vm.recordDodge(amountPaise)
-                    gate = null
-                    onDone()
-                }) { Text("Nope, saved") }
-            },
+            onDismiss = { gate = null },
         )
+    }
+}
+
+/** The gate. A custom Dialog rather than AlertDialog because the emphasis has to invert: on a
+ *  discretionary purchase the quiet option is the recommended one, and Material's confirmButton
+ *  slot always renders rightmost and loudest. */
+@Composable
+private fun GateDialog(
+    view: GateView,
+    onProceed: () -> Unit,
+    onBackOut: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val context = LocalContext.current
+    var sprite by remember(view) { mutableStateOf<ImageBitmap?>(null) }
+    LaunchedEffect(view) {
+        sprite = (view as? GateView.Weed)?.let { weed ->
+            withContext(Dispatchers.IO) { SpriteLoader.decodePlant(context, weed.archetype, weed.variant) }
+        }
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.surface) {
+            Column(
+                Modifier.padding(24.dp).fillMaxWidth(),
+                horizontalAlignment = if (view is GateView.Neutral) Alignment.Start else Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                when (view) {
+                    is GateView.Weed -> {
+                        // A missing sprite degrades to text: the heading already names the
+                        // consequence, so an uninstalled pack must not leave a broken slot.
+                        sprite?.let {
+                            Image(bitmap = it, contentDescription = null, modifier = Modifier.size(96.dp))
+                        }
+                        Text("This grows a weed", style = MaterialTheme.typography.titleLarge)
+                        Text(view.quip, style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            listOfNotNull(view.scopeLabel, "${Money.display(view.overPaise)} over").joinToString(" · "),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    is GateView.Streak -> {
+                        Text("This ends a ${view.days}-day streak", style = MaterialTheme.typography.titleLarge)
+                        Text(view.quip, style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            "${Money.display(view.overPaise)} over today's ${Money.display(view.allowancePaise)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    is GateView.Neutral -> {
+                        Text("${view.scopeLabel}, after this", style = MaterialTheme.typography.titleLarge)
+                        Text(
+                            "${Money.display(view.afterPaise)} of your ${Money.display(view.budgetPaise)} budget.",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Text(
+                            "Nothing grows badly here — necessities never do.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    GateView.None -> Unit
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                if (view is GateView.Neutral) {
+                    // A necessity should be paid. The loud button is the one that proceeds.
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        TextButton(onClick = onBackOut) { Text("Back") }
+                        Button(onClick = onProceed, modifier = Modifier.padding(start = 8.dp)) { Text("Continue") }
+                    }
+                } else {
+                    // Both stay visible, same tap target, no delay and no confirm step — the only
+                    // change is which one is louder, and the user installed a budgeting app.
+                    Button(onClick = onBackOut, modifier = Modifier.fillMaxWidth()) { Text("Not now") }
+                    TextButton(onClick = onProceed, modifier = Modifier.fillMaxWidth()) { Text("Pay anyway") }
+                }
+            }
+        }
     }
 }
