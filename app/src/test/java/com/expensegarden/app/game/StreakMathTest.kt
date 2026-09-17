@@ -29,4 +29,27 @@ class StreakMathTest {
         assertEquals(0, StreakMath.underPaceStreak(emptyMap(), null, today = 5, daysInMonth = 30))
         assertEquals(4, StreakMath.noSpendDays(emptyMap(), today = 5))
     }
+
+    @Test fun `days before the ledger began never count`() {
+        // Installed on day 10 of a 30-day month, today is 13, nothing logged. Days 1..9 were never
+        // observed and cannot count — but 10, 11 and 12 were, and were under pace, so 3 is earned.
+        assertEquals(3, StreakMath.underPaceStreak(emptyMap(), budget, today = 13, daysInMonth = 30, firstObservedDay = 10))
+    }
+
+    @Test fun `installing today earns nothing yet`() {
+        // The bug this parameter exists for: a fresh install on the 13th used to report 12 days,
+        // which is enough to fire STREAK_7 and grow a rare the user never earned.
+        assertEquals(0, StreakMath.underPaceStreak(emptyMap(), budget, today = 13, daysInMonth = 30, firstObservedDay = 13))
+    }
+
+    @Test fun `a genuine no-spend run from day one is still earned`() {
+        // Installed on day 1, spent nothing through day 19. That streak was earned.
+        assertEquals(19, StreakMath.underPaceStreak(emptyMap(), budget, today = 20, daysInMonth = 30, firstObservedDay = 1))
+    }
+
+    @Test fun `the baseline only trims the start, it does not rescue a breach`() {
+        // Observed from day 2; day 3 blows the allowance, so only day 4 survives.
+        val totals = mapOf(3 to 40_000L)
+        assertEquals(1, StreakMath.underPaceStreak(totals, budget, today = 5, daysInMonth = 30, firstObservedDay = 2))
+    }
 }
