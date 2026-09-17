@@ -33,8 +33,8 @@ class LedgerRepository(
     )
 
     /** QR path: saved as PENDING_CONFIRM before the UPI intent fires. Returns txn uuid. */
-    suspend fun savePending(draft: Draft, breachedAtLogging: Boolean): String =
-        save(draft, TxnSource.QR_GATE, TxnStatus.PENDING_CONFIRM, breachedAtLogging)
+    suspend fun savePending(draft: Draft, breachedAtLogging: Boolean, uuid: String? = null): String =
+        save(draft, TxnSource.QR_GATE, TxnStatus.PENDING_CONFIRM, breachedAtLogging, uuid)
 
     /** Manual path: post-hoc, money already spent — straight to LOGGED (spec §5.1). */
     suspend fun saveManualLogged(draft: Draft, breachedAtLogging: Boolean): String =
@@ -174,8 +174,17 @@ class LedgerRepository(
         )
     }
 
-    private suspend fun save(draft: Draft, source: TxnSource, status: TxnStatus, breached: Boolean): String {
-        val uuid = UUID.randomUUID().toString()
+    private suspend fun save(
+        draft: Draft,
+        source: TxnSource,
+        status: TxnStatus,
+        breached: Boolean,
+        uuidOverride: String? = null,
+    ): String {
+        // The QR path mints this before the gate so the dialog can preview the exact weed this
+        // transaction will grow — which weed is a pure function of the uuid (PlantMapper.kt:74).
+        // Every other caller still gets a fresh one here.
+        val uuid = uuidOverride ?: UUID.randomUUID().toString()
         db.withTransaction {
             val payeeId = resolvePayee(draft)
             db.transactionDao().insert(

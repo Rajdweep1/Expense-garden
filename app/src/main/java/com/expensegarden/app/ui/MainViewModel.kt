@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.YearMonth
 import java.time.ZoneId
+import java.util.UUID
 
 data class EntryDraft(
     val fromScan: Boolean = false,
@@ -35,6 +36,9 @@ data class EntryDraft(
     val categoryId: Long? = null,
     val note: String = "",
     val occurredAt: Long = System.currentTimeMillis(),
+    /** Minted when a scan draft starts, so the gate can preview the exact weed this will grow.
+     *  Null on the manual path, which has no gate. */
+    val txnUuid: String? = null,
 )
 
 data class GatePrompt(val severity: Severity, val quip: String, val scopeLabel: String?)
@@ -105,6 +109,7 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
             vpa = payee.vpa,
             payeeName = payee.name ?: payee.vpa.substringBefore('@'),
             amountText = payee.amountPaise?.let { Money.intentAmount(it) } ?: "",
+            txnUuid = UUID.randomUUID().toString(),
         )
         viewModelScope.launch { prefillCategoryFromPayee(payee.vpa) }
     }
@@ -128,6 +133,7 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         ledger.savePending(
             draft = draft.value.toRepoDraft(amountPaise),
             breachedAtLogging = severity == Severity.BREACH,
+            uuid = draft.value.txnUuid,
         )
 
     fun saveManualFromDraft(amountPaise: Long) {
