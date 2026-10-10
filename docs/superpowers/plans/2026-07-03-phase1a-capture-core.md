@@ -1854,6 +1854,10 @@ git commit -m "feat: navigation + qr scan launcher wiring"
 
 ### Task 12: End-to-end verification on device (the real thing)
 
+> **Superseded 2026-10-11 by `2026-10-11-phone-e2e.md`.** The script below predates 1B–4B and
+> the gate redesign and no longer matches the app — its labels, amounts and screens have all
+> moved. Kept as the historical record of 1A; run the new one.
+
 **Files:** none
 
 - [ ] **Step 1: Full test suite**
