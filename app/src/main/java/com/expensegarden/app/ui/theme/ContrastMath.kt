@@ -34,6 +34,17 @@ object ContrastMath {
         return (maxOf(la, lb) + 0.05) / (minOf(la, lb) + 0.05)
     }
 
+    /** `fg` at `alpha` composited over an opaque `bg`, per channel in sRGB. That is how Android
+     *  blends a translucent Surface over whatever is drawn beneath it. */
+    fun over(fg: Int, alpha: Float, bg: Int): Int {
+        fun mix(shift: Int): Int {
+            val f = (fg shr shift) and 0xFF
+            val b = (bg shr shift) and 0xFF
+            return Math.round(alpha * f + (1 - alpha) * b).coerceIn(0, 255)
+        }
+        return (mix(16) shl 16) or (mix(8) shl 8) or mix(0)
+    }
+
     /** CIE L*a*b* under a D65 white point, as (L, a, b). */
     fun lab(rgb: Int): Triple<Double, Double, Double> {
         val r = red(rgb)

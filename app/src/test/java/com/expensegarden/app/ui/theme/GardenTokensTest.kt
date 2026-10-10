@@ -1,5 +1,8 @@
 package com.expensegarden.app.ui.theme
 
+import androidx.compose.ui.graphics.toArgb
+import com.expensegarden.app.game.Weather
+import com.expensegarden.app.render.GardenPalette
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -142,6 +145,22 @@ class GardenTokensTest {
             assertContrast("light inversePrimary", LightInversePrimary, LightInverseSurface, 4.5)
             assertContrast("dark inverseOnSurface", DarkInverseOnSurface, DarkInverseSurface, 4.5)
             assertContrast("dark inversePrimary", DarkInversePrimary, DarkInverseSurface, 4.5)
+        }
+    }
+
+    /** The home chrome sits on the garden's sky, which never goes dark and changes with the
+     *  weather. Measured 2026-10-11 with no backdrop: the links were 2.38:1 on an overcast sky in
+     *  LIGHT mode and 1.06:1 in dark. So chrome over the canvas uses the light tokens on a white
+     *  backdrop, and has to clear AA on every stop of every weather's sky. */
+    @Test
+    fun `chrome over the canvas clears 4_5 to 1 on every sky`() {
+        for (weather in Weather.values()) {
+            for (stop in GardenPalette.sky(weather)) {
+                val sky = stop.toArgb() and 0xFFFFFF
+                val backdrop = ContrastMath.over(0xFFFFFF, GardenTokens.CanvasChromeAlpha, sky)
+                assertContrast("ink over $weather #%06X".format(sky), GardenTokens.LightOnSurface, backdrop, 4.5)
+                assertContrast("link over $weather #%06X".format(sky), GardenTokens.LightPrimary, backdrop, 4.5)
+            }
         }
     }
 }

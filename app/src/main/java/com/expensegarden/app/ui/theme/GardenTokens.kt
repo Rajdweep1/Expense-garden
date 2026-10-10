@@ -56,6 +56,12 @@ object GardenTokens {
     const val DarkOnSurfaceVariant = 0xC6C4B6
     const val DarkOutline = 0x938F80
 
+    // ---- chrome over the canvas ------------------------------------------------------------
+    /** White at this alpha backs every control drawn over the garden's sky. The sky never goes
+     *  dark and changes with the weather, so chrome on it cannot borrow the system theme. Worst
+     *  case is the overcast sky's top stop: link 4.58:1, ink 15.20:1. */
+    const val CanvasChromeAlpha = 0.82f
+
     // ---- budget status ---------------------------------------------------------------------
     // Material 3 has no slot for these, which is exactly why they were borrowed from primary and
     // tertiary and ended up meaning nothing. Green/amber/red is the one convention a budget app

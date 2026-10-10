@@ -92,33 +92,39 @@ private fun GardenNav(
         exitTransition = { fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMedium)) },
     ) {
         composable("home") {
-            GardenHomeScreen(
-                gardenVm = gardenVm,
-                vm = vm,
-                aiVm = aiVm,
-                painter = remember {
-                    val container = (context.applicationContext as GardenApp).container
-                    // No isEmpty() check: asking cost the whole 48 MB decode, on the main thread,
-                    // inside composition. SpritePainter already falls back to procedural art per
-                    // plant on a miss, so an uninstalled pack renders exactly as it did before.
-                    com.expensegarden.app.render.SpritePainter(container.spriteCache.sprites)
-                },
-                spriteCache = (context.applicationContext as GardenApp).container.spriteCache,
-                structures = remember { (context.applicationContext as GardenApp).container.structures },
-                onScan = {
-                    scanLauncher.launch(
-                        ScanOptions()
-                            .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
-                            .setPrompt("Scan a UPI QR")
-                            .setBeepEnabled(false)
-                            .setOrientationLocked(true)
-                    )
-                },
-                onManual = { vm.startManualDraft(); nav.navigate("entry") },
-                onOpenDashboard = { nav.navigate("dashboard") },
-                onOpenGreenhouse = { nav.navigate("greenhouse") },
-                onOpenSettings = { nav.navigate("settings") },
-            )
+            // The garden canvas never goes dark, so neither does the chrome drawn over it. Under
+            // the system theme, dark mode put light text on the strip's white and the links on
+            // the sky: 1.21:1 and 1.41:1 (review, 2026-10-11). GardenHomeScreen pins dark
+            // status-bar icons for the same reason.
+            GardenTheme(dark = false) {
+                GardenHomeScreen(
+                    gardenVm = gardenVm,
+                    vm = vm,
+                    aiVm = aiVm,
+                    painter = remember {
+                        val container = (context.applicationContext as GardenApp).container
+                        // No isEmpty() check: asking cost the whole 48 MB decode, on the main thread,
+                        // inside composition. SpritePainter already falls back to procedural art per
+                        // plant on a miss, so an uninstalled pack renders exactly as it did before.
+                        com.expensegarden.app.render.SpritePainter(container.spriteCache.sprites)
+                    },
+                    spriteCache = (context.applicationContext as GardenApp).container.spriteCache,
+                    structures = remember { (context.applicationContext as GardenApp).container.structures },
+                    onScan = {
+                        scanLauncher.launch(
+                            ScanOptions()
+                                .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                                .setPrompt("Scan a UPI QR")
+                                .setBeepEnabled(false)
+                                .setOrientationLocked(true)
+                        )
+                    },
+                    onManual = { vm.startManualDraft(); nav.navigate("entry") },
+                    onOpenDashboard = { nav.navigate("dashboard") },
+                    onOpenGreenhouse = { nav.navigate("greenhouse") },
+                    onOpenSettings = { nav.navigate("settings") },
+                )
+            }
         }
         composable("dashboard") { DashboardScreen(vm = dashVm, onBack = { nav.popBackStack() }) }
         composable("settings") {

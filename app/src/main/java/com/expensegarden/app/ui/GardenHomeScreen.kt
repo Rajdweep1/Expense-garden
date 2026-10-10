@@ -60,6 +60,7 @@ import com.expensegarden.app.gate.Severity
 import com.expensegarden.app.render.GardenCanvas
 import com.expensegarden.app.render.PlantPainter
 import com.expensegarden.app.render.SpriteCache
+import com.expensegarden.app.ui.theme.GardenTokens
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -112,7 +113,11 @@ fun GardenHomeScreen(
                 .align(Alignment.TopCenter),
         ) {
             Surface(
-                color = Color.White.copy(alpha = .82f),
+                color = Color.White.copy(alpha = GardenTokens.CanvasChromeAlpha),
+                // Explicit, not inherited: this white matches no ColorScheme role, so Surface's
+                // default contentColorFor() falls back to LocalContentColor, the app root's. In
+                // dark mode that is light text on white: the 1.21:1 strip of 2026-10-11.
+                contentColor = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                     .fillMaxWidth()
                     .then(pressBounce(stripSrc, down = .97f))
@@ -146,12 +151,18 @@ fun GardenHomeScreen(
                     }
                 }
             }
-            Row(
+            // The same backdrop as the strip. Bare, these links sat on the sky itself: 2.38:1 on
+            // an overcast sky in light mode, 1.41:1 in dark (review, 2026-10-11).
+            Surface(
+                color = Color.White.copy(alpha = GardenTokens.CanvasChromeAlpha),
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                shape = MaterialTheme.shapes.medium,
                 modifier = Modifier.padding(start = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                TextButton(onClick = onOpenGreenhouse) { Text("🏡 greenhouse") }
-                TextButton(onClick = onOpenSettings) { Text("⚙️ settings") }
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(onClick = onOpenGreenhouse) { Text("🏡 greenhouse") }
+                    TextButton(onClick = onOpenSettings) { Text("⚙️ settings") }
+                }
             }
         }
 
