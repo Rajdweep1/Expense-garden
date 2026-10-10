@@ -67,7 +67,20 @@ DATABASE_URL="postgres://$(whoami)@localhost:5432/expense_garden?sslmode=disable
 TEST_DATABASE_URL="postgres://$(whoami)@localhost:5432/expense_garden?sslmode=disable" go test ./...
 ```
 
-Emulator: `~/Library/Android/sdk/emulator/emulator -avd Pixel_8_API_35 -no-boot-anim`.
+Emulator — the bare `-avd` command is not enough, all three flags matter:
+
+```bash
+~/Library/Android/sdk/emulator/emulator -avd Pixel_8_API_35 -no-boot-anim -gpu host -no-snapshot-save
+```
+
+`-gpu host` is **required**, not a speed-up: the AVD ships `hw.gpu.enabled=no` in
+`~/.android/avd/Pixel_8_API_35.avd/config.ini`, so without the flag it renders in software and
+System UI starts throwing ANRs mid-session. `-no-snapshot-save` stops the quicksave being rewritten
+on every clean shutdown — it had grown to 2.5 GB of a 5.5 GB AVD before being deleted on
+2026-10-11. The cost is a cold boot (~35s) instead of a snapshot restore, which is the better trade
+on a machine that runs out of RAM before it runs out of patience. Don't add `-memory`: the config
+already pins `hw.ramSize=2G`.
+
 `adb` is not on PATH — it's at `~/Library/Android/sdk/platform-tools/adb`.
 
 ## Implementation guardrails
