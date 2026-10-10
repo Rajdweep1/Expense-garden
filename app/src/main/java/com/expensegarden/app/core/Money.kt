@@ -15,6 +15,15 @@ object Money {
         }
     }
 
+    /** Amounts a person typed. Strips what people actually type — Indian digit grouping
+     *  ("1,00,000"), spaces, a leading ₹ — then applies exactly the rules of [parseToPaise].
+     *
+     *  Kept apart from [parseToPaise] on purpose: that one also reads the `am` field of scanned QR
+     *  codes, where a comma is a malformed payment rather than a habit. A comma is never a decimal
+     *  separator in INR, so stripping it here cannot change what a value means. */
+    fun parseUserAmount(input: String): Long? =
+        parseToPaise(input.filterNot { it == ',' || it.isWhitespace() }.removePrefix("₹"))
+
     /** For humans: Indian digit grouping, and paise only when there are any.
      *
      *  Every amount in this app used to render through `Locale.US` as "₹33061.00" — neither
@@ -57,4 +66,9 @@ object Money {
      *  payment, not a cosmetic difference. */
     fun intentAmount(paise: Long): String =
         String.format(Locale.US, "%d.%02d", paise / 100, paise % 100)
+
+    /** What an amount field shows when editing a value: whole rupees when there are no paise.
+     *  [intentAmount]'s "10000.00" is a payment format, not something to put under a cursor. */
+    fun inputText(paise: Long): String =
+        if (paise % 100 == 0L) (paise / 100).toString() else intentAmount(paise)
 }

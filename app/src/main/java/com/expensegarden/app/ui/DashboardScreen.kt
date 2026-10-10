@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
@@ -32,6 +33,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,7 +42,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import com.expensegarden.app.core.Money
 import com.expensegarden.app.data.Regret
@@ -142,21 +149,43 @@ fun DashboardScreen(vm: DashboardViewModel, onBack: () -> Unit = {}) {
     }
 
     target?.let { t ->
-        var text by remember(t) { mutableStateOf(t.currentPaise?.let { Money.intentAmount(it) } ?: "") }
+        val initial = t.currentPaise?.let { Money.inputText(it) } ?: ""
+        // Opens focused with the amount selected, so typing replaces it. The plain-String field
+        // put the cursor at the START: typing "12,000" over a budget gave "12,00010000.00".
+        var field by remember(t) { mutableStateOf(TextFieldValue(initial, selection = TextRange(0, initial.length))) }
+        var invalid by remember(t) { mutableStateOf(false) }
+        val focus = remember(t) { FocusRequester() }
         AlertDialog(
             onDismissRequest = { target = null },
             title = { Text(if (t.categoryId == null) "Overall budget" else "${t.name} budget") },
-            text = { OutlinedTextField(value = text, onValueChange = { text = it }, label = { Text("Amount (₹)") }) },
+            text = {
+                OutlinedTextField(
+                    value = field,
+                    onValueChange = { field = it; invalid = false },
+                    label = { Text("Amount (₹)") },
+                    isError = invalid,
+                    supportingText = if (invalid) ({ Text("Enter an amount") }) else null,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.focusRequester(focus),
+                )
+                LaunchedEffect(t) { focus.requestFocus() }
+            },
             confirmButton = {
                 TextButton(onClick = {
-                    vm.setBudget(t.categoryId, Money.parseToPaise(text))
-                    target = null
+                    // Save never clears. It used to hand the parse result straight to setBudget,
+                    // where null means CLEAR: "10,000" deleted the budget, and the gate went silent
+                    // with it (review, 2026-10-11). Clearing has its own button.
+                    when (val paise = Money.parseUserAmount(field.text)) {
+                        null -> invalid = true
+                        else -> { vm.setBudget(t.categoryId, paise); target = null }
+                    }
                 }) { Text("Save") }
             },
             dismissButton = {
                 Row {
                     if (t.currentPaise != null) {
-                        TextButton(onClick = { vm.setBudget(t.categoryId, null); target = null }) { Text("Clear") }
+                        TextButton(onClick = { vm.clearBudget(t.categoryId); target = null }) { Text("Clear") }
                     }
                     TextButton(onClick = { target = null }) { Text("Cancel") }
                 }

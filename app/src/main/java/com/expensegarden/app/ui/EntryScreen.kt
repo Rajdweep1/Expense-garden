@@ -232,7 +232,7 @@ fun EntryScreen(vm: MainViewModel, onDone: () -> Unit) {
 
         Button(
             onClick = {
-                val amountPaise = Money.parseToPaise(draft.amountText)
+                val amountPaise = Money.parseUserAmount(draft.amountText)
                 // Both flags set in one pass, so a user learns about both problems at once
                 // rather than discovering the second after fixing the first.
                 amountError = amountPaise == null
@@ -257,7 +257,7 @@ fun EntryScreen(vm: MainViewModel, onDone: () -> Unit) {
     }
 
     gate?.let { view ->
-        val amountPaise = Money.parseToPaise(draft.amountText) ?: return@let
+        val amountPaise = Money.parseUserAmount(draft.amountText) ?: return@let
         GateDialog(
             view = view,
             onProceed = {

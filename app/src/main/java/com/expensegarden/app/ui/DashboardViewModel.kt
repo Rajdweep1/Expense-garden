@@ -59,12 +59,20 @@ class DashboardViewModel(private val container: AppContainer) : ViewModel() {
 
     fun setRegret(uuid: String, value: Regret) = viewModelScope.launch { ledger.setRegret(uuid, value) }
 
-    /** amountPaise null = clear. categoryId null = overall. Same delete+insert idiom as 1A. */
-    fun setBudget(categoryId: Long?, amountPaise: Long?) {
+    /** categoryId null = overall. Takes a real amount, never null. Save used to pass its parse
+     *  result straight through, and null means CLEAR, so a typo deleted the budget and switched
+     *  the gate off (review, 2026-10-11). Clearing is its own call, from its own button. */
+    fun setBudget(categoryId: Long?, amountPaise: Long) {
         viewModelScope.launch {
             // Month key resolved at call time, not VM birth. The delete+insert idiom and the
             // sync tombstone rule both live in BudgetRepository now (spec §2.5).
             container.budgets.setBudget(categoryId, ledger.currentMonthKey(), amountPaise)
+        }
+    }
+
+    fun clearBudget(categoryId: Long?) {
+        viewModelScope.launch {
+            container.budgets.setBudget(categoryId, ledger.currentMonthKey(), null)
         }
     }
 

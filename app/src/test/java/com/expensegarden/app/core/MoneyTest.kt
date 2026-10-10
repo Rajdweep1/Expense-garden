@@ -54,4 +54,30 @@ class MoneyTest {
     }
     @Test fun `formats intent amount`() = assertEquals("450.50", Money.intentAmount(45050L))
     @Test fun `formats intent amount whole`() = assertEquals("450.00", Money.intentAmount(45000L))
+
+    // ---------- typed amounts (review fix, 2026-10-11) ----------
+
+    @Test fun `typed amounts may carry grouping, spaces and a rupee sign`() {
+        assertEquals(1_000_000L, Money.parseUserAmount("10,000"))
+        assertEquals(10_000_000L, Money.parseUserAmount("1,00,000"))
+        assertEquals(1_000_000L, Money.parseUserAmount("₹10,000"))
+        assertEquals(1_000_000L, Money.parseUserAmount(" 10 000 "))
+        assertEquals(1_200_050L, Money.parseUserAmount("12,000.50"))
+    }
+
+    @Test fun `typed amounts are still strict once the decoration is gone`() {
+        assertNull(Money.parseUserAmount(""))
+        assertNull(Money.parseUserAmount("abc"))
+        assertNull(Money.parseUserAmount("0"))
+        assertNull(Money.parseUserAmount("-5"))
+        assertNull(Money.parseUserAmount("1,000.505"))
+        // The input that deleted a budget on 2026-10-11. It must be a value, never "nothing".
+        assertEquals(1_200_000L, Money.parseUserAmount("12,000"))
+    }
+
+    @Test fun `an amount field shows whole rupees without paise`() {
+        assertEquals("10000", Money.inputText(1_000_000L))
+        assertEquals("12000.50", Money.inputText(1_200_050L))
+        assertEquals("12000.05", Money.inputText(1_200_005L))
+    }
 }
