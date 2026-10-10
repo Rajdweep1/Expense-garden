@@ -58,6 +58,18 @@ filter option.
 **`connectedDebugAndroidTest` uninstalls both APKs when it finishes.** Chaining
 `installDebug` before it in one command leaves the device with no app. Install last, alone.
 
+**Once the phone holds the real ledger, never run `connectedDebugAndroidTest` with it plugged in.**
+The task runs on *every* attached device, and its uninstall deletes the app's data — ledger
+included. Charging the phone from the Mac while testing on the emulator is enough to do it. Pin the
+target instead: `ANDROID_SERIAL=emulator-5554 ./gradlew connectedDebugAndroidTest`. The only
+fallback is Android Auto Backup, which deliberately includes the Room DB
+(`res/xml/backup_rules.xml`) but runs at most once a day, and only when the phone is idle and (by
+default) on Wi-Fi — so a wipe loses at least that day's entries, and everything if backup is off on
+the phone. 2B's server is the real fix, and it isn't deployed. The same goes for the debug keystore:
+`~/.android/debug.keystore` signs the app that holds the ledger, so if `installDebug` ever fails
+with `INSTALL_FAILED_UPDATE_INCOMPATIBLE` (new machine, Android Studio reinstall), restore the old
+keystore — never "fix" it by uninstalling.
+
 Backend:
 
 ```bash
