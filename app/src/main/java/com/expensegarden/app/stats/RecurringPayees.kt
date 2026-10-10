@@ -37,6 +37,9 @@ object RecurringPayees {
 
     /**
      * @param txns any superset of the look-back window; non-LOGGED rows are ignored.
+     * @param ledgerBeganAt when the ledger began (StreakBaseline.ledgerBeganAt); null = unknown,
+     *   which keeps every month with data eligible. Required rather than defaulted: four callers
+     *   compute fixed spend, and a default would let one quietly skip the floor.
      * @return payee ids that behave like a fixed monthly cost. Empty when there is no complete
      *   month of history yet, which degrades to the plain linear projection.
      */
@@ -44,19 +47,27 @@ object RecurringPayees {
         txns: List<TransactionEntity>,
         currentMonth: YearMonth,
         zone: ZoneId,
+        ledgerBeganAt: Long?,
     ): Set<Long> {
         val byMonth = txns.asSequence()
             .filter { it.status == TxnStatus.LOGGED }
             .groupBy { YearMonth.from(Instant.ofEpochMilli(it.occurredAt).atZone(zone)) }
 
-        // A month counts as a look-back month only if the dataset has data in it. That is what
-        // lets a fresh install with one month of history get detection instead of waiting for
-        // a second — and it means "absent from a look-back month" only disqualifies a payee
-        // when some OTHER payee proves that month existed. The two cases look identical from
-        // one payee's rows alone, which is worth knowing before changing this.
+        // A month counts as a look-back month only if the dataset has data in it AND the ledger
+        // watched all of it.
+        //
+        // The first half is what lets a fresh install with one month of history get detection
+        // instead of waiting for a second. It means "absent from a look-back month" only
+        // disqualifies a payee when some OTHER payee proves that month existed. The two cases
+        // look identical from one payee's rows alone, which is worth knowing before changing this.
+        //
+        // The second half is the 2026-10-11 fix. A fresh install's partial first month makes every
+        // payee seen once look like rent, so next month's spend with them passed straight through
+        // the pace line: PACE_WARNING became OK (GateScopeTest pins it). StreakBaseline fixed the
+        // same mistake for streaks.
         val lookBack = (1..LOOK_BACK_MONTHS)
             .map { currentMonth.minusMonths(it.toLong()) }
-            .filter { byMonth.containsKey(it) }
+            .filter { byMonth.containsKey(it) && observedInFull(it, ledgerBeganAt, zone) }
         if (lookBack.isEmpty()) return emptySet()
 
         return lookBack
@@ -64,6 +75,11 @@ object RecurringPayees {
             .map { counts -> counts.filterValues { it == 1 }.keys }
             .reduce { acc, ids -> acc intersect ids }
     }
+
+    /** Day granularity, as in StreakBaseline: a ledger that began on the 1st watched the month. */
+    private fun observedInFull(month: YearMonth, ledgerBeganAt: Long?, zone: ZoneId): Boolean =
+        ledgerBeganAt == null ||
+            !Instant.ofEpochMilli(ledgerBeganAt).atZone(zone).toLocalDate().isAfter(month.atDay(1))
 
     /** This month's spend attributable to fixed costs.
      *

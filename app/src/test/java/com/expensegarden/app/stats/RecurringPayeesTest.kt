@@ -23,8 +23,11 @@ class RecurringPayeesTest {
             occurredAt = at(y, m, d), createdAt = at(y, m, d), updatedAt = 1L,
         )
 
-    private fun detect(txns: List<TransactionEntity>, current: YearMonth = YearMonth.of(2026, 9)) =
-        RecurringPayees.detect(txns, current, zone)
+    private fun detect(
+        txns: List<TransactionEntity>,
+        current: YearMonth = YearMonth.of(2026, 9),
+        ledgerBeganAt: Long? = null,
+    ) = RecurringPayees.detect(txns, current, zone, ledgerBeganAt)
 
     @Test fun `a payee billed once a month in every look-back month is recurring`() {
         assertEquals(setOf(1L), detect(listOf(txn(1, 2026, 7, 1), txn(1, 2026, 8, 1))))
@@ -96,4 +99,22 @@ class RecurringPayeesTest {
         val month = listOf(txn(1, 2026, 9, 1, amountPaise = 1_800_000).copy(status = TxnStatus.DISCARDED))
         assertEquals(0L, RecurringPayees.fixedSpentPaise(month, setOf(1L)))
     }
+
+    // ---- a ledger that wasn't watching (review fix, 2026-10-11) ----
+    // One dinner in a partly observed October must not make the restaurant "rent" in November.
+
+    private val dinnerInOctober = listOf(txn(7, 2026, 10, 24, amountPaise = 150_000))
+    private val november = YearMonth.of(2026, 11)
+
+    @Test fun `a month the ledger only partly watched is not a look-back month`() =
+        assertEquals(emptySet<Long>(), detect(dinnerInOctober, november, ledgerBeganAt = at(2026, 10, 20)))
+
+    @Test fun `a ledger that began on the 1st watched the whole month`() =
+        assertEquals(setOf(7L), detect(dinnerInOctober, november, ledgerBeganAt = at(2026, 10, 1)))
+
+    @Test fun `a ledger that began earlier counts the month in full`() =
+        assertEquals(setOf(7L), detect(dinnerInOctober, november, ledgerBeganAt = at(2026, 9, 28)))
+
+    @Test fun `an unknown beginning keeps every month with data`() =
+        assertEquals(setOf(7L), detect(dinnerInOctober, november, ledgerBeganAt = null))
 }

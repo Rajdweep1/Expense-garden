@@ -38,6 +38,10 @@ class GardenRepository(
             zone = zone,
         )
 
+    /** When the ledger began. See StreakBaseline.ledgerBeganAt. */
+    suspend fun ledgerBeganAt(): Long? =
+        StreakBaseline.ledgerBeganAt(prefs.firstObservedAt, db.gameEventDao().earliestCreatedAt())
+
     /** Live garden for the current month. Re-collection re-derives the month key (same idiom as the VMs). */
     fun observeCurrentGarden(): Flow<GardenState> {
         val monthKey = ledger.currentMonthKey()
@@ -74,6 +78,7 @@ class GardenRepository(
                 sips, LocalDate.now(zone), zone, houseLevelOverride,
                 rareSignals = projectRareSignals(allEvents),
                 firstObservedDay = firstObservedDayOf(YearMonth.now(zone)),
+                ledgerBeganAt = ledgerBeganAt(),
             )
         }
     }

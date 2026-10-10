@@ -38,6 +38,7 @@ class DashboardViewModel(private val container: AppContainer) : ViewModel() {
             val ym = YearMonth.parse(monthKey)
             val lookBackFrom =
                 ledger.boundsOfMonth(ym.minusMonths(RecurringPayees.LOOK_BACK_MONTHS.toLong()).toString()).first
+            val began = container.garden.ledgerBeganAt()   // once per (re)subscription
             emitAll(
                 combine(
                     container.db.categoryDao().observeAll(),
@@ -46,7 +47,7 @@ class DashboardViewModel(private val container: AppContainer) : ViewModel() {
                     container.db.transactionDao().observeLoggedBetween(lookBackFrom, to),
                 ) { cats, sums, budgets, window ->
                     val (day, days) = ledger.today()
-                    val recurring = RecurringPayees.detect(window, ym, zone)
+                    val recurring = RecurringPayees.detect(window, ym, zone, began)
                     val fixed = RecurringPayees.fixedSpentPaise(window.filter { it.occurredAt in from..to }, recurring)
                     MonthStatsFolder.fold(
                         cats, sums.associate { it.categoryId to it.totalPaise }, budgets, fixed, day, days,

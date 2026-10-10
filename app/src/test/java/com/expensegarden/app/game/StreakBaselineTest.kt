@@ -1,6 +1,7 @@
 package com.expensegarden.app.game
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 import java.time.LocalDate
 import java.time.YearMonth
@@ -50,5 +51,14 @@ class StreakBaselineTest {
     fun `knowing nothing at all covers the whole month`() {
         // Neither recorded: assume the month is fully observed rather than inventing a floor.
         assertEquals(1, StreakBaseline.firstObservedDay(0L, null, september, zone))
+    }
+
+    @Test
+    fun `the ledger began at the earlier of first run and oldest event`() {
+        assertEquals(100L, StreakBaseline.ledgerBeganAt(200L, 100L))
+        assertEquals(100L, StreakBaseline.ledgerBeganAt(100L, 200L))
+        assertEquals(500L, StreakBaseline.ledgerBeganAt(0L, 500L))    // first run never recorded
+        assertEquals(300L, StreakBaseline.ledgerBeganAt(300L, null))  // nothing logged yet
+        assertNull(StreakBaseline.ledgerBeganAt(0L, null))
     }
 }

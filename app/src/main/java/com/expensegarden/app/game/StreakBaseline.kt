@@ -20,6 +20,15 @@ import java.time.ZoneId
 object StreakBaseline {
 
     /**
+     * When the ledger began: the earlier of the device's first run and the oldest event, or null
+     * when neither exists. The one definition every "was the ledger watching?" question shares:
+     * the streak floor below, and RecurringPayees' look-back months, which had made the same
+     * mistake on their own (review, 2026-10-11).
+     */
+    fun ledgerBeganAt(installedAtMillis: Long, earliestEventMillis: Long?): Long? =
+        listOfNotNull(installedAtMillis.takeIf { it > 0L }, earliestEventMillis).minOrNull()
+
+    /**
      * @param installedAtMillis device first-run timestamp; 0 when never recorded.
      * @param earliestEventMillis createdAt of the oldest game_event; null when the ledger is empty.
      * @return a 1-based day of `month`. 1 means "the whole month is observed".
@@ -30,13 +39,9 @@ object StreakBaseline {
         month: YearMonth,
         zone: ZoneId,
     ): Int {
-        val candidates = listOfNotNull(
-            installedAtMillis.takeIf { it > 0L },
-            earliestEventMillis,
-        )
         // Nothing recorded: treat the month as fully observed rather than inventing a floor that
         // would silently suppress a streak.
-        val earliest = candidates.minOrNull() ?: return 1
+        val earliest = ledgerBeganAt(installedAtMillis, earliestEventMillis) ?: return 1
         val date = Instant.ofEpochMilli(earliest).atZone(zone).toLocalDate()
         return when {
             YearMonth.from(date) < month -> 1          // began before this month — all of it counts

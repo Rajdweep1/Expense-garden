@@ -155,22 +155,24 @@ class LedgerRepository(
      *  Scoped to [monthKey]'s own window, not the current month's, because gate evaluation
      *  follows the transaction's `occurredAt` month for backdating — a fixed total from the
      *  wrong month would pace a backdated payment against rent it never saw. */
-    suspend fun fixedSpentPaise(monthKey: String): Long {
+    suspend fun fixedSpentPaise(monthKey: String, ledgerBeganAt: Long?): Long {
         val ym = YearMonth.parse(monthKey)
         val lookBackFrom =
             boundsOfMonth(ym.minusMonths(RecurringPayees.LOOK_BACK_MONTHS.toLong()).toString()).first
         val (from, to) = boundsOfMonth(monthKey)
         val window = db.transactionDao().loggedBetween(lookBackFrom, to)
-        val recurring = RecurringPayees.detect(window, ym, zone)
+        val recurring = RecurringPayees.detect(window, ym, zone, ledgerBeganAt)
         return RecurringPayees.fixedSpentPaise(window.filter { it.occurredAt in from..to }, recurring)
     }
 
-    /** Worst severity across scopes, evaluated in the month the txn belongs to (spec §3: backdating). */
-    suspend fun evaluateGate(categoryId: Long, amountPaise: Long, occurredAt: Long): GateVerdict {
+    /** Worst severity across scopes, evaluated in the month the txn belongs to (spec §3: backdating).
+     *  @param ledgerBeganAt see StreakBaseline.ledgerBeganAt. Required: this repository has no
+     *    GardenPrefs of its own to look it up, so every caller has to bring it. */
+    suspend fun evaluateGate(categoryId: Long, amountPaise: Long, occurredAt: Long, ledgerBeganAt: Long?): GateVerdict {
         val (day, days) = dayAndLengthOf(occurredAt)
         val monthKey = monthKeyOf(occurredAt)
         return GateAggregator.aggregate(
-            scopeInputs(categoryId, occurredAt), amountPaise, fixedSpentPaise(monthKey), day, days,
+            scopeInputs(categoryId, occurredAt), amountPaise, fixedSpentPaise(monthKey, ledgerBeganAt), day, days,
         )
     }
 

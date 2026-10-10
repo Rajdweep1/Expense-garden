@@ -38,14 +38,14 @@ class GateScopeTest {
             breachedAtLogging = false,
         )
         // Candidate ₹200 under Chai: child rolls into the Food budget → 400+200 > 500 → BREACH, offender = Food & Drinks
-        val verdict = repo.evaluateGate(categoryId = 103, amountPaise = 20_000, occurredAt = nowMillis)
+        val verdict = repo.evaluateGate(categoryId = 103, amountPaise = 20_000, occurredAt = nowMillis, ledgerBeganAt = null)
         assertEquals(Severity.BREACH, verdict.severity)
         assertEquals(1L, verdict.offender?.categoryId)
         assertEquals("Food & Drinks", verdict.offender?.label)
     }
 
     @Test fun no_budgets_at_all_is_ok() = runBlocking {
-        val verdict = repo.evaluateGate(categoryId = 103, amountPaise = 1_000_000, occurredAt = nowMillis)
+        val verdict = repo.evaluateGate(categoryId = 103, amountPaise = 1_000_000, occurredAt = nowMillis, ledgerBeganAt = null)
         assertEquals(Severity.OK, verdict.severity)
     }
 
@@ -54,7 +54,30 @@ class GateScopeTest {
         val lastMonthMillis = lastMonth.atDay(15).atTime(12, 0).atZone(zone).toInstant().toEpochMilli()
         db.budgetDao().insert(BudgetEntity(categoryId = null, month = lastMonth.toString(), amountPaise = 1_000, updatedAt = 1L))
         // ₹50 candidate against last month's tiny ₹10 budget → BREACH even though this month has no budget
-        val verdict = repo.evaluateGate(categoryId = 103, amountPaise = 5_000, occurredAt = lastMonthMillis)
+        val verdict = repo.evaluateGate(categoryId = 103, amountPaise = 5_000, occurredAt = lastMonthMillis, ledgerBeganAt = null)
         assertEquals(Severity.BREACH, verdict.severity)
+    }
+
+    @Test fun a_payee_seen_once_in_a_partly_watched_month_does_not_loosen_the_next_months_gate() = runBlocking {
+        fun noonOn(y: Int, m: Int, d: Int) =
+            java.time.LocalDate.of(y, m, d).atTime(12, 0).atZone(zone).toInstant().toEpochMilli()
+        db.budgetDao().insert(BudgetEntity(categoryId = null, month = "2026-11", amountPaise = 2_000_000, updatedAt = 1L))  // ₹20,000
+        // One dinner on Oct 24 in a ledger that began Oct 20, then the same place again on Nov 3.
+        for (day in listOf(noonOn(2026, 10, 24), noonOn(2026, 11, 3))) {
+            repo.saveManualLogged(
+                LedgerRepository.Draft(vpa = null, payeeName = "Dinner place", amountPaise = 150_000,
+                    categoryId = 101, note = null, occurredAt = day),
+                breachedAtLogging = false,
+            )
+        }
+        // ₹3,000 more on Nov 5: ₹4,500 against a ₹3,833 pace line is a warning.
+        val nov5 = noonOn(2026, 11, 5)
+        val floored = repo.evaluateGate(categoryId = 103, amountPaise = 300_000, occurredAt = nov5,
+            ledgerBeganAt = noonOn(2026, 10, 20))
+        assertEquals(Severity.PACE_WARNING, floored.severity)
+        // Unfloored, the dinner counts as rent and the warning goes silent: the 2026-10-11 defect.
+        val unfloored = repo.evaluateGate(categoryId = 103, amountPaise = 300_000, occurredAt = nov5,
+            ledgerBeganAt = null)
+        assertEquals(Severity.OK, unfloored.severity)
     }
 }

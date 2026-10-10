@@ -64,6 +64,7 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
             val (from, to) = ledger.boundsOfMonth(monthKey)
             val lookBackFrom =
                 ledger.boundsOfMonth(ym.minusMonths(RecurringPayees.LOOK_BACK_MONTHS.toLong()).toString()).first
+            val began = container.garden.ledgerBeganAt()   // once per (re)subscription
             emitAll(
                 combine(
                     ledger.observeMonthSpent(monthKey),
@@ -75,7 +76,7 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
                 ) { spent, budgets, window ->
                     val overall = budgets.firstOrNull { it.categoryId == null }?.amountPaise
                     val (day, days) = ledger.today()
-                    val recurring = RecurringPayees.detect(window, ym, zone)
+                    val recurring = RecurringPayees.detect(window, ym, zone, began)
                     val fixed = RecurringPayees.fixedSpentPaise(window.filter { it.occurredAt in from..to }, recurring)
                     HomeHeader(spent, overall, GateEvaluator.evaluate(spent, overall, 0L, fixed, day, days))
                 }
@@ -127,7 +128,7 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
      *  several queries evaluateGate already ran. */
     suspend fun prepareGateView(amountPaise: Long): GateView {
         val d = draft.value
-        val verdict = ledger.evaluateGate(d.categoryId!!, amountPaise, d.occurredAt)
+        val verdict = ledger.evaluateGate(d.categoryId!!, amountPaise, d.occurredAt, container.garden.ledgerBeganAt())
         if (verdict.severity == Severity.OK) return GateView.None
 
         val isNecessity = categories.value.firstOrNull { it.id == d.categoryId }?.isNecessity ?: false
@@ -166,7 +167,7 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         val d = draft.value
         viewModelScope.launch {
             // Same scope evaluation as the gate, run silently against the txn's own month (backdating).
-            val verdict = ledger.evaluateGate(d.categoryId!!, amountPaise, d.occurredAt)
+            val verdict = ledger.evaluateGate(d.categoryId!!, amountPaise, d.occurredAt, container.garden.ledgerBeganAt())
             ledger.saveManualLogged(d.toRepoDraft(amountPaise), breachedAtLogging = verdict.severity == Severity.BREACH)
         }
     }

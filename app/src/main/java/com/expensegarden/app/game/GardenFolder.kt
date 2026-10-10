@@ -96,6 +96,9 @@ object GardenFolder {
         rareSignals: List<RareSignal> = emptyList(),
         /** First day of this month the ledger covers; 1 = all of it. See StreakBaseline. */
         firstObservedDay: Int = 1,
+        /** When the ledger began (StreakBaseline.ledgerBeganAt). null = unknown: every month with
+         *  data stays a look-back month for fixed-cost detection. */
+        ledgerBeganAt: Long? = null,
     ): GardenState {
         val ym = YearMonth.from(today)
         val daysInMonth = ym.lengthOfMonth()
@@ -156,7 +159,7 @@ object GardenFolder {
 
         val currentTxns = ordered.filter { YearMonth.from(Instant.ofEpochMilli(it.occurredAt).atZone(zone)) == ym }
         val leafSums = currentTxns.groupBy { it.categoryId }.mapValues { (_, l) -> l.sumOf { it.amountPaise } }
-        val recurring = RecurringPayees.detect(ordered, ym, zone)
+        val recurring = RecurringPayees.detect(ordered, ym, zone, ledgerBeganAt)
         val fixedPaise = RecurringPayees.fixedSpentPaise(currentTxns, recurring)
         val severity = MonthStatsFolder.fold(categories, leafSums, currentBudgets, fixedPaise, today.dayOfMonth, daysInMonth).overallSeverity
         val dayTotals = currentTxns.groupBy { Instant.ofEpochMilli(it.occurredAt).atZone(zone).dayOfMonth }

@@ -102,7 +102,11 @@ class GardenFolderTest {
         allTimeInvestmentCount: Int = 0,
         today: LocalDate = LocalDate.of(2026, 7, 10),
         houseLevelOverride: Int? = null,
-    ) = GardenFolder.foldAllTime(txns, categories, budgets, events, allTimeInvestmentCount, today, zone, houseLevelOverride)
+        ledgerBeganAt: Long? = null,
+    ) = GardenFolder.foldAllTime(
+        txns, categories, budgets, events, allTimeInvestmentCount, today, zone, houseLevelOverride,
+        ledgerBeganAt = ledgerBeganAt,
+    )
 
     @Test fun `all-time fold plants every month on one island in chronological order`() {
         val g = foldAll(listOf(txn(103, day = 5, month = 7), txn(2, day = 2, month = 5), txn(103, day = 10, month = 6)))
@@ -180,5 +184,19 @@ class GardenFolderTest {
             foldAll(txns).plants.map { it.tile },
             foldAll(txns, houseLevelOverride = null).plants.map { it.tile },
         )
+    }
+
+    @Test fun `weather does not credit a one-off from a month the ledger only partly watched`() {
+        // One dinner on Oct 24 in a ledger that began Oct 20, then ₹4,500 by Nov 5 against ₹20,000.
+        // Pace allows ₹3,833 on the 5th, so this is OVERCAST. Counting the dinner as a fixed cost
+        // (every txn here shares payee 1) passed the whole month through the pace line: SUNNY.
+        val txns = listOf(
+            txn(103, day = 24, paise = 150_000, month = 10),
+            txn(103, day = 3, paise = 450_000, month = 11),
+        )
+        val budget = listOf(BudgetEntity(categoryId = null, month = "2026-11", amountPaise = 2_000_000, updatedAt = 1L))
+        val nov5 = LocalDate.of(2026, 11, 5)
+        assertEquals(Weather.OVERCAST, foldAll(txns, budget, today = nov5, ledgerBeganAt = at(20, month = 10)).weather)
+        assertEquals(Weather.SUNNY, foldAll(txns, budget, today = nov5).weather)   // unfloored: the defect
     }
 }
