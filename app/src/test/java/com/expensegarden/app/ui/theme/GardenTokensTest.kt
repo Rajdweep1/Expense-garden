@@ -96,4 +96,52 @@ class GardenTokensTest {
             }
         }
     }
+
+    private val lightContainers = with(GardenTokens) {
+        listOf(LightSurfaceDim, LightSurfaceBright, LightSurfaceContainerLowest, LightSurfaceContainerLow,
+            LightSurfaceContainer, LightSurfaceContainerHigh, LightSurfaceContainerHighest)
+    }
+    private val darkContainers = with(GardenTokens) {
+        listOf(DarkSurfaceDim, DarkSurfaceBright, DarkSurfaceContainerLowest, DarkSurfaceContainerLow,
+            DarkSurfaceContainer, DarkSurfaceContainerHigh, DarkSurfaceContainerHighest)
+    }
+
+    /** Cards, dialogs and sheets sit on these; body and supporting text must clear AA on all. */
+    @Test
+    fun `text clears 4_5 to 1 on every surface container`() {
+        with(GardenTokens) {
+            for (c in lightContainers) {
+                assertContrast("light onSurface on #%06X".format(c), LightOnSurface, c, 4.5)
+                assertContrast("light onSurfaceVariant on #%06X".format(c), LightOnSurfaceVariant, c, 4.5)
+            }
+            for (c in darkContainers) {
+                assertContrast("dark onSurface on #%06X".format(c), DarkOnSurface, c, 4.5)
+                assertContrast("dark onSurfaceVariant on #%06X".format(c), DarkOnSurfaceVariant, c, 4.5)
+            }
+        }
+    }
+
+    /** The purple was a hue, not a contrast: #ECE6F0 passes every contrast floor in this file. So
+     *  the containers must also stay in their own surface's hue family. */
+    @Test
+    fun `surface containers keep their surface's hue`() {
+        val families = listOf(GardenTokens.LightSurface to lightContainers, GardenTokens.DarkSurface to darkContainers)
+        for ((surface, family) in families) {
+            // Below chroma 2 a hue angle is rounding noise (white has none), so those are skipped.
+            for (c in family.filter { ContrastMath.chroma(it) >= 2.0 }) {
+                val sep = ContrastMath.hueSeparation(c, surface)
+                assertTrue("#%06X is %.1f deg from its surface, needs 30 or less".format(c, sep), sep <= 30.0)
+            }
+        }
+    }
+
+    @Test
+    fun `inverse pairs clear 4_5 to 1`() {
+        with(GardenTokens) {
+            assertContrast("light inverseOnSurface", LightInverseOnSurface, LightInverseSurface, 4.5)
+            assertContrast("light inversePrimary", LightInversePrimary, LightInverseSurface, 4.5)
+            assertContrast("dark inverseOnSurface", DarkInverseOnSurface, DarkInverseSurface, 4.5)
+            assertContrast("dark inversePrimary", DarkInversePrimary, DarkInverseSurface, 4.5)
+        }
+    }
 }

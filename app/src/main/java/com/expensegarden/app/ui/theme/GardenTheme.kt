@@ -42,11 +42,15 @@ object GardenStatus {
         @Composable @ReadOnlyComposable get() = LocalGardenStatusColors.current
 }
 
-private val LightScheme = lightColorScheme(
+/** All 36 of ColorScheme's roles, each from a token. Leave one out and Material fills it with its
+ *  baseline purple. Eleven were left out until 2026-10-11, which is why every dialog, card and
+ *  sheet was lavender. GardenSchemeTest fails if this and GardenTokens.lightRoles ever disagree. */
+internal val GardenLightScheme = lightColorScheme(
     primary = rgb(GardenTokens.LightPrimary),
     onPrimary = rgb(GardenTokens.LightOnPrimary),
     primaryContainer = rgb(GardenTokens.LightPrimaryContainer),
     onPrimaryContainer = rgb(GardenTokens.LightOnPrimaryContainer),
+    inversePrimary = rgb(GardenTokens.LightInversePrimary),
     secondary = rgb(GardenTokens.LightSecondary),
     onSecondary = rgb(GardenTokens.LightOnSecondary),
     secondaryContainer = rgb(GardenTokens.LightSecondaryContainer),
@@ -55,24 +59,37 @@ private val LightScheme = lightColorScheme(
     onTertiary = rgb(GardenTokens.LightOnTertiary),
     tertiaryContainer = rgb(GardenTokens.LightTertiaryContainer),
     onTertiaryContainer = rgb(GardenTokens.LightOnTertiaryContainer),
-    error = rgb(GardenTokens.LightError),
-    onError = rgb(GardenTokens.LightOnError),
-    errorContainer = rgb(GardenTokens.LightErrorContainer),
-    onErrorContainer = rgb(GardenTokens.LightOnErrorContainer),
     background = rgb(GardenTokens.LightSurface),
     onBackground = rgb(GardenTokens.LightOnSurface),
     surface = rgb(GardenTokens.LightSurface),
     onSurface = rgb(GardenTokens.LightOnSurface),
     surfaceVariant = rgb(GardenTokens.LightSurfaceVariant),
     onSurfaceVariant = rgb(GardenTokens.LightOnSurfaceVariant),
+    surfaceTint = rgb(GardenTokens.LightPrimary),
+    inverseSurface = rgb(GardenTokens.LightInverseSurface),
+    inverseOnSurface = rgb(GardenTokens.LightInverseOnSurface),
+    error = rgb(GardenTokens.LightError),
+    onError = rgb(GardenTokens.LightOnError),
+    errorContainer = rgb(GardenTokens.LightErrorContainer),
+    onErrorContainer = rgb(GardenTokens.LightOnErrorContainer),
     outline = rgb(GardenTokens.LightOutline),
+    outlineVariant = rgb(GardenTokens.LightOutlineVariant),
+    scrim = rgb(GardenTokens.LightScrim),
+    surfaceBright = rgb(GardenTokens.LightSurfaceBright),
+    surfaceContainer = rgb(GardenTokens.LightSurfaceContainer),
+    surfaceContainerHigh = rgb(GardenTokens.LightSurfaceContainerHigh),
+    surfaceContainerHighest = rgb(GardenTokens.LightSurfaceContainerHighest),
+    surfaceContainerLow = rgb(GardenTokens.LightSurfaceContainerLow),
+    surfaceContainerLowest = rgb(GardenTokens.LightSurfaceContainerLowest),
+    surfaceDim = rgb(GardenTokens.LightSurfaceDim),
 )
 
-private val DarkScheme = darkColorScheme(
+internal val GardenDarkScheme = darkColorScheme(
     primary = rgb(GardenTokens.DarkPrimary),
     onPrimary = rgb(GardenTokens.DarkOnPrimary),
     primaryContainer = rgb(GardenTokens.DarkPrimaryContainer),
     onPrimaryContainer = rgb(GardenTokens.DarkOnPrimaryContainer),
+    inversePrimary = rgb(GardenTokens.DarkInversePrimary),
     secondary = rgb(GardenTokens.DarkSecondary),
     onSecondary = rgb(GardenTokens.DarkOnSecondary),
     secondaryContainer = rgb(GardenTokens.DarkSecondaryContainer),
@@ -81,17 +98,29 @@ private val DarkScheme = darkColorScheme(
     onTertiary = rgb(GardenTokens.DarkOnTertiary),
     tertiaryContainer = rgb(GardenTokens.DarkTertiaryContainer),
     onTertiaryContainer = rgb(GardenTokens.DarkOnTertiaryContainer),
-    error = rgb(GardenTokens.DarkError),
-    onError = rgb(GardenTokens.DarkOnError),
-    errorContainer = rgb(GardenTokens.DarkErrorContainer),
-    onErrorContainer = rgb(GardenTokens.DarkOnErrorContainer),
     background = rgb(GardenTokens.DarkSurface),
     onBackground = rgb(GardenTokens.DarkOnSurface),
     surface = rgb(GardenTokens.DarkSurface),
     onSurface = rgb(GardenTokens.DarkOnSurface),
     surfaceVariant = rgb(GardenTokens.DarkSurfaceVariant),
     onSurfaceVariant = rgb(GardenTokens.DarkOnSurfaceVariant),
+    surfaceTint = rgb(GardenTokens.DarkPrimary),
+    inverseSurface = rgb(GardenTokens.DarkInverseSurface),
+    inverseOnSurface = rgb(GardenTokens.DarkInverseOnSurface),
+    error = rgb(GardenTokens.DarkError),
+    onError = rgb(GardenTokens.DarkOnError),
+    errorContainer = rgb(GardenTokens.DarkErrorContainer),
+    onErrorContainer = rgb(GardenTokens.DarkOnErrorContainer),
     outline = rgb(GardenTokens.DarkOutline),
+    outlineVariant = rgb(GardenTokens.DarkOutlineVariant),
+    scrim = rgb(GardenTokens.DarkScrim),
+    surfaceBright = rgb(GardenTokens.DarkSurfaceBright),
+    surfaceContainer = rgb(GardenTokens.DarkSurfaceContainer),
+    surfaceContainerHigh = rgb(GardenTokens.DarkSurfaceContainerHigh),
+    surfaceContainerHighest = rgb(GardenTokens.DarkSurfaceContainerHighest),
+    surfaceContainerLow = rgb(GardenTokens.DarkSurfaceContainerLow),
+    surfaceContainerLowest = rgb(GardenTokens.DarkSurfaceContainerLowest),
+    surfaceDim = rgb(GardenTokens.DarkSurfaceDim),
 )
 
 /**
@@ -106,6 +135,6 @@ fun GardenTheme(
     CompositionLocalProvider(
         LocalGardenStatusColors provides if (dark) DarkStatus else LightStatus,
     ) {
-        MaterialTheme(colorScheme = if (dark) DarkScheme else LightScheme, content = content)
+        MaterialTheme(colorScheme = if (dark) GardenDarkScheme else GardenLightScheme, content = content)
     }
 }
