@@ -45,8 +45,8 @@ toolchain pin. Use the keg-only Homebrew JDK, whose path is stable across 17.x p
 ```bash
 export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
 
-./gradlew testDebugUnitTest                 # JVM unit tests (347)
-./gradlew connectedDebugAndroidTest         # instrumented (71) — needs an emulator/device
+./gradlew testDebugUnitTest                 # JVM unit tests (361)
+./gradlew connectedDebugAndroidTest         # instrumented (72) — needs an emulator/device
 ./gradlew installDebug                      # build + install
 ```
 
