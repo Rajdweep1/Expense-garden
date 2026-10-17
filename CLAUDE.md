@@ -75,8 +75,9 @@ Backend:
 ```bash
 cd backend/core-api
 DATABASE_URL="postgres://$(whoami)@localhost:5432/expense_garden?sslmode=disable" \
-  SYNC_TOKEN=<generated> go run ./cmd/api
-TEST_DATABASE_URL="postgres://$(whoami)@localhost:5432/expense_garden?sslmode=disable" go test ./...
+  SYNC_TOKEN="$(openssl rand -base64 32)" go run ./cmd/api
+# Tests DELETE every row in the database they point at: never the dev server's.
+TEST_DATABASE_URL="postgres://$(whoami)@localhost:5432/expense_garden_test?sslmode=disable" go test ./...
 ```
 
 Emulator — the bare `-avd` command is not enough, all three flags matter:
