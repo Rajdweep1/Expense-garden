@@ -116,7 +116,7 @@ private fun GardenNav(
                                 .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
                                 .setPrompt("Scan a UPI QR")
                                 .setBeepEnabled(false)
-                                .setOrientationLocked(true)
+                                .setOrientationLocked(false)
                         )
                     },
                     onManual = { vm.startManualDraft(); nav.navigate("entry") },
