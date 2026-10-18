@@ -110,11 +110,13 @@ fun DashboardScreen(vm: DashboardViewModel, onBack: () -> Unit = {}) {
                     s.perDayPaise?.let {
                         Text("${Money.display(it)}/day keeps you under", style = MaterialTheme.typography.bodyMedium)
                     }
-                    Text(
-                        severityLine(s.overallSeverity),
-                        color = severityColor(s.overallSeverity),
-                        style = MaterialTheme.typography.labelMedium,
-                    )
+                    paceLine(s.overallSeverity, s.overallBudgetPaise)?.let {
+                        Text(
+                            it,
+                            color = severityColor(s.overallSeverity),
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                    }
                 }
             }
 
@@ -244,12 +246,6 @@ private fun CategoryRow(row: ScopeStat, modifier: Modifier = Modifier, onClick: 
             )
         }
     }
-}
-
-private fun severityLine(s: Severity) = when (s) {
-    Severity.OK -> "on pace"
-    Severity.PACE_WARNING -> "ahead of pace"
-    Severity.BREACH -> "over budget"
 }
 
 /** Green / amber / red. Never `primary`/`tertiary` again — those are brand slots, and using
