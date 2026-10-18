@@ -1,8 +1,11 @@
 package com.expensegarden.app.ui
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.CreationExtras
 import com.expensegarden.app.AppContainer
 import com.expensegarden.app.capture.UpiPayee
 import com.expensegarden.app.core.Money
@@ -46,11 +49,18 @@ data class EntryDraft(
 /** Home header: null while Room's first emission is in flight (loading skeleton). */
 data class HomeHeader(val spentPaise: Long, val overallBudgetPaise: Long?, val hint: Severity)
 
-class MainViewModel(private val container: AppContainer) : ViewModel() {
+class MainViewModel(private val container: AppContainer, private val saved: SavedStateHandle) : ViewModel() {
     private val ledger = container.ledger
     private val zone: ZoneId = ZoneId.systemDefault()
 
-    val draft = MutableStateFlow(EntryDraft())
+    /** Restored after process death: Android kills a backgrounded app freely, and a half-typed
+     *  entry, or a scanned payee, used to vanish with it (review, 2026-10-11). Every change is
+     *  written through to [saved], which the system persists with the activity. */
+    val draft = MutableStateFlow(DraftState.restore(saved) ?: EntryDraft())
+
+    init {
+        viewModelScope.launch { draft.collect { DraftState.save(saved, it) } }
+    }
 
     val categories: StateFlow<List<CategoryEntity>> =
         container.db.categoryDao().observeAll()
@@ -203,7 +213,8 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     companion object {
         fun factory(container: AppContainer) = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T = MainViewModel(container) as T
+            override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T =
+                MainViewModel(container, extras.createSavedStateHandle()) as T
         }
     }
 }
