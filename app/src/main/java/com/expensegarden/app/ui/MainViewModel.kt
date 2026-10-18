@@ -131,7 +131,7 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         val verdict = ledger.evaluateGate(d.categoryId!!, amountPaise, d.occurredAt, container.garden.ledgerBeganAt())
         if (verdict.severity == Severity.OK) return GateView.None
 
-        val isNecessity = categories.value.firstOrNull { it.id == d.categoryId }?.isNecessity ?: false
+        val isNecessity = ledger.isNecessity(d.categoryId!!)
         // Necessities never ASK for a quip — not "ask and discard". QuipRepository.pick marks the
         // row used, so asking here would consume one from the no-repeat rotation for a dialog
         // that never shows it.

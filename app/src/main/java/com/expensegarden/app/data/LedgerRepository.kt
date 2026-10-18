@@ -176,6 +176,12 @@ class LedgerRepository(
         )
     }
 
+    /** Whether the gate treats [categoryId] as a necessity, read from the database. It used to be
+     *  read from a UI StateFlow, which is empty until Room's first emission and would then have
+     *  answered "not a necessity": a quip and a dodge credit for a chemist run (review, 2026-10-11). */
+    suspend fun isNecessity(categoryId: Long): Boolean =
+        db.categoryDao().byId(categoryId)?.isNecessity ?: false
+
     private suspend fun save(
         draft: Draft,
         source: TxnSource,

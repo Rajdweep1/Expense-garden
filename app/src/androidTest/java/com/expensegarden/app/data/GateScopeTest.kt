@@ -80,4 +80,12 @@ class GateScopeTest {
             ledgerBeganAt = null)
         assertEquals(Severity.OK, unfloored.severity)
     }
+
+    @Test fun the_gate_reads_necessity_from_the_database() = runBlocking {
+        // Seed: Groceries (2) and Rent (401) are necessities; Shopping (7) is not.
+        assertEquals(true, repo.isNecessity(2))
+        assertEquals(true, repo.isNecessity(401))
+        assertEquals(false, repo.isNecessity(7))
+        assertEquals(false, repo.isNecessity(9_999))
+    }
 }
