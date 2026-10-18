@@ -134,7 +134,8 @@ Phase 1: **1A capture core** (done bar the real-payment E2E) → **1B budgets + 
 **1E Fortune City CSV import** (not started — verify FC's CSV export actually exists first).
 
 Phase 2 backend, split three ways: **2A sync core** (done — Go core-api + Postgres,
-wipe-and-restore verified) → **2B deploy** (runbook written; Neon + Koyeb, awaiting signup)
+wipe-and-restore verified) → **2B deploy** (runbook written; Neon + Google Cloud Run — Koyeb dropped 2026-10-18 when it
+stopped being free for new accounts; awaiting signup)
 → **2C durability** (backups, Sentry — deferred).
 
 **Phase 3 (`ai-svc`) is dropped.** 1D delivers persona and digests on-device at ₹0 with the
