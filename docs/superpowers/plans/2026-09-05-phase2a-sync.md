@@ -32,7 +32,7 @@
 
 - **A column's SQL default and its Kotlin default are different things, and this plan depends on the difference.** `updatedAt` gets `@ColumnInfo(defaultValue = "0")` so the migration's `ADD COLUMN ... NOT NULL DEFAULT 0` matches what Room validates, but it gets **no Kotlin default value**, so every construction site must supply a stamp and the compiler enforces it. Do not "tidy" this by adding `= 0L`; that silently reopens the hole spec §2.4 closes.
 
-- **Postgres on this machine is shared.** A Homebrew `postgresql@17` service is already running on 5432 and serves the user's SiteRecon work. Create and use the `expense_garden` database only. Never `DROP DATABASE` anything else, never touch `postgres`, and never run `psql` without an explicit `-d expense_garden`.
+- **Postgres on this machine is shared.** A Homebrew `postgresql@17` service is already running on 5432 and serves the user's other work. Create and use the `expense_garden` database only. Never `DROP DATABASE` anything else, never touch `postgres`, and never run `psql` without an explicit `-d expense_garden`.
 
 - **`SeedCallback` is the one category write the compiler cannot police.** It inserts with raw SQL, bypassing the entity constructor, so it must set `updatedAt` explicitly. Left at the column default of 0, every seeded category is invisible to the dirty predicate forever — and since `txn.category_id` is a real FK on the server, the first transaction push is rejected and degrades to silence. Fresh installs only; the migration covers upgrades, which is why no upgrade test catches it.
 

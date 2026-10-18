@@ -19,7 +19,7 @@ architecture. Hard constraint: everything runs at ₹0/month.
 - Subagents and workflows are permitted, but he has asked for inline work by default —
   don't fan out dozens of agents for something you can do yourself. Whatever a subagent
   reports, verify its evidence before repeating it to him.
-- He's a senior Python backend dev (FastAPI/LangGraph at SiteRecon); new to Android/Kotlin;
+- He's a senior Python backend dev (FastAPI/LangGraph); new to Android/Kotlin;
   Go is a deliberate learning goal. Explain Android-isms briefly. Give ONE recommendation
   with honest pushback, not option surveys.
 
