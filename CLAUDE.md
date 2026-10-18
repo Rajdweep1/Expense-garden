@@ -45,8 +45,8 @@ toolchain pin. Use the keg-only Homebrew JDK, whose path is stable across 17.x p
 ```bash
 export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
 
-./gradlew testDebugUnitTest                 # JVM unit tests (361)
-./gradlew connectedDebugAndroidTest         # instrumented (72) — needs an emulator/device
+./gradlew testDebugUnitTest                 # JVM unit tests (365)
+./gradlew connectedDebugAndroidTest         # instrumented (73) — needs an emulator/device
 ./gradlew installDebug                      # build + install
 ```
 
@@ -133,10 +133,10 @@ Phase 1: **1A capture core** (done bar the real-payment E2E) → **1B budgets + 
 (done) → **1C garden** (done, through 1C.7) → **1D AI** (done, verified on device) →
 **1E Fortune City CSV import** (not started — verify FC's CSV export actually exists first).
 
-Phase 2 backend, split three ways: **2A sync core** (done — Go core-api + Postgres,
-wipe-and-restore verified) → **2B deploy** (runbook written; Neon + Google Cloud Run — Koyeb dropped 2026-10-18 when it
-stopped being free for new accounts; awaiting signup)
-→ **2C durability** (backups, Sentry — deferred).
+Phase 2 backend, split three ways: **2A sync core** (done — Go core-api + Postgres, auth
+hardened 2026-10-18, wipe-and-restore verified) → **2B deploy** (runbook written; Neon + Google
+Cloud Run — Koyeb dropped 2026-10-18 when it stopped being free for new accounts; awaiting
+signup) → **2C durability** (backups, Sentry — deferred).
 
 **Phase 3 (`ai-svc`) is dropped.** 1D delivers persona and digests on-device at ₹0 with the
 LLM outside every read path; moving it server-side would spend the offline guarantee for
@@ -151,6 +151,9 @@ without running `GardenTokensTest`) → **the gate redesign** (done 2026-09-17 �
 neutral card with no quip and no gate-dodge credit, breaches preview the actual weed, pace
 warnings name the streak; `StreakMath` and `GardenFolder.noSpendByMonth` now floor at the day the
 ledger began, so a fresh install stops earning rares and streaks for days it wasn't there) →
+**the review fixes** (done 2026-10-11/18 — budget Save can't clear, home chrome readable in dark
+mode, every colour role from a token, fixed-cost detection floors at the ledger's start, upright
+scanner, drafts survive process death) →
 read-only
 web dashboard (needs a deployed core-api), Play Store hardening, investments via CAS parsing.
 
