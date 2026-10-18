@@ -107,4 +107,11 @@ class IsoMathTest {
         assertEquals(centroid(2).first, centroid(4).first, 0.01f)
         assertEquals(centroid(2).second, centroid(4).second, 0.01f)
     }
+
+    @Test fun `a month sign faces the house on the home island and keeps left elsewhere`() {
+        assertEquals(1f, IsoMath.signpostSide(tileCenterX = 100f, houseX = 500f, worldMode = true), 0f)
+        assertEquals(-1f, IsoMath.signpostSide(tileCenterX = 900f, houseX = 500f, worldMode = true), 0f)
+        assertEquals(-1f, IsoMath.signpostSide(tileCenterX = 500f, houseX = 500f, worldMode = true), 0f)
+        assertEquals(-1f, IsoMath.signpostSide(tileCenterX = 100f, houseX = 500f, worldMode = false), 0f)
+    }
 }
