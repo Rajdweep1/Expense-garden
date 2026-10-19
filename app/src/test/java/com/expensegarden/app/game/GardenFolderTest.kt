@@ -135,6 +135,20 @@ class GardenFolderTest {
         assertEquals(0, fold(chai + rent, budget, today = today).streakDays)   // the plain line: rent fails day 1
     }
 
+    @Test fun `a second payment to a recurring payee counts against the line`() {
+        // ₹10,000 rent on the 1st is the month's fixed cost; another ₹10,000 to the landlord on the
+        // 2nd is spending, and it keeps every later day over a ₹30,000 budget's line.
+        val juneRent = txn(2, day = 1, paise = 1_000_000, month = 6).copy(payeeId = 77)
+        val july = listOf(
+            txn(2, day = 1, paise = 1_000_000).copy(payeeId = 77),
+            txn(2, day = 2, paise = 1_000_000).copy(payeeId = 77),
+        )
+        val budget = listOf(BudgetEntity(categoryId = null, month = "2026-07", amountPaise = 3_000_000, updatedAt = 1L))
+        val today = LocalDate.of(2026, 7, 10)
+        assertEquals(0, fold(july, budget, today = today, recurringPayeeIds = setOf(77L)).streakDays)
+        assertEquals(0, foldAll(listOf(juneRent) + july, budget, today = today).streakDays)   // detects 77 from June
+    }
+
     @Test fun `all-time fold plants every month on one island in chronological order`() {
         val g = foldAll(listOf(txn(103, day = 5, month = 7), txn(2, day = 2, month = 5), txn(103, day = 10, month = 6)))
         assertEquals(3, g.plants.size)

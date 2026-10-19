@@ -13,6 +13,7 @@ import com.expensegarden.app.game.RarePairing
 import com.expensegarden.app.game.RareSignal
 import com.expensegarden.app.game.RareTier
 import com.expensegarden.app.stats.CategoryTree
+import com.expensegarden.app.stats.RecurringPayees
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
@@ -271,7 +272,7 @@ class GardenRepository(
         return StreakMath.underPaceStreak(
             byDay(monthTxns), overall, LocalDate.now(zone).dayOfMonth, nowMonth.lengthOfMonth(),
             firstObservedDayOf(nowMonth),
-            fixedByDayPaise = byDay(monthTxns.filter { it.payeeId in recurring }),
+            fixedByDayPaise = byDay(RecurringPayees.fixedPayments(monthTxns, recurring)),
             budgetByDayPaise = overallByDayOf(nowMonth),
         )
     }

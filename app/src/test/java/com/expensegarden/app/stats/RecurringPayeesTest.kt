@@ -86,13 +86,22 @@ class RecurringPayeesTest {
         assertEquals(emptySet<Long>(), detect(txns) - 99L)
     }
 
-    @Test fun `fixed spend sums only this month's recurring payees`() {
+    @Test fun `only a recurring payee's first payment of the month is fixed`() {
         val month = listOf(
-            txn(1, 2026, 9, 1, amountPaise = 1_800_000),   // rent, recurring
-            txn(2, 2026, 9, 3, amountPaise = 45_000),      // lunch, not
-            txn(1, 2026, 9, 9, amountPaise = 500),         // same payee again, still counted
+            txn(1, 2026, 9, 9, amountPaise = 500),          // the same payee again: variable spend
+            txn(1, 2026, 9, 1, amountPaise = 1_800_000),    // rent: the month's first payment to it
+            txn(2, 2026, 9, 3, amountPaise = 45_000),       // lunch, not recurring
         )
-        assertEquals(1_800_500L, RecurringPayees.fixedSpentPaise(month, setOf(1L)))
+        assertEquals(1_800_000L, RecurringPayees.fixedSpentPaise(month, setOf(1L)))
+        assertEquals(listOf(1_800_000L), RecurringPayees.fixedPayments(month, setOf(1L)).map { it.amountPaise })
+    }
+
+    @Test fun `the first payment is chosen the same way whatever order the rows arrive in`() {
+        // Same day, so the uuid breaks the tie, and every caller must pick the same row.
+        val small = txn(1, 2026, 9, 1, amountPaise = 500)
+        val rent = txn(1, 2026, 9, 1, amountPaise = 1_800_000)
+        assertEquals(listOf(rent), RecurringPayees.fixedPayments(listOf(small, rent), setOf(1L)))
+        assertEquals(listOf(rent), RecurringPayees.fixedPayments(listOf(rent, small), setOf(1L)))
     }
 
     @Test fun `fixed spend ignores non-LOGGED rows`() {

@@ -81,13 +81,24 @@ object RecurringPayees {
         ledgerBeganAt == null ||
             !Instant.ofEpochMilli(ledgerBeganAt).atZone(zone).toLocalDate().isAfter(month.atDay(1))
 
-    /** This month's spend attributable to fixed costs.
+    /** This month's spend attributable to fixed costs: each recurring payee's first payment of the
+     *  month ([fixedPayments]).
      *
      *  @param monthTxns the current month's transactions only — the caller slices the window,
      *    because [detect] needs a wider one and passing the same list to both would count
      *    previous months' rent as spent this month. */
     fun fixedSpentPaise(monthTxns: List<TransactionEntity>, recurring: Set<Long>): Long =
-        monthTxns
+        fixedPayments(monthTxns, recurring).sumOf { it.amountPaise }
+
+    /** The month's fixed-cost payments: each recurring payee's first LOGGED payment, by
+     *  `occurredAt` then `uuid`, so every caller picks the same row. A fixed cost is paid once a
+     *  month, which is how [detect] recognised it, so a second payment to the same payee is
+     *  spending: counting it too let a marketplace misread as recurring take every order past the
+     *  pace line (review, 2026-10-19). */
+    fun fixedPayments(monthTxns: List<TransactionEntity>, recurring: Set<Long>): List<TransactionEntity> =
+        monthTxns.asSequence()
             .filter { it.status == TxnStatus.LOGGED && it.payeeId in recurring }
-            .sumOf { it.amountPaise }
+            .sortedWith(compareBy({ it.occurredAt }, { it.uuid }))
+            .distinctBy { it.payeeId }
+            .toList()
 }
