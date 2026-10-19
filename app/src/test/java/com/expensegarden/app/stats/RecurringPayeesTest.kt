@@ -104,6 +104,17 @@ class RecurringPayeesTest {
         assertEquals(listOf(rent), RecurringPayees.fixedPayments(listOf(rent, small), setOf(1L)))
     }
 
+    @Test fun `the earliest payment is the fixed one even when a later one is bigger`() {
+        // Earliest, not largest: the gate decides "first" before any later payment exists, and the
+        // totals must agree with it. The cost, ruled with the plan: ₹500 to the landlord before rent
+        // leaves the rent as spending that month.
+        val month = listOf(
+            txn(1, 2026, 9, 9, amountPaise = 1_800_000),
+            txn(1, 2026, 9, 1, amountPaise = 500),
+        )
+        assertEquals(500L, RecurringPayees.fixedSpentPaise(month, setOf(1L)))
+    }
+
     @Test fun `fixed spend ignores non-LOGGED rows`() {
         val month = listOf(txn(1, 2026, 9, 1, amountPaise = 1_800_000).copy(status = TxnStatus.DISCARDED))
         assertEquals(0L, RecurringPayees.fixedSpentPaise(month, setOf(1L)))
