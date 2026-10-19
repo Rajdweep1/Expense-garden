@@ -156,13 +156,21 @@ class LedgerRepository(
      *  follows the transaction's `occurredAt` month for backdating — a fixed total from the
      *  wrong month would pace a backdated payment against rent it never saw. */
     suspend fun fixedSpentPaise(monthKey: String, ledgerBeganAt: Long?): Long {
+        val (from, to) = boundsOfMonth(monthKey)
+        return RecurringPayees.fixedSpentPaise(
+            db.transactionDao().loggedBetween(from, to), recurringPayeeIds(monthKey, ledgerBeganAt),
+        )
+    }
+
+    /** The payees whose spend counts as fixed in [monthKey] (RecurringPayees.detect over its
+     *  look-back window). Shared by the gate's fixed total and the streak's per-day fixed spend,
+     *  so the two can't disagree about what rent is. */
+    suspend fun recurringPayeeIds(monthKey: String, ledgerBeganAt: Long?): Set<Long> {
         val ym = YearMonth.parse(monthKey)
         val lookBackFrom =
             boundsOfMonth(ym.minusMonths(RecurringPayees.LOOK_BACK_MONTHS.toLong()).toString()).first
-        val (from, to) = boundsOfMonth(monthKey)
-        val window = db.transactionDao().loggedBetween(lookBackFrom, to)
-        val recurring = RecurringPayees.detect(window, ym, zone, ledgerBeganAt)
-        return RecurringPayees.fixedSpentPaise(window.filter { it.occurredAt in from..to }, recurring)
+        val (_, to) = boundsOfMonth(monthKey)
+        return RecurringPayees.detect(db.transactionDao().loggedBetween(lookBackFrom, to), ym, zone, ledgerBeganAt)
     }
 
     /** Worst severity across scopes, evaluated in the month the txn belongs to (spec §3: backdating).

@@ -170,6 +170,10 @@ object GardenFolder {
         val severity = MonthStatsFolder.fold(categories, leafSums, currentBudgets, fixedPaise, today.dayOfMonth, daysInMonth).overallSeverity
         val dayTotals = currentTxns.groupBy { Instant.ofEpochMilli(it.occurredAt).atZone(zone).dayOfMonth }
             .mapValues { (_, l) -> l.sumOf { it.amountPaise } }
+        // The recurring-payee slice of each day, so the streak paces against the line the gate drew.
+        val fixedByDay = currentTxns.filter { it.payeeId in recurring }
+            .groupBy { Instant.ofEpochMilli(it.occurredAt).atZone(zone).dayOfMonth }
+            .mapValues { (_, l) -> l.sumOf { it.amountPaise } }
         val overall = currentBudgets.firstOrNull { it.categoryId == null }?.amountPaise
 
         return GardenState(
@@ -182,6 +186,7 @@ object GardenFolder {
             butterflies = minOf(5, currentMonthEvents.count { it.type == "gate.dodged" }),
             streakDays = StreakMath.underPaceStreak(
                 dayTotals, overall, today.dayOfMonth, daysInMonth, maxOf(firstObservedDay, budgetFromDay),
+                fixedByDayPaise = fixedByDay,
             ),
             noSpendDays = StreakMath.noSpendDays(dayTotals, today.dayOfMonth, firstObservedDay),
             archived = false,

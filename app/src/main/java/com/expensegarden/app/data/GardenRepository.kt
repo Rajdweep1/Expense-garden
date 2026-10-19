@@ -252,13 +252,18 @@ class GardenRepository(
         val nowMonth = YearMonth.now(zone)
         val monthKey = nowMonth.toString()
         val (from, to) = ledger.boundsOfMonth(monthKey)
-        val dayTotals = db.transactionDao().loggedBetween(from, to)
-            .groupBy { Instant.ofEpochMilli(it.occurredAt).atZone(zone).dayOfMonth }
-            .mapValues { (_, l) -> l.sumOf { it.amountPaise } }
+        val monthTxns = db.transactionDao().loggedBetween(from, to)
+        val byDay = { txns: List<TransactionEntity> ->
+            txns.groupBy { Instant.ofEpochMilli(it.occurredAt).atZone(zone).dayOfMonth }
+                .mapValues { (_, l) -> l.sumOf { it.amountPaise } }
+        }
+        // The same recurring payees the gate takes out of its line (LedgerRepository.fixedSpentPaise).
+        val recurring = ledger.recurringPayeeIds(monthKey, ledgerBeganAt())
         val overall = db.budgetDao().allForMonth(monthKey).firstOrNull { it.categoryId == null }?.amountPaise
         return StreakMath.underPaceStreak(
-            dayTotals, overall, LocalDate.now(zone).dayOfMonth, nowMonth.lengthOfMonth(),
+            byDay(monthTxns), overall, LocalDate.now(zone).dayOfMonth, nowMonth.lengthOfMonth(),
             maxOf(firstObservedDayOf(nowMonth), budgetFromDayOf(nowMonth)),
+            fixedByDayPaise = byDay(monthTxns.filter { it.payeeId in recurring }),
         )
     }
 

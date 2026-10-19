@@ -14,21 +14,29 @@ object StreakMath {
      *   it are *unknown*, not *under pace* — without this, a fresh install on the 13th is handed a
      *   12-day streak it never earned, which is both a cosmetic lie on the home strip and enough
      *   to fire STREAK_7 and grow a rare. Defaults to 1, which is the whole month and therefore
-     *   the previous behaviour exactly. */
+     *   the previous behaviour exactly.
+     *  @param fixedByDayPaise spend on recurring payees, per day — the slice of [dayTotalsPaise]
+     *   the gate takes out of the pace line. Each day is judged against the line the gate drew that
+     *   day, with the fixed spend so far: without it, rent on the 1st failed every day until about
+     *   the 22nd while the gate and the strip said "on pace" (review, 2026-10-18). */
     fun underPaceStreak(
         dayTotalsPaise: Map<Int, Long>,
         budgetPaise: Long?,
         today: Int,
         daysInMonth: Int,
         firstObservedDay: Int = 1,
+        fixedByDayPaise: Map<Int, Long> = emptyMap(),
     ): Int {
         if (budgetPaise == null || budgetPaise <= 0) return 0
         var cumulative = 0L
+        var fixedSoFar = 0L
         val underByDay = (1 until today).map { day ->
             cumulative += dayTotalsPaise[day] ?: 0L
+            fixedSoFar += fixedByDayPaise[day] ?: 0L
             // Cumulative spend still accrues across unobserved days — a restored ledger may hold
             // transactions there — but such a day can never itself extend the streak.
-            day >= firstObservedDay && cumulative <= GateEvaluator.paceAllowancePaise(budgetPaise, day, daysInMonth)
+            day >= firstObservedDay &&
+                cumulative <= GateEvaluator.paceAllowancePaise(budgetPaise, fixedSoFar, day, daysInMonth)
         }
         return underByDay.takeLastWhile { it }.size
     }

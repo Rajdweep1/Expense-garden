@@ -59,4 +59,10 @@ class StreakMathTest {
         val totals = mapOf(3 to 40_000L)
         assertEquals(1, StreakMath.underPaceStreak(totals, budget, today = 5, daysInMonth = 30, firstObservedDay = 2))
     }
+
+    @Test fun `fixed costs move the streak's line the way they move the gate's`() {
+        val days = mapOf(1 to 1_010_000L) + (2..9).associateWith { 10_000L }   // ₹10,000 rent + ₹100/day
+        assertEquals(9, StreakMath.underPaceStreak(days, 1_500_000, 10, 31, fixedByDayPaise = mapOf(1 to 1_000_000L)))
+        assertEquals(0, StreakMath.underPaceStreak(days, 1_500_000, 10, 31))   // the old line: rent fails day 1
+    }
 }
