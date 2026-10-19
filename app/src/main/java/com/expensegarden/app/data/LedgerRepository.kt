@@ -175,21 +175,6 @@ class LedgerRepository(
         }
     }
 
-    /** This month's spend on recurring payees — rent, utilities, subscriptions, the SIP.
-     *
-     *  Excluded from the overall pace line so a day-1 rent payment does not leave the gate
-     *  raising a dialog on nearly every purchase for three weeks (review, 2026-09-06).
-     *
-     *  Scoped to [monthKey]'s own window, not the current month's, because gate evaluation
-     *  follows the transaction's `occurredAt` month for backdating — a fixed total from the
-     *  wrong month would pace a backdated payment against rent it never saw.
-     *  @param recurring [recurringPayeeIds] for [monthKey], which the gate also needs for the
-     *    payment itself, so it is computed once there. */
-    suspend fun fixedSpentPaise(monthKey: String, recurring: Set<Long>): Long {
-        val (from, to) = boundsOfMonth(monthKey)
-        return RecurringPayees.fixedSpentPaise(db.transactionDao().loggedBetween(from, to), recurring)
-    }
-
     /** The payees whose spend counts as fixed in [monthKey] (RecurringPayees.detect over its
      *  look-back window). Shared by the gate's fixed total and the streak's per-day fixed spend,
      *  so the two can't disagree about what rent is. */
@@ -217,11 +202,19 @@ class LedgerRepository(
     ): GateVerdict {
         val (day, days) = dayAndLengthOf(occurredAt)
         val monthKey = monthKeyOf(occurredAt)
+        val (from, to) = boundsOfMonth(monthKey)
+        val monthTxns = db.transactionDao().loggedBetween(from, to)
         val recurring = recurringPayeeIds(monthKey, ledgerBeganAt)
         val payeeId = payeeVpa?.let { db.payeeDao().byVpa(it)?.id }
+        // Fixed costs leave the overall pace line, so a day-1 rent payment doesn't raise a dialog on
+        // nearly every purchase for three weeks (review, 2026-09-06). Read from the payment's own
+        // month, so a backdated payment isn't paced against rent it never saw. The payment itself
+        // is fixed only as its payee's first of the month, as RecurringPayees.fixedPayments counts it.
+        val fixed = RecurringPayees.fixedSpentPaise(monthTxns, recurring)
+        val firstThisMonth = monthTxns.none { it.payeeId == payeeId }
         return GateAggregator.aggregate(
-            scopeInputs(categoryId, occurredAt), amountPaise, fixedSpentPaise(monthKey, recurring), day, days,
-            candidateFixedPaise = if (payeeId != null && payeeId in recurring) amountPaise else 0L,
+            scopeInputs(categoryId, occurredAt), amountPaise, fixed, day, days,
+            candidateFixedPaise = if (payeeId != null && payeeId in recurring && firstThisMonth) amountPaise else 0L,
         )
     }
 

@@ -266,7 +266,7 @@ class GardenRepository(
             txns.groupBy { Instant.ofEpochMilli(it.occurredAt).atZone(zone).dayOfMonth }
                 .mapValues { (_, l) -> l.sumOf { it.amountPaise } }
         }
-        // The same recurring payees the gate takes out of its line (LedgerRepository.fixedSpentPaise).
+        // The same fixed payments the gate takes out of its line (RecurringPayees.fixedPayments).
         val recurring = ledger.recurringPayeeIds(monthKey, ledgerBeganAt())
         val overall = db.budgetDao().allForMonth(monthKey).firstOrNull { it.categoryId == null }?.amountPaise
         return StreakMath.underPaceStreak(

@@ -120,4 +120,22 @@ class GateScopeTest {
         // A first payment to a new merchant has no payee row, so it stays variable.
         assertEquals(Severity.PACE_WARNING, repo.evaluateGate(101, 100_000, nov2, ledgerBeganAt = null, payeeVpa = "new@ybl").severity)
     }
+
+    @Test fun a_second_payment_to_a_recurring_payee_in_a_month_is_variable() = runBlocking {
+        fun noonOn(m: Int, d: Int) = LocalDate.of(2026, m, d).atTime(12, 0).atZone(zone).toInstant().toEpochMilli()
+        db.budgetDao().insert(BudgetEntity(categoryId = null, month = "2026-11", amountPaise = 1_500_000, updatedAt = 1L))  // ₹15,000
+        suspend fun paid(vpa: String?, payee: String, paise: Long, m: Int, d: Int) = repo.saveManualLogged(
+            LedgerRepository.Draft(vpa = vpa, payeeName = payee, amountPaise = paise, categoryId = 101, note = null,
+                occurredAt = noonOn(m, d)),
+            breachedAtLogging = false,
+        )
+        paid("tiffin@ybl", "Tiffin", 100_000, 10, 2)   // once in October: recurring in November
+        paid("tiffin@ybl", "Tiffin", 100_000, 11, 1)   // November's first tiffin bill: the fixed one
+        paid(null, "Chai", 30_000, 11, 1)
+        // A second ₹1,000 tiffin bill is spending: ₹2,300 against the ₹2,073 line is a warning.
+        assertEquals(
+            Severity.PACE_WARNING,
+            repo.evaluateGate(101, 100_000, noonOn(11, 2), ledgerBeganAt = null, payeeVpa = "tiffin@ybl").severity,
+        )
+    }
 }
