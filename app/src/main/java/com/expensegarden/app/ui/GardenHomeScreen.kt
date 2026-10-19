@@ -1,5 +1,6 @@
 package com.expensegarden.app.ui
 
+import android.os.SystemClock
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -213,9 +214,16 @@ fun GardenHomeScreen(
                 (pendingTxn ?: lastPending)?.let { row ->
                     // Keyed by the payment, and the buttons go quiet after the first tap: when one
                     // pending payment resolves the next takes its place, and a double tap must not
-                    // answer for a payment the user never saw.
+                    // answer for a payment the user never saw. The key alone gave that next card
+                    // live buttons within a frame, so a new card also waits out PendingCardArming.
                     key(row.uuid) {
                         var answered by remember { mutableStateOf(false) }
+                        val shownAt = remember { SystemClock.uptimeMillis() }
+                        fun answer(act: () -> Unit) {
+                            if (!PendingCardArming.accepts(shownAt, SystemClock.uptimeMillis())) return
+                            answered = true
+                            act()
+                        }
                         Card(Modifier.fillMaxWidth()) {
                             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text(PendingLabels.question(row), style = MaterialTheme.typography.titleMedium)
@@ -225,8 +233,8 @@ fun GardenHomeScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    Button(enabled = !answered, onClick = { answered = true; vm.confirmPending(row) }) { Text("Log it") }
-                                    OutlinedButton(enabled = !answered, onClick = { answered = true; vm.discardPending(row) }) { Text("Discard") }
+                                    Button(enabled = !answered, onClick = { answer { vm.confirmPending(row) } }) { Text("Log it") }
+                                    OutlinedButton(enabled = !answered, onClick = { answer { vm.discardPending(row) } }) { Text("Discard") }
                                 }
                             }
                         }
