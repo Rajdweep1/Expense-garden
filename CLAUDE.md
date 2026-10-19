@@ -45,9 +45,10 @@ toolchain pin. Use the keg-only Homebrew JDK, whose path is stable across 17.x p
 ```bash
 export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
 
-./gradlew testDebugUnitTest                 # JVM unit tests (365)
-./gradlew connectedDebugAndroidTest         # instrumented (73) — needs an emulator/device
+./gradlew testDebugUnitTest                 # JVM unit tests (383)
+./gradlew connectedDebugAndroidTest         # instrumented (88) — needs an emulator/device
 ./gradlew installDebug                      # build + install
+./gradlew installRelease                    # the phone's daily build: not debuggable, same key
 ```
 
 Filtered runs: `testDebugUnitTest --tests '<pattern>'` and
@@ -66,9 +67,9 @@ fallback is Android Auto Backup, which deliberately includes the Room DB
 (`res/xml/backup_rules.xml`) but runs at most once a day, and only when the phone is idle and (by
 default) on Wi-Fi — so a wipe loses at least that day's entries, and everything if backup is off on
 the phone. 2B's server is the real fix, and it isn't deployed. The same goes for the debug keystore:
-`~/.android/debug.keystore` signs the app that holds the ledger, so if `installDebug` ever fails
-with `INSTALL_FAILED_UPDATE_INCOMPATIBLE` (new machine, Android Studio reinstall), restore the old
-keystore — never "fix" it by uninstalling.
+`~/.android/debug.keystore` signs the app that holds the ledger (the release build too), so if an
+install ever fails with `INSTALL_FAILED_UPDATE_INCOMPATIBLE` (new machine, Android Studio
+reinstall), restore the old keystore — never "fix" it by uninstalling.
 
 Backend:
 
@@ -153,7 +154,8 @@ warnings name the streak; `StreakMath` and `GardenFolder.noSpendByMonth` now flo
 ledger began, so a fresh install stops earning rares and streaks for days it wasn't there) →
 **the review fixes** (done 2026-10-11/18 — budget Save can't clear, home chrome readable in dark
 mode, every colour role from a token, fixed-cost detection floors at the ledger's start, upright
-scanner, drafts survive process death) →
+scanner, drafts survive process death) → **the November-ready fixes** (done 2026-10-19 — budgets
+carry forward, rewards need a budget in force, an honest gate card, undo, the release build) →
 read-only
 web dashboard (needs a deployed core-api), Play Store hardening, investments via CAS parsing.
 
