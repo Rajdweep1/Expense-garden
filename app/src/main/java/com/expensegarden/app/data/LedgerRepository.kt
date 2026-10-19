@@ -36,22 +36,50 @@ class LedgerRepository(
     suspend fun savePending(draft: Draft, breachedAtLogging: Boolean, uuid: String? = null): String =
         save(draft, TxnSource.QR_GATE, TxnStatus.PENDING_CONFIRM, breachedAtLogging, uuid)
 
+    /** The QR path's save, once per scan: false, writing nothing, when [uuid] already exists. A
+     *  double tap, or a retry after a rotation killed the first attempt mid-flight, used to insert
+     *  the same uuid again and crash mid-payment; the caller now also knows not to open the UPI
+     *  app a second time. Check and insert share one transaction. */
+    suspend fun savePendingOnce(draft: Draft, breachedAtLogging: Boolean, uuid: String): Boolean =
+        db.withTransaction {
+            if (db.transactionDao().byUuid(uuid) != null) false
+            else {
+                savePending(draft, breachedAtLogging, uuid)
+                true
+            }
+        }
+
     /** Manual path: post-hoc, money already spent — straight to LOGGED (spec §5.1). */
     suspend fun saveManualLogged(draft: Draft, breachedAtLogging: Boolean): String =
         save(draft, TxnSource.MANUAL, TxnStatus.LOGGED, breachedAtLogging)
 
-    suspend fun confirm(uuid: String) {
-        db.withTransaction {
-            db.transactionDao().setStatus(uuid, TxnStatus.LOGGED, updatedAt = clock.next())
-            db.gameEventDao().insert(loggedEvent(uuid))
-            db.transactionDao().byUuid(uuid)?.let { emitCrossings(it) }
+    /** "It went through." Only a still-pending row moves: a second tap changes nothing, and
+     *  emits no second transaction.logged or crossing events. @return whether it moved. */
+    suspend fun confirm(uuid: String): Boolean {
+        val moved = db.withTransaction {
+            val changed = db.transactionDao().transition(uuid, TxnStatus.PENDING_CONFIRM, TxnStatus.LOGGED, clock.next()) > 0
+            if (changed) {
+                db.gameEventDao().insert(loggedEvent(uuid))
+                db.transactionDao().byUuid(uuid)?.let { emitCrossings(it) }
+            }
+            changed
         }
-        onChanged()
+        if (moved) onChanged()
+        return moved
     }
 
-    suspend fun discard(uuid: String) {
-        db.transactionDao().setStatus(uuid, TxnStatus.DISCARDED, updatedAt = clock.next())
-        onChanged()
+    /** "It didn't." Only a still-pending row moves. @return whether it moved. */
+    suspend fun discard(uuid: String): Boolean =
+        revert(uuid, TxnStatus.PENDING_CONFIRM, TxnStatus.DISCARDED)
+
+    /** One status change, applied only if the row is still [from] — what Undo uses (LOGGED →
+     *  DISCARDED for a manual log, LOGGED or DISCARDED → PENDING_CONFIRM for the pending card).
+     *  Events stay appended: the garden folds rows, so an undone log simply stops growing a plant.
+     *  @return whether it moved. */
+    suspend fun revert(uuid: String, from: TxnStatus, to: TxnStatus): Boolean {
+        val moved = db.transactionDao().transition(uuid, from, to, clock.next()) > 0
+        if (moved) onChanged()
+        return moved
     }
 
     /** Regret is re-taggable; only transitions touching REGRET leave history (spec §4).
@@ -87,7 +115,7 @@ class LedgerRepository(
         onChanged()
     }
 
-    fun observePendingConfirm(): Flow<List<TransactionEntity>> = db.transactionDao().observePendingConfirm()
+    fun observePendingRows(): Flow<List<TxnRow>> = db.transactionDao().observePendingRows()
     fun observeRecent(): Flow<List<TxnRow>> = db.transactionDao().observeRecent()
     fun observeMonthSpent(monthKey: String): Flow<Long> {
         val (from, to) = boundsOfMonth(monthKey)

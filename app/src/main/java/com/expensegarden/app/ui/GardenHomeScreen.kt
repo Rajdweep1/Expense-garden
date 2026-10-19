@@ -54,7 +54,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.expensegarden.app.core.Money
 import com.expensegarden.app.data.Regret
-import com.expensegarden.app.data.TransactionEntity
 import com.expensegarden.app.data.TxnRow
 import com.expensegarden.app.gate.Severity
 import com.expensegarden.app.render.GardenCanvas
@@ -173,7 +172,7 @@ fun GardenHomeScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             val pendingTxn = pending.firstOrNull()
-            var lastPending by remember { mutableStateOf<TransactionEntity?>(null) }
+            var lastPending by remember { mutableStateOf<TxnRow?>(null) }
             LaunchedEffect(pendingTxn) { if (pendingTxn != null) lastPending = pendingTxn }
             val digest by aiVm.dailyCard.collectAsState()
             digest?.let { d ->

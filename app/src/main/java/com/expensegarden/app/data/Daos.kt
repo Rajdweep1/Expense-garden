@@ -66,8 +66,18 @@ interface TransactionDao {
     @Query("UPDATE txn SET status = :status, updatedAt = :updatedAt WHERE uuid = :uuid")
     suspend fun setStatus(uuid: String, status: TxnStatus, updatedAt: Long)
 
-    @Query("SELECT * FROM txn WHERE status = 'PENDING_CONFIRM' ORDER BY createdAt")
-    fun observePendingConfirm(): Flow<List<TransactionEntity>>
+    /** A status change that only applies while the row is still [from]. @return rows changed (0 or 1). */
+    @Query("UPDATE txn SET status = :to, updatedAt = :updatedAt WHERE uuid = :uuid AND status = :from")
+    suspend fun transition(uuid: String, from: TxnStatus, to: TxnStatus, updatedAt: Long): Int
+
+    /** The pending card's rows: the payee's name and the time, so the card can say which payment it means. */
+    @Query(
+        """SELECT t.uuid, t.amountPaise, p.name AS payeeName, c.name AS categoryName,
+                  t.categoryId, t.regret, t.occurredAt
+           FROM txn t JOIN payee p ON p.id = t.payeeId JOIN category c ON c.id = t.categoryId
+           WHERE t.status = 'PENDING_CONFIRM' ORDER BY t.createdAt"""
+    )
+    fun observePendingRows(): Flow<List<TxnRow>>
 
     @Query("SELECT COALESCE(SUM(amountPaise), 0) FROM txn WHERE status = 'LOGGED' AND occurredAt BETWEEN :fromMillis AND :toMillis")
     suspend fun loggedSumBetween(fromMillis: Long, toMillis: Long): Long

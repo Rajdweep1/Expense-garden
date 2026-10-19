@@ -12,7 +12,6 @@ import com.expensegarden.app.core.Money
 import com.expensegarden.app.data.CategoryEntity
 import com.expensegarden.app.data.LedgerRepository
 import com.expensegarden.app.data.Regret
-import com.expensegarden.app.data.TransactionEntity
 import com.expensegarden.app.data.TxnRow
 import com.expensegarden.app.gate.GateEvaluator
 import com.expensegarden.app.gate.GatePresentation
@@ -109,8 +108,8 @@ class MainViewModel(private val container: AppContainer, private val saved: Save
                 }
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    val pendingConfirm: StateFlow<List<TransactionEntity>> =
-        ledger.observePendingConfirm()
+    val pendingConfirm: StateFlow<List<TxnRow>> =
+        ledger.observePendingRows()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val recent: Flow<List<TxnRow>> = ledger.observeRecent()
 
