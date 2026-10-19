@@ -56,6 +56,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.window.Dialog
 import com.expensegarden.app.gate.GateView
+import com.expensegarden.app.gate.headline
 import com.expensegarden.app.gate.severityForLogging
 import com.expensegarden.app.render.SpriteLoader
 import kotlinx.coroutines.Dispatchers
@@ -310,20 +311,19 @@ private fun GateDialog(
                         Text("This grows a weed", style = MaterialTheme.typography.titleLarge)
                         Text(view.quip, style = MaterialTheme.typography.bodyMedium)
                         Text(
-                            listOfNotNull(view.scopeLabel, "${Money.display(view.overPaise)} over").joinToString(" · "),
+                            listOfNotNull(view.scopeLabel, "${Money.displayRupees(view.overPaise)} over").joinToString(" · "),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     is GateView.Streak -> {
-                        Text(
-                            if (view.endsAStreak) "This ends a ${view.days}-day streak"
-                            else "This puts you ahead of pace",
-                            style = MaterialTheme.typography.titleLarge,
-                        )
+                        Text(view.headline(), style = MaterialTheme.typography.titleLarge)
                         Text(view.quip, style = MaterialTheme.typography.bodyMedium)
                         Text(
-                            "${Money.display(view.overPaise)} over today's ${Money.display(view.allowancePaise)}",
+                            listOfNotNull(
+                                view.scopeLabel,
+                                "${Money.displayRupees(view.overPaise)} over today's ${Money.displayRupees(view.allowancePaise)}",
+                            ).joinToString(" · "),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

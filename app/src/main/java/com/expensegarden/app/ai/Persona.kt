@@ -46,7 +46,9 @@ object Persona {
         appendLine(
             // Exhaustive on purpose: a fourth Severity must fail here, not silently inherit copy.
             when (severity) {
-                Severity.BREACH -> "The budget for this month is already gone and another payment is pending."
+                // Not "the budget is already gone": BREACH also covers the payment that crosses the
+                // line, and a category breach can leave the month's overall budget intact.
+                Severity.BREACH -> "This payment would take a budget past its limit."
                 Severity.PACE_WARNING -> "This month's spending is ahead of pace, though the budget is not gone yet."
                 Severity.OK -> error("Severity.OK has no gate line and no quip bucket (spec §6)")
             }

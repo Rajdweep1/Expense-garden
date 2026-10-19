@@ -38,12 +38,19 @@ sealed interface GateView {
         override val recordsDodge: Boolean get() = true
     }
 
-    /** Ahead of pace on a discretionary purchase — nothing ugly grows, but the streak ends. */
+    /** Ahead of pace on a discretionary purchase — nothing ugly grows, and the streak may end.
+     *
+     *  [days] is the streak this payment really ends, and 0 when it ends none: the streak is the
+     *  overall budget's, so a category running ahead can't end it, and spend already over today's
+     *  line lost today's streak day before this payment (review, 2026-10-18). [scopeLabel] names a
+     *  category offender; null is the overall budget. */
     data class Streak(
         val days: Int,
         val quip: String,
         val overPaise: Long,
         val allowancePaise: Long,
+        val scopeLabel: String? = null,
+        val alreadyAhead: Boolean = false,
     ) : GateView {
         override val recordsDodge: Boolean get() = true
 
@@ -73,6 +80,15 @@ sealed interface GateView {
  * there either way, and this keeps `breachedAtLogging` meaning "this grew a weed" rather than
  * "this was over budget" — which is what the garden actually reads it for.
  */
+/** The streak card's title: what this payment does, and nothing it doesn't. */
+fun GateView.Streak.headline(): String = when {
+    scopeLabel != null && alreadyAhead -> "This puts $scopeLabel further ahead of pace"
+    scopeLabel != null -> "This puts $scopeLabel ahead of pace"
+    days > 0 -> "This ends a $days-day streak"
+    alreadyAhead -> "This puts you further ahead of pace"
+    else -> "This puts you ahead of pace"
+}
+
 fun GateView.severityForLogging(): Severity = when (this) {
     is GateView.Weed -> Severity.BREACH
     is GateView.Streak -> Severity.PACE_WARNING
@@ -130,12 +146,17 @@ object GatePresentation {
                 scopeLabel = scopeLabel,
                 overPaise = after - budgetPaise,
             )
-            Severity.PACE_WARNING -> GateView.Streak(
-                days = streakDays,
-                quip = quip,
-                overPaise = after - allowancePaise,
-                allowancePaise = allowancePaise,
-            )
+            Severity.PACE_WARNING -> {
+                val alreadyAhead = spentPaise > allowancePaise
+                GateView.Streak(
+                    days = if (scopeLabel == null && !alreadyAhead) streakDays else 0,
+                    quip = quip,
+                    overPaise = after - allowancePaise,
+                    allowancePaise = allowancePaise,
+                    scopeLabel = scopeLabel,
+                    alreadyAhead = alreadyAhead,
+                )
+            }
             Severity.OK -> GateView.None      // unreachable; the early return above covers it
         }
     }

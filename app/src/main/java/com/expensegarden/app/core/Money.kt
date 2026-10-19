@@ -37,6 +37,11 @@ object Money {
         else "₹$grouped." + remainder.toString().padStart(2, '0')
     }
 
+    /** Whole rupees, rounded half up, for figures that are estimates rather than amounts paid —
+     *  "₹1,233.88 over today's ₹10,016.12" was false precision at the moment of decision.
+     *  Non-negative input only, as every caller passes. */
+    fun displayRupees(paise: Long): String = "₹" + groupIndian((paise + 50) / 100)
+
     /** Lakh grouping: last three digits, then pairs. 1,65,305 rather than 165,305.
      *
      *  Written out rather than delegated to a formatter, and that is deliberate.

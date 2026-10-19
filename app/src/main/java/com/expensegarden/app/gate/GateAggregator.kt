@@ -9,8 +9,10 @@ data class ScopeInput(
     val depth: Int,
 )
 
-/** Worst severity across scopes; offender = deepest scope at that severity (null when OK). */
-data class GateVerdict(val severity: Severity, val offender: ScopeInput?)
+/** Worst severity across scopes; offender = deepest scope at that severity (null when OK).
+ *  [allowancePaise] is the offender's pace line, with the same fixed-cost term the verdict used,
+ *  so the dialog's numbers can't disagree with the verdict they explain (0 when OK). */
+data class GateVerdict(val severity: Severity, val offender: ScopeInput?, val allowancePaise: Long = 0L)
 
 object GateAggregator {
     /** @param fixedPaise this month's spend on recurring payees, applied to the OVERALL scope
@@ -33,6 +35,10 @@ object GateAggregator {
         val worst = evaluated.maxOfOrNull { it.second } ?: Severity.OK   // enum order: OK < PACE_WARNING < BREACH
         if (worst == Severity.OK) return GateVerdict(Severity.OK, null)
         val offender = evaluated.filter { it.second == worst }.maxBy { it.first.depth }.first
-        return GateVerdict(worst, offender)
+        val offenderFixed = if (offender.categoryId == null) fixedPaise else 0L
+        return GateVerdict(
+            worst, offender,
+            GateEvaluator.paceAllowancePaise(offender.budgetPaise, offenderFixed, dayOfMonth, daysInMonth),
+        )
     }
 }

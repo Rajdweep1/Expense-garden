@@ -161,10 +161,8 @@ class MainViewModel(private val container: AppContainer, private val saved: Save
             spentPaise = offender?.spentPaise ?: 0L,
             budgetPaise = offender?.budgetPaise ?: 0L,
             candidatePaise = amountPaise,
-            allowancePaise = offender?.let {
-                val (day, days) = ledger.dayAndLengthOf(d.occurredAt)
-                GateEvaluator.paceAllowancePaise(it.budgetPaise, day, days)
-            } ?: 0L,
+            // From the verdict, so the card's numbers use the fixed-cost line the verdict used.
+            allowancePaise = verdict.allowancePaise,
         )
     }
 

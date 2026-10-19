@@ -47,6 +47,26 @@ abstract class AppDatabase : RoomDatabase() {
     }
 }
 
+/** Sharp-but-fair static quip bank, (severity, text). The gate shows nothing on OK.
+ *
+ *  A quip is picked by severity alone, so a line may only claim what is true of every payment at
+ *  that severity: BREACH includes the payment that crosses the line (and a category breach that
+ *  leaves the overall budget intact), and a pace warning can fire on the 1st. Three lines broke
+ *  that (review, 2026-10-18). Five per severity — the phone script's rotation check counts on it.
+ *  Seeded once, when the database is created. */
+internal val STATIC_QUIPS: List<Pair<String, String>> = listOf(
+    "PACE_WARNING" to "Ahead of the plan for today. Worth a pause?",
+    "PACE_WARNING" to "The budget is watching. It's not angry, just doing the math.",
+    "PACE_WARNING" to "At this pace the month outlives the money. Proceed?",
+    "PACE_WARNING" to "Bold pace. The garden's getting thirsty though.",
+    "PACE_WARNING" to "The calendar's behind your spending. Slow down?",
+    "BREACH" to "That's a weed and you know it. Plant it anyway?",
+    "BREACH" to "The budget won't stretch to this. Still want it?",
+    "BREACH" to "This is how droughts start. Your call.",
+    "BREACH" to "Somewhere, a future you is squinting at this line item.",
+    "BREACH" to "The compost heap has room. Just saying.",
+)
+
 object SeedCallback : RoomDatabase.Callback() {
     override fun onCreate(db: SupportSQLiteDatabase) {
         super.onCreate(db)
@@ -73,20 +93,7 @@ object SeedCallback : RoomDatabase.Callback() {
                 categories.joinToString(",") { it.dropLast(1) + ",$seededAt)" }
         )
 
-        // Sharp-but-fair static quip bank. Gate shows nothing on OK.
-        val quips = listOf(
-            "PACE_WARNING" to "You're spending like it's the 1st. It's not the 1st.",
-            "PACE_WARNING" to "The budget is watching. It's not angry, just doing the math.",
-            "PACE_WARNING" to "At this pace the month outlives the money. Proceed?",
-            "PACE_WARNING" to "Bold pace. The garden's getting thirsty though.",
-            "PACE_WARNING" to "This one's fine. The next three are the problem.",
-            "BREACH" to "That's a weed and you know it. Plant it anyway?",
-            "BREACH" to "Budget's already gone. This is just archaeology now.",
-            "BREACH" to "This is how droughts start. Your call.",
-            "BREACH" to "Somewhere, a future you is squinting at this line item.",
-            "BREACH" to "The compost heap has room. Just saying.",
-        )
-        quips.forEach { (severity, text) ->
+        STATIC_QUIPS.forEach { (severity, text) ->
             db.execSQL(
                 "INSERT INTO quip (severity, origin, text, usedAt) VALUES (?, 'STATIC', ?, NULL)",
                 arrayOf(severity, text),

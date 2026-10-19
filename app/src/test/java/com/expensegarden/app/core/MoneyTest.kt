@@ -80,4 +80,12 @@ class MoneyTest {
         assertEquals("12000.50", Money.inputText(1_200_050L))
         assertEquals("12000.05", Money.inputText(1_200_005L))
     }
+
+    @Test fun `displayRupees rounds to whole rupees with Indian grouping`() {
+        assertEquals("₹1,234", Money.displayRupees(123_388))
+        assertEquals("₹10,016", Money.displayRupees(1_001_612))
+        assertEquals("₹1,50,000", Money.displayRupees(15_000_000))
+        assertEquals("₹1", Money.displayRupees(50))
+        assertEquals("₹0", Money.displayRupees(49))
+    }
 }

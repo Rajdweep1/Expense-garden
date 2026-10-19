@@ -42,4 +42,19 @@ class GateAggregatorTest {
         assertEquals(Severity.PACE_WARNING, v.severity)
         assertEquals("overall", v.offender?.label)
     }
+
+    @Test fun `the offender's allowance carries the fixed term on the overall scope only`() {
+        val withRent = GateAggregator.aggregate(
+            listOf(ScopeInput(null, "Overall", 1_500_000L, 1_100_000L, 0)), 100_000L, 1_000_000L, 10, 31,
+        )
+        assertEquals(Severity.PACE_WARNING, withRent.severity)
+        assertEquals(1_185_483L, withRent.allowancePaise)
+
+        val category = GateAggregator.aggregate(
+            listOf(ScopeInput(null, "Overall", 5_000_000L, 200_000L, 0), ScopeInput(7L, "Shopping", 600_000L, 200_000L, 1)),
+            50_000L, 1_000_000L, 10, 31,
+        )
+        assertEquals("Shopping", category.offender?.label)
+        assertEquals(222_580L, category.allowancePaise)
+    }
 }

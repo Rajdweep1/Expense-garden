@@ -18,17 +18,20 @@ class GatePresentationTest {
         isNecessity: Boolean,
         streakDays: Int = 9,
         uuid: String = "fixed-uuid-for-tests",
+        scopeLabel: String? = "Shopping",
+        spentPaise: Long = 400_000L,
+        allowancePaise: Long = 12_000L,
     ) = GatePresentation.of(
         severity = severity,
         isNecessity = isNecessity,
         streakDays = streakDays,
         txnUuid = uuid,
         quip = "Budget says no. You say...?",
-        scopeLabel = "Shopping",
-        spentPaise = 400_000L,
+        scopeLabel = scopeLabel,
+        spentPaise = spentPaise,
         budgetPaise = 500_000L,
         candidatePaise = 224_000L,
-        allowancePaise = 12_000L,
+        allowancePaise = allowancePaise,
     )
 
     @Test
@@ -70,9 +73,34 @@ class GatePresentationTest {
 
     @Test
     fun `a discretionary pace warning previews the streak`() {
-        val v = view(Severity.PACE_WARNING, isNecessity = false)
+        // Overall scope, and the month was on pace before this payment: it really ends the streak.
+        val v = view(Severity.PACE_WARNING, isNecessity = false, scopeLabel = null, spentPaise = 10_000L)
         assertTrue(v is GateView.Streak)
         assertEquals(9, (v as GateView.Streak).days)
+        assertEquals("This ends a 9-day streak", v.headline())
+    }
+
+    @Test
+    fun `a category pace warning claims no streak`() {
+        // The streak is the overall budget's; Shopping running ahead doesn't end it.
+        val v = view(Severity.PACE_WARNING, isNecessity = false, spentPaise = 10_000L) as GateView.Streak
+        assertEquals(0, v.days)
+        assertEquals("This puts Shopping ahead of pace", v.headline())
+    }
+
+    @Test
+    fun `a pace warning already over the line claims no streak`() {
+        // Spend was already over today's line, so today's streak day was lost before this payment.
+        val v = view(Severity.PACE_WARNING, isNecessity = false, scopeLabel = null, spentPaise = 20_000L) as GateView.Streak
+        assertEquals(0, v.days)
+        assertTrue(v.alreadyAhead)
+        assertEquals("This puts you further ahead of pace", v.headline())
+    }
+
+    @Test
+    fun `with no streak yet the card names only the pace`() {
+        val v = view(Severity.PACE_WARNING, isNecessity = false, streakDays = 0, scopeLabel = null, spentPaise = 10_000L)
+        assertEquals("This puts you ahead of pace", (v as GateView.Streak).headline())
     }
 
     @Test
@@ -121,7 +149,9 @@ class GatePresentationTest {
         // A fresh ledger reports 0, and "this ends a 0-day streak" is nonsense. Found on device.
         val fresh = view(Severity.PACE_WARNING, isNecessity = false, streakDays = 0) as GateView.Streak
         assertEquals(false, fresh.endsAStreak)
-        val earned = view(Severity.PACE_WARNING, isNecessity = false, streakDays = 1) as GateView.Streak
+        val earned = view(
+            Severity.PACE_WARNING, isNecessity = false, streakDays = 1, scopeLabel = null, spentPaise = 10_000L,
+        ) as GateView.Streak
         assertEquals(true, earned.endsAStreak)
     }
 
