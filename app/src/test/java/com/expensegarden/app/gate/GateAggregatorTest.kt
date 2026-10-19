@@ -88,8 +88,10 @@ class GateAggregatorTest {
         )
 
     @Test fun `a recurring payment still counts in its category's own line`() {
+        // Nothing spent in Food yet, so only the payment itself can put Food ahead of its ₹153
+        // line; with the fixed share leaked into Food's line (₹1,077), Food would pass silently.
         val v = GateAggregator.aggregate(
-            listOf(ScopeInput(null, "Overall", 5_000_000L, 30_000L, 0), ScopeInput(101L, "Food", 200_000L, 50_000L, 1)),
+            listOf(ScopeInput(null, "Overall", 5_000_000L, 30_000L, 0), ScopeInput(101L, "Food", 200_000L, 0L, 1)),
             100_000L, 0L, 2, 30, candidateFixedPaise = 100_000L,
         )
         assertEquals(Severity.PACE_WARNING, v.severity)

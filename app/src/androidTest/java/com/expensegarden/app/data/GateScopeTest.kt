@@ -104,12 +104,19 @@ class GateScopeTest {
         // One ₹1,000 tiffin bill in October makes the tiffin service a fixed cost in November.
         repo.saveManualLogged(LedgerRepository.Draft(vpa = "tiffin@ybl", payeeName = "Tiffin", amountPaise = 100_000,
             categoryId = 101, note = null, occurredAt = noonOn(10, 2)), breachedAtLogging = false)
+        // Two orders in October: a merchant the ledger knows, but not a once-a-month fixed cost.
+        for (day in listOf(5, 20)) {
+            repo.saveManualLogged(LedgerRepository.Draft(vpa = "swiggy@ybl", payeeName = "Swiggy", amountPaise = 40_000,
+                categoryId = 101, note = null, occurredAt = noonOn(10, day)), breachedAtLogging = false)
+        }
         repo.saveManualLogged(LedgerRepository.Draft(vpa = null, payeeName = "Chai", amountPaise = 30_000,
             categoryId = 103, note = null, occurredAt = noonOn(11, 1)), breachedAtLogging = false)
         val nov2 = noonOn(11, 2)
         // ₹1,300 is over the ₹1,150 line only if the bill is variable; as the fixed cost the strip
         // will call it once logged, the line is ₹2,073.
         assertEquals(Severity.OK, repo.evaluateGate(101, 100_000, nov2, ledgerBeganAt = null, payeeVpa = "tiffin@ybl").severity)
+        // A known payee that isn't recurring stays variable.
+        assertEquals(Severity.PACE_WARNING, repo.evaluateGate(101, 100_000, nov2, ledgerBeganAt = null, payeeVpa = "swiggy@ybl").severity)
         // A first payment to a new merchant has no payee row, so it stays variable.
         assertEquals(Severity.PACE_WARNING, repo.evaluateGate(101, 100_000, nov2, ledgerBeganAt = null, payeeVpa = "new@ybl").severity)
     }
