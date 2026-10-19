@@ -30,12 +30,6 @@ class IsoMath(val tileW: Float, val tileH: Float, val originX: Float, val origin
     )
 
     companion object {
-        /** Which side of its tile a month sign stands on: -1 left (the original placement), +1
-         *  right. On the home island a sign stands on the house-facing side, so one on the left
-         *  corner no longer hangs past the island's edge into the camera's opening crop. */
-        fun signpostSide(tileCenterX: Float, houseX: Float, worldMode: Boolean): Float =
-            if (worldMode && tileCenterX < houseX) 1f else -1f
-
         /** Slab wall height in tileH units — shared by fit() and the canvas so framing math
          *  and the drawn island agree on the island block's true height. */
         const val WALL_UNITS = 1.05f

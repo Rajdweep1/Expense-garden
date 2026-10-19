@@ -703,10 +703,7 @@ fun GardenCanvas(
             state.monthMarkers.forEach { m ->
                 if (!rowVisible(m.tile.row)) return@forEach
                 val v = vis(m.tile)
-                // Signs stand on the house-facing side of their tile on the home island. Always on
-                // the left, a sign on the island's left corner hung past the edge, and the home
-                // camera's opening zoom cropped it (review, 2026-10-11).
-                val px = iso.tileCenterX(v) + IsoMath.signpostSide(iso.tileCenterX(v), hAnchor.x, worldMode) * iso.tileW * .40f
+                val px = iso.tileCenterX(v) - iso.tileW * .40f
                 val py = iso.tileCenterY(v) + iso.tileH * .10f
                 if ((py <= hAnchor.y) != behind) return@forEach
                 val postH = iso.tileH * .62f
