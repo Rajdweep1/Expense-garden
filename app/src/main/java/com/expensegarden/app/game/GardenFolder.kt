@@ -26,8 +26,9 @@ object GardenFolder {
         zone: ZoneId,
         /** First day of this month the ledger covers; 1 = all of it. See StreakBaseline. */
         firstObservedDay: Int = 1,
-        /** First day this month's overall budget was in force; floors the streak only. See BudgetFloor. */
-        budgetFromDay: Int = 1,
+        /** The overall budget in force on each day of this month (BudgetInForce); null judges
+         *  every day against this month's row. Read by the streak only. */
+        overallByDay: Map<Int, Long>? = null,
     ): GardenState {
         val ym = YearMonth.parse(monthKey)
         val archived = YearMonth.from(today) > ym
@@ -71,7 +72,7 @@ object GardenFolder {
             trunkTier = allTimeInvestmentCount,
             butterflies = minOf(5, monthEvents.count { it.type == "gate.dodged" }),
             streakDays = StreakMath.underPaceStreak(
-                dayTotals, overall, streakToday, daysInMonth, maxOf(firstObservedDay, budgetFromDay),
+                dayTotals, overall, streakToday, daysInMonth, firstObservedDay, budgetByDayPaise = overallByDay,
             ),
             noSpendDays = StreakMath.noSpendDays(dayTotals, streakToday, firstObservedDay),
             archived = archived,
@@ -103,8 +104,9 @@ object GardenFolder {
         /** When the ledger began (StreakBaseline.ledgerBeganAt). null = unknown: every month with
          *  data stays a look-back month for fixed-cost detection. */
         ledgerBeganAt: Long? = null,
-        /** First day this month's overall budget was in force; floors the streak only. See BudgetFloor. */
-        budgetFromDay: Int = 1,
+        /** The overall budget in force on each day of this month (BudgetInForce); null judges
+         *  every day against this month's row. Read by the streak only. */
+        overallByDay: Map<Int, Long>? = null,
     ): GardenState {
         val ym = YearMonth.from(today)
         val daysInMonth = ym.lengthOfMonth()
@@ -185,8 +187,8 @@ object GardenFolder {
             trunkTier = allTimeInvestmentCount,
             butterflies = minOf(5, currentMonthEvents.count { it.type == "gate.dodged" }),
             streakDays = StreakMath.underPaceStreak(
-                dayTotals, overall, today.dayOfMonth, daysInMonth, maxOf(firstObservedDay, budgetFromDay),
-                fixedByDayPaise = fixedByDay,
+                dayTotals, overall, today.dayOfMonth, daysInMonth, firstObservedDay,
+                fixedByDayPaise = fixedByDay, budgetByDayPaise = overallByDay,
             ),
             noSpendDays = StreakMath.noSpendDays(dayTotals, today.dayOfMonth, firstObservedDay),
             archived = false,

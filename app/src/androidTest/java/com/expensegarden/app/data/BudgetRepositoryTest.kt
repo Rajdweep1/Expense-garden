@@ -90,7 +90,7 @@ class BudgetRepositoryTest {
         val octMax = db.budgetDao().allForMonth("2026-10").maxOf { it.updatedAt }
         assertTrue(db.budgetDao().allForMonth("2026-11").all { it.updatedAt > octMax })   // dirty for sync
         assertEquals(1, carried("2026-11").size)
-        assertTrue(JSONObject(carried("2026-11").single().payloadJson).getBoolean("overall"))
+        assertEquals(1_500_000L, JSONObject(carried("2026-11").single().payloadJson).getLong("overallPaise"))
     }
 
     @Test fun a_month_with_budgets_is_left_alone() = runBlocking {

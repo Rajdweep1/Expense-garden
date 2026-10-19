@@ -11,6 +11,7 @@ import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -99,5 +100,40 @@ class GardenRepositoryTest {
         ledger.saveManualLogged(draftOn(LocalDate.of(2025, 4, 10)), breachedAtLogging = false)
         garden.runReconciler()
         assertEquals(1_500_000L, closed("2025-04").getLong("overallBudgetPaise"))
+    }
+
+    @Test fun a_month_whose_budget_was_raised_closes_on_the_lower_amount() = runBlocking {
+        budgets.setBudget(null, "2025-03", 1_500_000)
+        budgets.carryForward("2025-04")                                  // ₹15,000 from 1 April
+        ledger.saveManualLogged(draftOn(LocalDate.of(2025, 4, 10)).copy(amountPaise = 1_800_000), breachedAtLogging = false)
+        budgets.setBudget(null, "2025-04", 2_000_000)
+        // setBudget stamps its event with today's date; this records the raise on the day it happened.
+        db.gameEventDao().insert(GameEventEntity(
+            type = BudgetRepository.EVENT_SET,
+            payloadJson = JSONObject().put("month", "2025-04").put("categoryId", JSONObject.NULL)
+                .put("amountPaise", 2_000_000).toString(),
+            transactionUuid = null,
+            createdAt = LocalDate.of(2025, 4, 28).atTime(21, 0).atZone(zone).toInstant().toEpochMilli(),
+        ))
+        garden.runReconciler()
+        assertEquals(1_500_000L, closed("2025-04").getLong("overallBudgetPaise"))
+    }
+
+    @Test fun raising_the_budget_mints_no_streak_for_the_days_before_it() = runBlocking {
+        val today = LocalDate.now(zone)
+        assumeTrue("the 1st has no finished day to score", today.dayOfMonth > 1)
+        val month = YearMonth.from(today)
+        GardenPrefs(ApplicationProvider.getApplicationContext()).firstObservedAt =
+            month.atDay(1).atStartOfDay(zone).toInstant().toEpochMilli()
+        budgets.setBudget(null, month.minusMonths(1).toString(), 1_500_000)
+        budgets.carryForward(month.toString())                           // ₹15,000 from the 1st
+        // ₹643 a day is over ₹15,000's pace line every day, and under ₹20,000's.
+        for (d in 1 until today.dayOfMonth) {
+            ledger.saveManualLogged(draftOn(month.atDay(d)).copy(amountPaise = 64_300), breachedAtLogging = false)
+        }
+        budgets.setBudget(null, month.toString(), 2_000_000)             // raised today
+        assertEquals(0, garden.currentUnderPaceStreak())
+        garden.runReconciler()
+        assertTrue(db.gameEventDao().ofType("streak.hit").isEmpty())
     }
 }

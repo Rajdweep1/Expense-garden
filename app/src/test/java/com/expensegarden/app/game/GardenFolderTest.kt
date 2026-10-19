@@ -40,9 +40,9 @@ class GardenFolderTest {
         events: List<GameEventEntity> = emptyList(),
         allTimeInvestmentCount: Int = 0,
         today: LocalDate = LocalDate.of(2026, 7, 10),
-        budgetFromDay: Int = 1,
+        overallByDay: Map<Int, Long>? = null,
     ) = GardenFolder.fold(
-        "2026-07", txns, categories, budgets, events, allTimeInvestmentCount, today, zone, budgetFromDay = budgetFromDay,
+        "2026-07", txns, categories, budgets, events, allTimeInvestmentCount, today, zone, overallByDay = overallByDay,
     )
 
     @Test fun `every logged txn plants in chronological order`() {
@@ -106,19 +106,20 @@ class GardenFolderTest {
         today: LocalDate = LocalDate.of(2026, 7, 10),
         houseLevelOverride: Int? = null,
         ledgerBeganAt: Long? = null,
-        budgetFromDay: Int = 1,
+        overallByDay: Map<Int, Long>? = null,
     ) = GardenFolder.foldAllTime(
         txns, categories, budgets, events, allTimeInvestmentCount, today, zone, houseLevelOverride,
-        ledgerBeganAt = ledgerBeganAt, budgetFromDay = budgetFromDay,
+        ledgerBeganAt = ledgerBeganAt, overallByDay = overallByDay,
     )
 
     @Test fun `a budget set yesterday grants no streak for the days before it`() {
         // Both folds: the strip reads foldAllTime's streak, the monthly digest reads fold's.
         val budget = listOf(BudgetEntity(categoryId = null, month = "2026-07", amountPaise = 1_500_000, updatedAt = 1L))
         val today = LocalDate.of(2026, 7, 19)
-        assertEquals(1, foldAll(emptyList(), budget, today = today, budgetFromDay = 18).streakDays)
+        val setOn18th = (18..31).associateWith { 1_500_000L }
+        assertEquals(1, foldAll(emptyList(), budget, today = today, overallByDay = setOn18th).streakDays)
         assertEquals(18, foldAll(emptyList(), budget, today = today).streakDays)
-        assertEquals(1, fold(emptyList(), budget, today = today, budgetFromDay = 18).streakDays)
+        assertEquals(1, fold(emptyList(), budget, today = today, overallByDay = setOn18th).streakDays)
         assertEquals(18, fold(emptyList(), budget, today = today).streakDays)
     }
 

@@ -65,4 +65,23 @@ class StreakMathTest {
         assertEquals(9, StreakMath.underPaceStreak(days, 1_500_000, 10, 31, fixedByDayPaise = mapOf(1 to 1_000_000L)))
         assertEquals(0, StreakMath.underPaceStreak(days, 1_500_000, 10, 31))   // the old line: rent fails day 1
     }
+
+    // ₹15,000 carried, raised to ₹20,000 on the 28th of a 31-day month.
+    private val raisedOn28th = (1..27).associateWith { 1_500_000L } + (28..31).associateWith { 2_000_000L }
+
+    @Test fun `a raise late in the month earns no streak for the days before it`() {
+        // ₹643 a day is over ₹15,000's line every day and under ₹20,000's.
+        val spend = (1..28).associateWith { 64_300L }
+        assertEquals(1, StreakMath.underPaceStreak(spend, 2_000_000, 29, 31, budgetByDayPaise = raisedOn28th))
+    }
+
+    @Test fun `a streak earned under the old budget survives a raise`() {
+        val spend = (1..28).associateWith { 40_000L }   // ₹400 a day: under both lines
+        assertEquals(28, StreakMath.underPaceStreak(spend, 2_000_000, 29, 31, budgetByDayPaise = raisedOn28th))
+    }
+
+    @Test fun `a day with no budget in force can't extend the streak`() {
+        val setOn18th = (18..31).associateWith { 1_500_000L }
+        assertEquals(1, StreakMath.underPaceStreak(emptyMap(), 1_500_000, 19, 31, budgetByDayPaise = setOn18th))
+    }
 }

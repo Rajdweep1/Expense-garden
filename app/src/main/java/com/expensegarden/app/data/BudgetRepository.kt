@@ -37,9 +37,9 @@ class BudgetRepository(
                 // An edit, not a clear: drop any tombstone left by an earlier clear of this
                 // same key, or an unpushed one would delete the row we just wrote.
                 db.syncDao().deleteTombstone("budget", rowKey(categoryId, month))
-                // When the budget took effect: the streak and month rewards only count days a
-                // budget was in force (BudgetFloor). Wall time, not the sync clock, because it is
-                // read as a date.
+                // When the budget took effect, and at what amount: the streak and month rewards
+                // judge each day by the budget in force that day (BudgetInForce). Wall time, not
+                // the sync clock, because it is read as a date.
                 db.gameEventDao().insert(
                     GameEventEntity(
                         type = EVENT_SET,
@@ -64,7 +64,8 @@ class BudgetRepository(
      *  Budgets are stored per month and nothing used to copy them forward, so on the 1st every
      *  one lapsed and the gate approved everything until each was re-entered (review,
      *  2026-10-18). The `budget.carried` event marks the month as opened: it makes this
-     *  idempotent, and it is what keeps a month cleared on purpose from being refilled. One
+     *  idempotent, and it is what keeps a month cleared on purpose from being refilled. It also
+     *  records the overall amount copied, in force from the 1st (BudgetInForce). One
      *  transaction, and Room serialises write transactions, so concurrent callers can't both copy.
      *  @return true when rows were copied. */
     suspend fun carryForward(month: String): Boolean {
@@ -85,7 +86,8 @@ class BudgetRepository(
                 GameEventEntity(
                     type = EVENT_CARRIED,
                     payloadJson = JSONObject().put("month", month).put("from", from)
-                        .put("overall", rows.any { it.categoryId == null }).toString(),
+                        .put("overallPaise", rows.firstOrNull { it.categoryId == null }?.amountPaise ?: JSONObject.NULL)
+                        .toString(),
                     transactionUuid = null,
                     createdAt = System.currentTimeMillis(),
                 )
