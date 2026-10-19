@@ -66,14 +66,20 @@ class DashboardViewModel(private val container: AppContainer) : ViewModel() {
     fun setBudget(categoryId: Long?, amountPaise: Long) {
         viewModelScope.launch {
             // Month key resolved at call time, not VM birth. The delete+insert idiom and the
-            // sync tombstone rule both live in BudgetRepository now (spec §2.5).
-            container.budgets.setBudget(categoryId, ledger.currentMonthKey(), amountPaise)
+            // sync tombstone rule both live in BudgetRepository now (spec §2.5). Carry first: a
+            // first category edit in a new month would otherwise make the month non-empty and
+            // stop the rest of last month's budgets from ever carrying.
+            val month = ledger.currentMonthKey()
+            container.budgets.carryForward(month)
+            container.budgets.setBudget(categoryId, month, amountPaise)
         }
     }
 
     fun clearBudget(categoryId: Long?) {
         viewModelScope.launch {
-            container.budgets.setBudget(categoryId, ledger.currentMonthKey(), null)
+            val month = ledger.currentMonthKey()
+            container.budgets.carryForward(month)
+            container.budgets.setBudget(categoryId, month, null)
         }
     }
 

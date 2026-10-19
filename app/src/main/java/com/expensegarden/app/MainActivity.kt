@@ -62,6 +62,13 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onStart() {
+        super.onStart()
+        // Every foreground, so a month that turns while the app sits in memory still carries its
+        // budgets and closes the old month (GardenViewModel.onForeground).
+        gardenVm.onForeground()
+    }
 }
 
 @Composable

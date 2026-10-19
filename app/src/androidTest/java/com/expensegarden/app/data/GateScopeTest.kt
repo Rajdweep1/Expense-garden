@@ -10,6 +10,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.time.LocalDate
 import java.time.ZoneId
 
 @RunWith(AndroidJUnit4::class)
@@ -87,5 +88,13 @@ class GateScopeTest {
         assertEquals(true, repo.isNecessity(401))
         assertEquals(false, repo.isNecessity(7))
         assertEquals(false, repo.isNecessity(9_999))
+    }
+
+    @Test fun the_gate_sees_a_carried_budget() = runBlocking {
+        val budgets = BudgetRepository(db)
+        budgets.setBudget(null, "2026-10", 1_000_000)
+        budgets.carryForward("2026-11")
+        val nov15 = LocalDate.of(2026, 11, 15).atTime(12, 0).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        assertEquals(Severity.BREACH, repo.evaluateGate(7, 1_100_000, nov15, null).severity)
     }
 }

@@ -137,6 +137,9 @@ class MainViewModel(private val container: AppContainer, private val saved: Save
      *  exactly one is the point of GateView — the extra cost is a single MIN aggregate beside the
      *  several queries evaluateGate already ran. */
     suspend fun prepareGateView(amountPaise: Long): GateView {
+        // The app can sit in the foreground across midnight on the 1st; the gate must not judge
+        // the new month against no budget at all.
+        container.budgets.carryForward(ledger.currentMonthKey())
         val d = draft.value
         val verdict = ledger.evaluateGate(d.categoryId!!, amountPaise, d.occurredAt, container.garden.ledgerBeganAt())
         if (verdict.severity == Severity.OK) return GateView.None
@@ -176,6 +179,7 @@ class MainViewModel(private val container: AppContainer, private val saved: Save
     fun saveManualFromDraft(amountPaise: Long) {
         val d = draft.value
         viewModelScope.launch {
+            container.budgets.carryForward(ledger.currentMonthKey())
             // Same scope evaluation as the gate, run silently against the txn's own month (backdating).
             val verdict = ledger.evaluateGate(d.categoryId!!, amountPaise, d.occurredAt, container.garden.ledgerBeganAt())
             ledger.saveManualLogged(d.toRepoDraft(amountPaise), breachedAtLogging = verdict.severity == Severity.BREACH)

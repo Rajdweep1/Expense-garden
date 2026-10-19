@@ -8,6 +8,7 @@ import com.expensegarden.app.data.TxnRow
 import com.expensegarden.app.game.CollectionState
 import com.expensegarden.app.game.GardenState
 import com.expensegarden.app.game.SpiralTiler
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -68,8 +69,18 @@ class GardenViewModel(private val container: AppContainer) : ViewModel() {
         expansionRefresh.value += 1
     }
 
-    init {
-        viewModelScope.launch { container.garden.runReconciler() }   // month.closed / streak.hit on open
+    private var foregroundJob: Job? = null
+
+    /** Every foreground, not just a cold start: an app left in memory across midnight on the 1st
+     *  never re-creates this ViewModel, so work tied to `init` waited for the next process death —
+     *  and with it the new month's budgets. One job at a time, because two concurrent reconcilers
+     *  could both emit the same streak.hit. */
+    fun onForeground() {
+        if (foregroundJob?.isActive == true) return
+        foregroundJob = viewModelScope.launch {
+            container.budgets.carryForward(container.ledger.currentMonthKey())
+            container.garden.runReconciler()   // month.closed / streak.hit
+        }
     }
 
     suspend fun plantRow(uuid: String): TxnRow? = container.db.transactionDao().rowByUuid(uuid)

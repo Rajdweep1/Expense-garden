@@ -5,8 +5,10 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.expensegarden.app.sync.SyncClock
 import kotlinx.coroutines.runBlocking
+import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -75,5 +77,43 @@ class BudgetRepositoryTest {
 
         assertTrue(db.syncDao().tombstones().isEmpty())
         assertEquals(900L, db.budgetDao().allForMonth("2026-09").single { it.categoryId == 3L }.amountPaise)
+    }
+
+    private suspend fun carried(m: String) =
+        db.gameEventDao().ofType("budget.carried").filter { JSONObject(it.payloadJson).getString("month") == m }
+
+    @Test fun carrying_forward_copies_the_latest_months_budgets_into_an_empty_month() = runBlocking {
+        repo.setBudget(null, "2026-10", 1_500_000); repo.setBudget(3, "2026-10", 400_000)
+        assertTrue(repo.carryForward("2026-11"))
+        assertEquals(mapOf(null to 1_500_000L, 3L to 400_000L),
+            db.budgetDao().allForMonth("2026-11").associate { it.categoryId to it.amountPaise })
+        val octMax = db.budgetDao().allForMonth("2026-10").maxOf { it.updatedAt }
+        assertTrue(db.budgetDao().allForMonth("2026-11").all { it.updatedAt > octMax })   // dirty for sync
+        assertEquals(1, carried("2026-11").size)
+        assertTrue(JSONObject(carried("2026-11").single().payloadJson).getBoolean("overall"))
+    }
+
+    @Test fun a_month_with_budgets_is_left_alone() = runBlocking {
+        repo.setBudget(null, "2026-10", 1_500_000); repo.setBudget(null, "2026-11", 900_000)
+        assertFalse(repo.carryForward("2026-11"))
+        assertEquals(900_000L, db.budgetDao().overallForMonth("2026-11")!!.amountPaise)
+    }
+
+    @Test fun a_month_the_user_cleared_stays_cleared() = runBlocking {
+        repo.setBudget(null, "2026-10", 1_500_000)
+        repo.carryForward("2026-11"); repo.setBudget(null, "2026-11", null)
+        assertFalse(repo.carryForward("2026-11"))
+        assertTrue(db.budgetDao().allForMonth("2026-11").isEmpty())
+    }
+
+    @Test fun carrying_skips_a_gap_to_the_latest_month_with_budgets() = runBlocking {
+        repo.setBudget(null, "2026-07", 3_200_000)
+        assertTrue(repo.carryForward("2026-10"))
+        assertEquals(3_200_000L, db.budgetDao().overallForMonth("2026-10")!!.amountPaise)
+    }
+
+    @Test fun with_no_budget_ever_set_nothing_is_carried() = runBlocking {
+        assertFalse(repo.carryForward("2026-11"))
+        assertTrue(db.gameEventDao().ofType("budget.carried").isEmpty())
     }
 }

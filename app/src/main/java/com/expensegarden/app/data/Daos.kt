@@ -167,6 +167,10 @@ interface BudgetDao {
     @Query("SELECT * FROM budget WHERE month = :month")
     fun observeAllForMonth(month: String): Flow<List<BudgetEntity>>
 
+    /** "YYYY-MM" keys sort lexically in month order, so MAX is the latest. */
+    @Query("SELECT MAX(month) FROM budget WHERE month < :month")
+    suspend fun latestMonthBefore(month: String): String?
+
     // NULL never matches `categoryId = ?` in SQL — overall rows need the dedicated IS NULL delete above.
     @Query("DELETE FROM budget WHERE categoryId = :categoryId AND month = :month")
     suspend fun deleteForCategory(categoryId: Long, month: String)
