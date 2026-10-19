@@ -21,6 +21,11 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
+            // The phone's daily build. Debuggable builds are never AOT-compiled, and the garden's
+            // draw took ~20 ms a frame there against ~3.6 ms here (review, 2026-10-18). Signed with
+            // the debug key on purpose: the phone's install is debug-signed, and the same key is
+            // what lets this update it in place without wiping the ledger.
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     compileOptions {
