@@ -39,14 +39,14 @@ class GateScopeTest {
             breachedAtLogging = false,
         )
         // Candidate ₹200 under Chai: child rolls into the Food budget → 400+200 > 500 → BREACH, offender = Food & Drinks
-        val verdict = repo.evaluateGate(categoryId = 103, amountPaise = 20_000, occurredAt = nowMillis, ledgerBeganAt = null)
+        val verdict = repo.evaluateGate(categoryId = 103, amountPaise = 20_000, occurredAt = nowMillis, ledgerBeganAt = null, payeeVpa = null)
         assertEquals(Severity.BREACH, verdict.severity)
         assertEquals(1L, verdict.offender?.categoryId)
         assertEquals("Food & Drinks", verdict.offender?.label)
     }
 
     @Test fun no_budgets_at_all_is_ok() = runBlocking {
-        val verdict = repo.evaluateGate(categoryId = 103, amountPaise = 1_000_000, occurredAt = nowMillis, ledgerBeganAt = null)
+        val verdict = repo.evaluateGate(categoryId = 103, amountPaise = 1_000_000, occurredAt = nowMillis, ledgerBeganAt = null, payeeVpa = null)
         assertEquals(Severity.OK, verdict.severity)
     }
 
@@ -55,7 +55,7 @@ class GateScopeTest {
         val lastMonthMillis = lastMonth.atDay(15).atTime(12, 0).atZone(zone).toInstant().toEpochMilli()
         db.budgetDao().insert(BudgetEntity(categoryId = null, month = lastMonth.toString(), amountPaise = 1_000, updatedAt = 1L))
         // ₹50 candidate against last month's tiny ₹10 budget → BREACH even though this month has no budget
-        val verdict = repo.evaluateGate(categoryId = 103, amountPaise = 5_000, occurredAt = lastMonthMillis, ledgerBeganAt = null)
+        val verdict = repo.evaluateGate(categoryId = 103, amountPaise = 5_000, occurredAt = lastMonthMillis, ledgerBeganAt = null, payeeVpa = null)
         assertEquals(Severity.BREACH, verdict.severity)
     }
 
@@ -74,11 +74,11 @@ class GateScopeTest {
         // ₹3,000 more on Nov 5: ₹4,500 against a ₹3,833 pace line is a warning.
         val nov5 = noonOn(2026, 11, 5)
         val floored = repo.evaluateGate(categoryId = 103, amountPaise = 300_000, occurredAt = nov5,
-            ledgerBeganAt = noonOn(2026, 10, 20))
+            ledgerBeganAt = noonOn(2026, 10, 20), payeeVpa = null)
         assertEquals(Severity.PACE_WARNING, floored.severity)
         // Unfloored, the dinner counts as rent and the warning goes silent: the 2026-10-11 defect.
         val unfloored = repo.evaluateGate(categoryId = 103, amountPaise = 300_000, occurredAt = nov5,
-            ledgerBeganAt = null)
+            ledgerBeganAt = null, payeeVpa = null)
         assertEquals(Severity.OK, unfloored.severity)
     }
 
@@ -95,6 +95,22 @@ class GateScopeTest {
         budgets.setBudget(null, "2026-10", 1_000_000)
         budgets.carryForward("2026-11")
         val nov15 = LocalDate.of(2026, 11, 15).atTime(12, 0).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
-        assertEquals(Severity.BREACH, repo.evaluateGate(7, 1_100_000, nov15, null).severity)
+        assertEquals(Severity.BREACH, repo.evaluateGate(7, 1_100_000, nov15, null, payeeVpa = null).severity)
+    }
+
+    @Test fun a_payment_to_a_recurring_payee_is_paced_as_the_fixed_cost_it_becomes() = runBlocking {
+        fun noonOn(m: Int, d: Int) = LocalDate.of(2026, m, d).atTime(12, 0).atZone(zone).toInstant().toEpochMilli()
+        db.budgetDao().insert(BudgetEntity(categoryId = null, month = "2026-11", amountPaise = 1_500_000, updatedAt = 1L))  // ₹15,000
+        // One ₹1,000 tiffin bill in October makes the tiffin service a fixed cost in November.
+        repo.saveManualLogged(LedgerRepository.Draft(vpa = "tiffin@ybl", payeeName = "Tiffin", amountPaise = 100_000,
+            categoryId = 101, note = null, occurredAt = noonOn(10, 2)), breachedAtLogging = false)
+        repo.saveManualLogged(LedgerRepository.Draft(vpa = null, payeeName = "Chai", amountPaise = 30_000,
+            categoryId = 103, note = null, occurredAt = noonOn(11, 1)), breachedAtLogging = false)
+        val nov2 = noonOn(11, 2)
+        // ₹1,300 is over the ₹1,150 line only if the bill is variable; as the fixed cost the strip
+        // will call it once logged, the line is ₹2,073.
+        assertEquals(Severity.OK, repo.evaluateGate(101, 100_000, nov2, ledgerBeganAt = null, payeeVpa = "tiffin@ybl").severity)
+        // A first payment to a new merchant has no payee row, so it stays variable.
+        assertEquals(Severity.PACE_WARNING, repo.evaluateGate(101, 100_000, nov2, ledgerBeganAt = null, payeeVpa = "new@ybl").severity)
     }
 }

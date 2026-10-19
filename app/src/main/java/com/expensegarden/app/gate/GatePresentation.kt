@@ -123,6 +123,8 @@ object GatePresentation {
         budgetPaise: Long,
         candidatePaise: Long,
         allowancePaise: Long,
+        /** Today's line before this payment (GateVerdict.allowanceBeforePaise). */
+        allowanceBeforePaise: Long,
     ): GateView {
         if (severity == Severity.OK) return GateView.None
         val after = spentPaise + candidatePaise
@@ -147,7 +149,9 @@ object GatePresentation {
                 overPaise = after - budgetPaise,
             )
             Severity.PACE_WARNING -> {
-                val alreadyAhead = spentPaise > allowancePaise
+                // Before this payment: a fixed-cost payment raises today's line, and spend already
+                // over the old line had lost today's streak day without it.
+                val alreadyAhead = spentPaise > allowanceBeforePaise
                 GateView.Streak(
                     days = if (scopeLabel == null && !alreadyAhead) streakDays else 0,
                     quip = quip,

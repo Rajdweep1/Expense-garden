@@ -182,12 +182,12 @@ class LedgerRepository(
      *
      *  Scoped to [monthKey]'s own window, not the current month's, because gate evaluation
      *  follows the transaction's `occurredAt` month for backdating — a fixed total from the
-     *  wrong month would pace a backdated payment against rent it never saw. */
-    suspend fun fixedSpentPaise(monthKey: String, ledgerBeganAt: Long?): Long {
+     *  wrong month would pace a backdated payment against rent it never saw.
+     *  @param recurring [recurringPayeeIds] for [monthKey], which the gate also needs for the
+     *    payment itself, so it is computed once there. */
+    suspend fun fixedSpentPaise(monthKey: String, recurring: Set<Long>): Long {
         val (from, to) = boundsOfMonth(monthKey)
-        return RecurringPayees.fixedSpentPaise(
-            db.transactionDao().loggedBetween(from, to), recurringPayeeIds(monthKey, ledgerBeganAt),
-        )
+        return RecurringPayees.fixedSpentPaise(db.transactionDao().loggedBetween(from, to), recurring)
     }
 
     /** The payees whose spend counts as fixed in [monthKey] (RecurringPayees.detect over its
@@ -203,12 +203,25 @@ class LedgerRepository(
 
     /** Worst severity across scopes, evaluated in the month the txn belongs to (spec §3: backdating).
      *  @param ledgerBeganAt see StreakBaseline.ledgerBeganAt. Required: this repository has no
-     *    GardenPrefs of its own to look it up, so every caller has to bring it. */
-    suspend fun evaluateGate(categoryId: Long, amountPaise: Long, occurredAt: Long, ledgerBeganAt: Long?): GateVerdict {
+     *    GardenPrefs of its own to look it up, so every caller has to bring it.
+     *  @param payeeVpa who is being paid, when the payment has a VPA. Required: a payment to a
+     *    recurring payee is a fixed cost the moment it is logged, and leaving it out of the fixed
+     *    term here made the gate contradict the strip (final review, 2026-10-19). The manual path
+     *    passes its null VPA; it reads only BREACH, which no fixed term moves. */
+    suspend fun evaluateGate(
+        categoryId: Long,
+        amountPaise: Long,
+        occurredAt: Long,
+        ledgerBeganAt: Long?,
+        payeeVpa: String?,
+    ): GateVerdict {
         val (day, days) = dayAndLengthOf(occurredAt)
         val monthKey = monthKeyOf(occurredAt)
+        val recurring = recurringPayeeIds(monthKey, ledgerBeganAt)
+        val payeeId = payeeVpa?.let { db.payeeDao().byVpa(it)?.id }
         return GateAggregator.aggregate(
-            scopeInputs(categoryId, occurredAt), amountPaise, fixedSpentPaise(monthKey, ledgerBeganAt), day, days,
+            scopeInputs(categoryId, occurredAt), amountPaise, fixedSpentPaise(monthKey, recurring), day, days,
+            candidateFixedPaise = if (payeeId != null && payeeId in recurring) amountPaise else 0L,
         )
     }
 

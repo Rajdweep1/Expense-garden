@@ -144,7 +144,7 @@ class MainViewModel(private val container: AppContainer, private val saved: Save
         // the new month against no budget at all.
         container.budgets.carryForward(ledger.currentMonthKey())
         val d = draft.value
-        val verdict = ledger.evaluateGate(d.categoryId!!, amountPaise, d.occurredAt, container.garden.ledgerBeganAt())
+        val verdict = ledger.evaluateGate(d.categoryId!!, amountPaise, d.occurredAt, container.garden.ledgerBeganAt(), d.vpa)
         if (verdict.severity == Severity.OK) return GateView.None
 
         val isNecessity = ledger.isNecessity(d.categoryId!!)
@@ -166,6 +166,7 @@ class MainViewModel(private val container: AppContainer, private val saved: Save
             candidatePaise = amountPaise,
             // From the verdict, so the card's numbers use the fixed-cost line the verdict used.
             allowancePaise = verdict.allowancePaise,
+            allowanceBeforePaise = verdict.allowanceBeforePaise,
         )
     }
 
@@ -195,7 +196,7 @@ class MainViewModel(private val container: AppContainer, private val saved: Save
         viewModelScope.launch {
             container.budgets.carryForward(ledger.currentMonthKey())
             // Same scope evaluation as the gate, run silently against the txn's own month (backdating).
-            val verdict = ledger.evaluateGate(d.categoryId!!, amountPaise, d.occurredAt, container.garden.ledgerBeganAt())
+            val verdict = ledger.evaluateGate(d.categoryId!!, amountPaise, d.occurredAt, container.garden.ledgerBeganAt(), d.vpa)
             val repoDraft = d.toRepoDraft(amountPaise)
             val uuid = ledger.saveManualLogged(repoDraft, breachedAtLogging = verdict.severity == Severity.BREACH)
             _undoOffer.value = UndoOffer(

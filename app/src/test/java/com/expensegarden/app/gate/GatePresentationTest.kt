@@ -21,6 +21,7 @@ class GatePresentationTest {
         scopeLabel: String? = "Shopping",
         spentPaise: Long = 400_000L,
         allowancePaise: Long = 12_000L,
+        allowanceBeforePaise: Long = allowancePaise,
     ) = GatePresentation.of(
         severity = severity,
         isNecessity = isNecessity,
@@ -32,6 +33,7 @@ class GatePresentationTest {
         budgetPaise = 500_000L,
         candidatePaise = 224_000L,
         allowancePaise = allowancePaise,
+        allowanceBeforePaise = allowanceBeforePaise,
     )
 
     @Test
@@ -160,5 +162,16 @@ class GatePresentationTest {
         val v = view(Severity.PACE_WARNING, isNecessity = false) as GateView.Streak
         assertEquals(612_000L, v.overPaise)       // 624000 after - 12000 allowance
         assertEquals(12_000L, v.allowancePaise)
+    }
+
+    @Test
+    fun `a fixed-cost payment judges already-ahead by the line before it`() {
+        // Rent raises today's line from ₹11,500 to ₹20,750; ₹12,000 spent before it was already over.
+        val ahead = view(Severity.PACE_WARNING, isNecessity = false, scopeLabel = null,
+            spentPaise = 1_200_000L, allowancePaise = 2_075_000L, allowanceBeforePaise = 1_150_000L) as GateView.Streak
+        assertEquals("This puts you further ahead of pace", ahead.headline())
+        val onPace = view(Severity.PACE_WARNING, isNecessity = false, scopeLabel = null,
+            spentPaise = 800_000L, allowancePaise = 2_075_000L, allowanceBeforePaise = 1_150_000L) as GateView.Streak
+        assertEquals("This ends a 9-day streak", onPace.headline())
     }
 }

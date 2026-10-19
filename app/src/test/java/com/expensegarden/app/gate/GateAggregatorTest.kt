@@ -57,4 +57,42 @@ class GateAggregatorTest {
         assertEquals("Shopping", category.offender?.label)
         assertEquals(222_580L, category.allowancePaise)
     }
+
+    @Test fun `a recurring payee's payment joins the overall fixed term`() {
+        // ₹15,000 budget, ₹300 spent by 2 Nov, a ₹1,000 tiffin bill the strip will count as fixed.
+        val overall = ScopeInput(null, "Overall", 1_500_000L, 30_000L, 0)
+        assertEquals(Severity.PACE_WARNING, GateAggregator.aggregate(listOf(overall), 100_000L, 0L, 2, 30).severity)
+        assertEquals(
+            Severity.OK,
+            GateAggregator.aggregate(listOf(overall), 100_000L, 0L, 2, 30, candidateFixedPaise = 100_000L).severity,
+        )
+    }
+
+    @Test fun `the verdict keeps the line from before a fixed-cost payment`() {
+        val v = GateAggregator.aggregate(
+            listOf(ScopeInput(null, "Overall", 3_000_000L, 1_200_000L, 0)), 1_500_000L, 0L, 10, 30,
+            candidateFixedPaise = 1_500_000L,
+        )
+        assertEquals(Severity.PACE_WARNING, v.severity)
+        assertEquals(GateEvaluator.paceAllowancePaise(3_000_000L, 1_500_000L, 10, 30), v.allowancePaise)
+        assertEquals(GateEvaluator.paceAllowancePaise(3_000_000L, 0L, 10, 30), v.allowanceBeforePaise)
+    }
+
+    @Test fun `a fixed-cost payment over the budget is still a breach`() =
+        assertEquals(
+            Severity.BREACH,
+            GateAggregator.aggregate(
+                listOf(ScopeInput(null, "Overall", 1_500_000L, 1_000_000L, 0)), 600_000L, 0L, 10, 30,
+                candidateFixedPaise = 600_000L,
+            ).severity,
+        )
+
+    @Test fun `a recurring payment still counts in its category's own line`() {
+        val v = GateAggregator.aggregate(
+            listOf(ScopeInput(null, "Overall", 5_000_000L, 30_000L, 0), ScopeInput(101L, "Food", 200_000L, 50_000L, 1)),
+            100_000L, 0L, 2, 30, candidateFixedPaise = 100_000L,
+        )
+        assertEquals(Severity.PACE_WARNING, v.severity)
+        assertEquals("Food", v.offender?.label)
+    }
 }
