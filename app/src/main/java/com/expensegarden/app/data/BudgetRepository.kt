@@ -37,6 +37,19 @@ class BudgetRepository(
                 // An edit, not a clear: drop any tombstone left by an earlier clear of this
                 // same key, or an unpushed one would delete the row we just wrote.
                 db.syncDao().deleteTombstone("budget", rowKey(categoryId, month))
+                // When the budget took effect: the streak and month rewards only count days a
+                // budget was in force (BudgetFloor). Wall time, not the sync clock, because it is
+                // read as a date.
+                db.gameEventDao().insert(
+                    GameEventEntity(
+                        type = EVENT_SET,
+                        payloadJson = JSONObject().put("month", month)
+                            .put("categoryId", categoryId ?: JSONObject.NULL)
+                            .put("amountPaise", amountPaise).toString(),
+                        transactionUuid = null,
+                        createdAt = System.currentTimeMillis(),
+                    )
+                )
             } else {
                 db.syncDao().putTombstone(
                     SyncTombstoneEntity("budget", rowKey(categoryId, month), deletedAt = clock.next())
@@ -85,6 +98,7 @@ class BudgetRepository(
 
     companion object {
         const val EVENT_CARRIED = "budget.carried"
+        const val EVENT_SET = "budget.set"
 
         /** Spec §2.1: "<categoryId or *>|<month>". The sentinel is explicit because an empty
          *  segment could not be told apart from a malformed key. */

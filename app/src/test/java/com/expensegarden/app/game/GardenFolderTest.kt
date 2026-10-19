@@ -40,7 +40,10 @@ class GardenFolderTest {
         events: List<GameEventEntity> = emptyList(),
         allTimeInvestmentCount: Int = 0,
         today: LocalDate = LocalDate.of(2026, 7, 10),
-    ) = GardenFolder.fold("2026-07", txns, categories, budgets, events, allTimeInvestmentCount, today, zone)
+        budgetFromDay: Int = 1,
+    ) = GardenFolder.fold(
+        "2026-07", txns, categories, budgets, events, allTimeInvestmentCount, today, zone, budgetFromDay = budgetFromDay,
+    )
 
     @Test fun `every logged txn plants in chronological order`() {
         val g = fold(listOf(txn(103, day = 3), txn(2, day = 1), txn(103, day = 2)))
@@ -103,10 +106,21 @@ class GardenFolderTest {
         today: LocalDate = LocalDate.of(2026, 7, 10),
         houseLevelOverride: Int? = null,
         ledgerBeganAt: Long? = null,
+        budgetFromDay: Int = 1,
     ) = GardenFolder.foldAllTime(
         txns, categories, budgets, events, allTimeInvestmentCount, today, zone, houseLevelOverride,
-        ledgerBeganAt = ledgerBeganAt,
+        ledgerBeganAt = ledgerBeganAt, budgetFromDay = budgetFromDay,
     )
+
+    @Test fun `a budget set yesterday grants no streak for the days before it`() {
+        // Both folds: the strip reads foldAllTime's streak, the monthly digest reads fold's.
+        val budget = listOf(BudgetEntity(categoryId = null, month = "2026-07", amountPaise = 1_500_000, updatedAt = 1L))
+        val today = LocalDate.of(2026, 7, 19)
+        assertEquals(1, foldAll(emptyList(), budget, today = today, budgetFromDay = 18).streakDays)
+        assertEquals(18, foldAll(emptyList(), budget, today = today).streakDays)
+        assertEquals(1, fold(emptyList(), budget, today = today, budgetFromDay = 18).streakDays)
+        assertEquals(18, fold(emptyList(), budget, today = today).streakDays)
+    }
 
     @Test fun `all-time fold plants every month on one island in chronological order`() {
         val g = foldAll(listOf(txn(103, day = 5, month = 7), txn(2, day = 2, month = 5), txn(103, day = 10, month = 6)))

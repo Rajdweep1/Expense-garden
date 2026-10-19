@@ -7,12 +7,14 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.expensegarden.app.game.Weather
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
 
@@ -21,6 +23,7 @@ class GardenRepositoryTest {
     private lateinit var db: AppDatabase
     private lateinit var ledger: LedgerRepository
     private lateinit var garden: GardenRepository
+    private lateinit var budgets: BudgetRepository
     private val zone = ZoneId.systemDefault()
 
     @Before fun setup() {
@@ -32,6 +35,7 @@ class GardenRepositoryTest {
         garden = GardenRepository(db, ledger, GardenPrefs(ctx).apply {
             firstObservedAt = System.currentTimeMillis()
         })
+        budgets = BudgetRepository(db)
     }
 
     @After fun teardown() = db.close()
@@ -71,5 +75,29 @@ class GardenRepositoryTest {
         assertTrue(g.archived)
         assertEquals(1, g.plants.size)
         assertEquals(listOf(lastMonth.toString(), YearMonth.now(zone).toString()), garden.monthsWithData())
+    }
+
+    private fun draftOn(d: LocalDate) = LedgerRepository.Draft(
+        vpa = null, payeeName = "Kirana", amountPaise = 50_000, categoryId = 7, note = null,
+        occurredAt = d.atTime(12, 0).atZone(zone).toInstant().toEpochMilli(),
+    )
+
+    private suspend fun closed(m: String) = JSONObject(
+        db.gameEventDao().ofType("month.closed").single { JSONObject(it.payloadJson).getString("month") == m }.payloadJson
+    )
+
+    @Test fun a_month_whose_budget_was_set_after_it_began_closes_without_one() = runBlocking {
+        budgets.setBudget(null, "2025-03", 1_500_000)        // stamped now, long after March 2025
+        ledger.saveManualLogged(draftOn(LocalDate.of(2025, 3, 10)), breachedAtLogging = false)
+        garden.runReconciler()
+        assertTrue(closed("2025-03").isNull("overallBudgetPaise"))
+    }
+
+    @Test fun a_carried_month_closes_with_its_budget() = runBlocking {
+        budgets.setBudget(null, "2025-03", 1_500_000)
+        budgets.carryForward("2025-04")
+        ledger.saveManualLogged(draftOn(LocalDate.of(2025, 4, 10)), breachedAtLogging = false)
+        garden.runReconciler()
+        assertEquals(1_500_000L, closed("2025-04").getLong("overallBudgetPaise"))
     }
 }

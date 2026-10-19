@@ -116,4 +116,17 @@ class BudgetRepositoryTest {
         assertFalse(repo.carryForward("2026-11"))
         assertTrue(db.gameEventDao().ofType("budget.carried").isEmpty())
     }
+
+    @Test fun setting_a_budget_records_when_it_was_set() = runBlocking {
+        repo.setBudget(null, "2026-10", 1_500_000)
+        val sets = db.gameEventDao().ofType("budget.set")
+        assertEquals(1, sets.size)
+        val payload = JSONObject(sets.single().payloadJson)
+        assertEquals("2026-10", payload.getString("month"))
+        assertTrue(payload.isNull("categoryId"))
+        assertEquals(1_500_000L, payload.getLong("amountPaise"))
+
+        repo.setBudget(null, "2026-10", null)   // a clear records no new budget.set
+        assertEquals(1, db.gameEventDao().ofType("budget.set").size)
+    }
 }

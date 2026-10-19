@@ -1,5 +1,6 @@
 package com.expensegarden.app.data
 
+import com.expensegarden.app.game.BudgetFloor
 import com.expensegarden.app.game.GardenFolder
 import com.expensegarden.app.game.GardenState
 import com.expensegarden.app.game.Reconciler
@@ -42,6 +43,31 @@ class GardenRepository(
     suspend fun ledgerBeganAt(): Long? =
         StreakBaseline.ledgerBeganAt(prefs.firstObservedAt, db.gameEventDao().earliestCreatedAt())
 
+    /** The first day [month]'s overall budget was in force (BudgetFloor). The JSON is parsed here
+     *  rather than in the fold, for the same reason as [projectRareSignals]. A carry counts only
+     *  when it copied an overall row: carried category budgets alone must not backdate an overall
+     *  budget set later in the month. */
+    private fun budgetFromDay(events: List<GameEventEntity>, overall: BudgetEntity?, month: YearMonth): Int {
+        val key = month.toString()
+        val budgetEvents = events
+            .filter { it.type == BudgetRepository.EVENT_CARRIED || it.type == BudgetRepository.EVENT_SET }
+            .mapNotNull { e -> runCatching { e to JSONObject(e.payloadJson) }.getOrNull() }
+            .filter { (_, payload) -> payload.optString("month") == key }
+        val carried = budgetEvents.any { (e, payload) ->
+            e.type == BudgetRepository.EVENT_CARRIED && payload.optBoolean("overall")
+        }
+        val overallSetAt = budgetEvents
+            .filter { (e, payload) -> e.type == BudgetRepository.EVENT_SET && payload.isNull("categoryId") }
+            .map { (e, _) -> e.createdAt }
+        return BudgetFloor.overallFromDay(month, carried, overallSetAt, overall?.updatedAt, zone)
+    }
+
+    suspend fun budgetFromDayOf(month: YearMonth): Int = budgetFromDay(
+        db.gameEventDao().ofType(BudgetRepository.EVENT_CARRIED) + db.gameEventDao().ofType(BudgetRepository.EVENT_SET),
+        db.budgetDao().overallForMonth(month.toString()),
+        month,
+    )
+
     /** Live garden for the current month. Re-collection re-derives the month key (same idiom as the VMs). */
     fun observeCurrentGarden(): Flow<GardenState> {
         val monthKey = ledger.currentMonthKey()
@@ -53,7 +79,11 @@ class GardenRepository(
             db.gameEventDao().observeEventsBetween(from, to),
             db.transactionDao().observeLoggedCountIn(investmentIds()),
         ) { txns, cats, budgets, events, sips ->
-            GardenFolder.fold(monthKey, txns, cats, budgets, events, sips, LocalDate.now(zone), zone, firstObservedDayOf(YearMonth.parse(monthKey)))
+            val month = YearMonth.parse(monthKey)
+            GardenFolder.fold(
+                monthKey, txns, cats, budgets, events, sips, LocalDate.now(zone), zone, firstObservedDayOf(month),
+                budgetFromDay = budgetFromDayOf(month),
+            )
         }
     }
 
@@ -79,6 +109,9 @@ class GardenRepository(
                 rareSignals = projectRareSignals(allEvents),
                 firstObservedDay = firstObservedDayOf(YearMonth.now(zone)),
                 ledgerBeganAt = ledgerBeganAt(),
+                budgetFromDay = budgetFromDay(
+                    allEvents, budgets.firstOrNull { it.categoryId == null }, YearMonth.parse(monthKey),
+                ),
             )
         }
     }
@@ -191,6 +224,8 @@ class GardenRepository(
             today = LocalDate.now(zone),
             zone = zone,
             firstObservedDay = firstObservedDayOf(YearMonth.parse(monthKey)),
+            // The monthly digest narrates this month's streak, so it gets the same floor.
+            budgetFromDay = budgetFromDayOf(YearMonth.parse(monthKey)),
         )
     }
 
@@ -223,7 +258,7 @@ class GardenRepository(
         val overall = db.budgetDao().allForMonth(monthKey).firstOrNull { it.categoryId == null }?.amountPaise
         return StreakMath.underPaceStreak(
             dayTotals, overall, LocalDate.now(zone).dayOfMonth, nowMonth.lengthOfMonth(),
-            firstObservedDayOf(nowMonth),
+            maxOf(firstObservedDayOf(nowMonth), budgetFromDayOf(nowMonth)),
         )
     }
 
@@ -252,7 +287,9 @@ class GardenRepository(
         for (m in decisions.monthsToClose) {
             val (f, t) = ledger.boundsOfMonth(m)
             val spent = db.transactionDao().loggedSumBetween(f, t)
+            // A month only counts as under budget if the budget was in force all of it.
             val budget = db.budgetDao().allForMonth(m).firstOrNull { it.categoryId == null }?.amountPaise
+                ?.takeIf { budgetFromDayOf(YearMonth.parse(m)) == 1 }
             val payload = JSONObject().put("month", m).put("spentPaise", spent)
                 .put("overallBudgetPaise", budget ?: JSONObject.NULL)
             db.gameEventDao().insert(GameEventEntity(
