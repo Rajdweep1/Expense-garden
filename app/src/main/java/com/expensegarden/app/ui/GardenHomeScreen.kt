@@ -34,6 +34,10 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -41,6 +45,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -171,9 +176,22 @@ fun GardenHomeScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            // Undo for the last money action: a manual log, or a pending payment logged or
+            // discarded. A mis-tap used to be permanent (review, 2026-10-18).
+            val undo by vm.undoOffer.collectAsState()
+            val snackbar = remember { SnackbarHostState() }
+            LaunchedEffect(undo) {
+                val offer = undo ?: return@LaunchedEffect
+                val result = snackbar.showSnackbar(offer.message, actionLabel = "Undo", duration = SnackbarDuration.Long)
+                if (result == SnackbarResult.ActionPerformed) vm.applyUndo(offer)
+                vm.dismissUndo(offer)
+            }
+            SnackbarHost(snackbar)
+
             val pendingTxn = pending.firstOrNull()
             var lastPending by remember { mutableStateOf<TxnRow?>(null) }
             LaunchedEffect(pendingTxn) { if (pendingTxn != null) lastPending = pendingTxn }
+            val zone = remember { ZoneId.systemDefault() }
             val digest by aiVm.dailyCard.collectAsState()
             digest?.let { d ->
                 Card(Modifier.fillMaxWidth()) {
@@ -192,13 +210,24 @@ fun GardenHomeScreen(
                 enter = expandVertically(spring(dampingRatio = 0.85f, stiffness = 300f)) + fadeIn(spring(stiffness = Spring.StiffnessMedium)),
                 exit = shrinkVertically(spring(stiffness = Spring.StiffnessMedium)) + fadeOut(spring(stiffness = Spring.StiffnessMedium)),
             ) {
-                (pendingTxn ?: lastPending)?.let { txn ->
-                    Card(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Did ${Money.display(txn.amountPaise)} go through?", style = MaterialTheme.typography.titleMedium)
-                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Button(onClick = { vm.confirmPending(txn.uuid) }) { Text("Log it") }
-                                OutlinedButton(onClick = { vm.discardPending(txn.uuid) }) { Text("Discard") }
+                (pendingTxn ?: lastPending)?.let { row ->
+                    // Keyed by the payment, and the buttons go quiet after the first tap: when one
+                    // pending payment resolves the next takes its place, and a double tap must not
+                    // answer for a payment the user never saw.
+                    key(row.uuid) {
+                        var answered by remember { mutableStateOf(false) }
+                        Card(Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(PendingLabels.question(row), style = MaterialTheme.typography.titleMedium)
+                                Text(
+                                    PendingLabels.detail(row, pending.size, zone),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    Button(enabled = !answered, onClick = { answered = true; vm.confirmPending(row) }) { Text("Log it") }
+                                    OutlinedButton(enabled = !answered, onClick = { answered = true; vm.discardPending(row) }) { Text("Discard") }
+                                }
                             }
                         }
                     }

@@ -84,6 +84,9 @@ fun EntryScreen(vm: MainViewModel, onDone: () -> Unit) {
     // learned a category was also needed.
     var amountError by remember { mutableStateOf(false) }
     var categoryError by remember { mutableStateOf(false) }
+    // Set from a valid submit until the screen leaves, or until the gate is dismissed back to the
+    // form: a double tap used to log twice, or re-insert a scan and crash mid-payment.
+    var submitting by remember { mutableStateOf(false) }
     val amountFocus = remember { FocusRequester() }
     // The first input of the app's primary action; every log used to cost an extra tap.
     LaunchedEffect(Unit) { amountFocus.requestFocus() }
@@ -91,8 +94,11 @@ fun EntryScreen(vm: MainViewModel, onDone: () -> Unit) {
 
     fun fireAndFinish(amountPaise: Long, severity: Severity) {
         scope.launch {
-            vm.savePendingFromDraft(amountPaise, severity)
-            UpiIntents.launchPayment(context, draft.vpa!!, draft.payeeName, amountPaise, draft.note.ifBlank { null })
+            // Only the call that saved the pending row opens the UPI app: a second tap, or a retry
+            // after a rotation cancelled the first attempt, must not start a second payment.
+            if (vm.savePendingFromDraft(amountPaise, severity)) {
+                UpiIntents.launchPayment(context, draft.vpa!!, draft.payeeName, amountPaise, draft.note.ifBlank { null })
+            }
             onDone()
         }
     }
@@ -240,17 +246,22 @@ fun EntryScreen(vm: MainViewModel, onDone: () -> Unit) {
                 categoryError = draft.categoryId == null
                 when {
                     amountPaise == null || draft.categoryId == null -> Unit
-                    draft.fromScan -> scope.launch {
-                        val view = vm.prepareGateView(amountPaise)
-                        if (view == GateView.None) fireAndFinish(amountPaise, Severity.OK)
-                        else gate = view
+                    draft.fromScan -> {
+                        submitting = true
+                        scope.launch {
+                            val view = vm.prepareGateView(amountPaise)
+                            if (view == GateView.None) fireAndFinish(amountPaise, Severity.OK)
+                            else gate = view
+                        }
                     }
                     else -> {
+                        submitting = true
                         vm.saveManualFromDraft(amountPaise)
                         onDone()
                     }
                 }
             },
+            enabled = !submitting,
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text(if (draft.fromScan) "Continue to pay" else "Log it")
@@ -271,7 +282,8 @@ fun EntryScreen(vm: MainViewModel, onDone: () -> Unit) {
                 gate = null
                 onDone()
             },
-            onDismiss = { gate = null },
+            // Back to the form, which can be submitted again.
+            onDismiss = { gate = null; submitting = false },
         )
     }
 }
@@ -288,6 +300,8 @@ private fun GateDialog(
 ) {
     val context = LocalContext.current
     var sprite by remember(view) { mutableStateOf<ImageBitmap?>(null) }
+    // One answer per card: a second tap on "Pay anyway" would run the payment path twice.
+    var answered by remember(view) { mutableStateOf(false) }
     LaunchedEffect(view) {
         sprite = (view as? GateView.Weed)?.let { weed ->
             withContext(Dispatchers.IO) { SpriteLoader.decodePlant(context, weed.archetype, weed.variant) }
@@ -348,14 +362,18 @@ private fun GateDialog(
                 if (view is GateView.Neutral) {
                     // A necessity should be paid. The loud button is the one that proceeds.
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        TextButton(onClick = onBackOut) { Text("Back") }
-                        Button(onClick = onProceed, modifier = Modifier.padding(start = 8.dp)) { Text("Continue") }
+                        TextButton(enabled = !answered, onClick = { answered = true; onBackOut() }) { Text("Back") }
+                        Button(
+                            enabled = !answered,
+                            onClick = { answered = true; onProceed() },
+                            modifier = Modifier.padding(start = 8.dp),
+                        ) { Text("Continue") }
                     }
                 } else {
                     // Both stay visible, same tap target, no delay and no confirm step — the only
                     // change is which one is louder, and the user installed a budgeting app.
-                    Button(onClick = onBackOut, modifier = Modifier.fillMaxWidth()) { Text("Not now") }
-                    TextButton(onClick = onProceed, modifier = Modifier.fillMaxWidth()) { Text("Pay anyway") }
+                    Button(enabled = !answered, onClick = { answered = true; onBackOut() }, modifier = Modifier.fillMaxWidth()) { Text("Not now") }
+                    TextButton(enabled = !answered, onClick = { answered = true; onProceed() }, modifier = Modifier.fillMaxWidth()) { Text("Pay anyway") }
                 }
             }
         }

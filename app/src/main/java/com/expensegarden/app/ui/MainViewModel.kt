@@ -13,6 +13,7 @@ import com.expensegarden.app.data.CategoryEntity
 import com.expensegarden.app.data.LedgerRepository
 import com.expensegarden.app.data.Regret
 import com.expensegarden.app.data.TxnRow
+import com.expensegarden.app.data.TxnStatus
 import com.expensegarden.app.gate.GateEvaluator
 import com.expensegarden.app.gate.GatePresentation
 import com.expensegarden.app.gate.GateView
@@ -47,6 +48,9 @@ data class EntryDraft(
 
 /** Home header: null while Room's first emission is in flight (loading skeleton). */
 data class HomeHeader(val spentPaise: Long, val overallBudgetPaise: Long?, val hint: Severity)
+
+/** The last money action that Undo can take back: move [uuid] from [from] back to [to]. */
+data class UndoOffer(val message: String, val uuid: String, val from: TxnStatus, val to: TxnStatus)
 
 class MainViewModel(private val container: AppContainer, private val saved: SavedStateHandle) : ViewModel() {
     private val ledger = container.ledger
@@ -165,13 +169,26 @@ class MainViewModel(private val container: AppContainer, private val saved: Save
         )
     }
 
-    /** QR path: persist pending + record breach flag; caller then fires the intent. */
-    suspend fun savePendingFromDraft(amountPaise: Long, severity: Severity): String =
-        ledger.savePending(
+    /** QR path: persist pending + record breach flag, once per scan. @return true when this call
+     *  saved it — the caller opens the UPI app only then, so a double tap or a retry after a
+     *  rotation can't start a second payment. */
+    suspend fun savePendingFromDraft(amountPaise: Long, severity: Severity): Boolean =
+        ledger.savePendingOnce(
             draft = draft.value.toRepoDraft(amountPaise),
             breachedAtLogging = severity == Severity.BREACH,
-            uuid = draft.value.txnUuid,
+            uuid = requireNotNull(draft.value.txnUuid) { "a scan draft always carries its uuid" },
         )
+
+    private val _undoOffer = MutableStateFlow<UndoOffer?>(null)
+    /** The last undoable money action, for home's snackbar. */
+    val undoOffer: StateFlow<UndoOffer?> = _undoOffer
+
+    fun applyUndo(offer: UndoOffer) = viewModelScope.launch { ledger.revert(offer.uuid, offer.from, offer.to) }
+
+    /** Clears only [offer]: a newer one that arrived meanwhile keeps its own bar. */
+    fun dismissUndo(offer: UndoOffer) {
+        _undoOffer.compareAndSet(offer, null)
+    }
 
     fun saveManualFromDraft(amountPaise: Long) {
         val d = draft.value
@@ -179,7 +196,11 @@ class MainViewModel(private val container: AppContainer, private val saved: Save
             container.budgets.carryForward(ledger.currentMonthKey())
             // Same scope evaluation as the gate, run silently against the txn's own month (backdating).
             val verdict = ledger.evaluateGate(d.categoryId!!, amountPaise, d.occurredAt, container.garden.ledgerBeganAt())
-            ledger.saveManualLogged(d.toRepoDraft(amountPaise), breachedAtLogging = verdict.severity == Severity.BREACH)
+            val repoDraft = d.toRepoDraft(amountPaise)
+            val uuid = ledger.saveManualLogged(repoDraft, breachedAtLogging = verdict.severity == Severity.BREACH)
+            _undoOffer.value = UndoOffer(
+                PendingLabels.logged(amountPaise, repoDraft.payeeName), uuid, TxnStatus.LOGGED, TxnStatus.DISCARDED,
+            )
         }
     }
 
@@ -194,8 +215,21 @@ class MainViewModel(private val container: AppContainer, private val saved: Save
         viewModelScope.launch { ledger.recordGateDodge(amountPaise, categoryId) }
     }
 
-    fun confirmPending(uuid: String) = viewModelScope.launch { ledger.confirm(uuid) }
-    fun discardPending(uuid: String) = viewModelScope.launch { ledger.discard(uuid) }
+    fun confirmPending(row: TxnRow) = viewModelScope.launch {
+        if (ledger.confirm(row.uuid)) {
+            _undoOffer.value = UndoOffer(
+                PendingLabels.logged(row.amountPaise, row.payeeName), row.uuid, TxnStatus.LOGGED, TxnStatus.PENDING_CONFIRM,
+            )
+        }
+    }
+
+    fun discardPending(row: TxnRow) = viewModelScope.launch {
+        if (ledger.discard(row.uuid)) {
+            _undoOffer.value = UndoOffer(
+                PendingLabels.discarded(row.amountPaise, row.payeeName), row.uuid, TxnStatus.DISCARDED, TxnStatus.PENDING_CONFIRM,
+            )
+        }
+    }
 
     private suspend fun prefillCategoryFromPayee(vpa: String) {
         val known = container.db.payeeDao().byVpa(vpa) ?: return
