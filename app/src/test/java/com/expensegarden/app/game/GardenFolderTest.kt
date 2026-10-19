@@ -41,8 +41,10 @@ class GardenFolderTest {
         allTimeInvestmentCount: Int = 0,
         today: LocalDate = LocalDate.of(2026, 7, 10),
         overallByDay: Map<Int, Long>? = null,
+        recurringPayeeIds: Set<Long> = emptySet(),
     ) = GardenFolder.fold(
-        "2026-07", txns, categories, budgets, events, allTimeInvestmentCount, today, zone, overallByDay = overallByDay,
+        "2026-07", txns, categories, budgets, events, allTimeInvestmentCount, today, zone,
+        overallByDay = overallByDay, recurringPayeeIds = recurringPayeeIds,
     )
 
     @Test fun `every logged txn plants in chronological order`() {
@@ -121,6 +123,16 @@ class GardenFolderTest {
         assertEquals(18, foldAll(emptyList(), budget, today = today).streakDays)
         assertEquals(1, fold(emptyList(), budget, today = today, overallByDay = setOn18th).streakDays)
         assertEquals(18, fold(emptyList(), budget, today = today).streakDays)
+    }
+
+    @Test fun `the month fold paces its streak against the month's fixed costs`() {
+        // The monthly digest reads this number; the strip's streak already takes rent out of the line.
+        val rent = txn(2, day = 1, paise = 1_000_000).copy(payeeId = 77)
+        val chai = (1..9).map { txn(103, day = it, paise = 10_000) }
+        val budget = listOf(BudgetEntity(categoryId = null, month = "2026-07", amountPaise = 1_500_000, updatedAt = 1L))
+        val today = LocalDate.of(2026, 7, 10)
+        assertEquals(9, fold(chai + rent, budget, today = today, recurringPayeeIds = setOf(77L)).streakDays)
+        assertEquals(0, fold(chai + rent, budget, today = today).streakDays)   // the plain line: rent fails day 1
     }
 
     @Test fun `all-time fold plants every month on one island in chronological order`() {

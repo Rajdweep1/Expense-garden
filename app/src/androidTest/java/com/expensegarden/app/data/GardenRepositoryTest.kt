@@ -136,4 +136,21 @@ class GardenRepositoryTest {
         garden.runReconciler()
         assertTrue(db.gameEventDao().ofType("streak.hit").isEmpty())
     }
+
+    @Test fun the_month_fold_paces_its_streak_against_rent() = runBlocking {
+        GardenPrefs(ApplicationProvider.getApplicationContext()).firstObservedAt =
+            LocalDate.of(2025, 4, 1).atStartOfDay(zone).toInstant().toEpochMilli()
+        budgets.setBudget(null, "2025-05", 1_500_000)
+        budgets.carryForward("2025-06")                                  // ₹15,000 all of June
+        suspend fun paid(payee: String, vpa: String?, paise: Long, day: LocalDate, cat: Long) = ledger.saveManualLogged(
+            LedgerRepository.Draft(vpa = vpa, payeeName = payee, amountPaise = paise, categoryId = cat, note = null,
+                occurredAt = day.atTime(12, 0).atZone(zone).toInstant().toEpochMilli()),
+            breachedAtLogging = false,
+        )
+        paid("Landlord", "landlord@ybl", 1_000_000, LocalDate.of(2025, 5, 1), 401)   // once in May: June's rent is fixed
+        paid("Landlord", "landlord@ybl", 1_000_000, LocalDate.of(2025, 6, 1), 401)
+        for (d in 1..30) paid("Chai", null, 10_000, LocalDate.of(2025, 6, d), 103)
+        // Against the plain line the rent fails June 1–21; against the fixed-cost line no day fails.
+        assertEquals(30, garden.foldMonth("2025-06").streakDays)
+    }
 }

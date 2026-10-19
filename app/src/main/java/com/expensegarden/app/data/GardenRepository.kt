@@ -231,6 +231,9 @@ class GardenRepository(
             firstObservedDay = firstObservedDayOf(YearMonth.parse(monthKey)),
             // The monthly digest narrates this month's streak, so it judges each day the same way.
             overallByDay = overallByDayOf(YearMonth.parse(monthKey)),
+            // The monthly digest and the album narrate this month's streak; it paces against the
+            // same fixed costs the strip's did.
+            recurringPayeeIds = ledger.recurringPayeeIds(monthKey, ledgerBeganAt()),
         )
     }
 
