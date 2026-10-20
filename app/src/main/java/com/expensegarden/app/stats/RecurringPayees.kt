@@ -20,10 +20,11 @@ import java.time.ZoneId
  *  still counts; two comparable orders do not. (It used to be exactly one payment, so a ₹500
  *  top-up to the landlord dropped rent for two months — review, 2026-10-20.) `isNecessity` is
  *  wrong in both directions: Groceries is a necessity bought weekly, and Netflix is not a
- *  necessity at all. Amounts never decide WHETHER a payee is recurring — an amount threshold
- *  would classify a one-off impulse buy as fixed, which is precisely the spend the gate exists to
- *  notice. They only cap HOW MUCH of a month's spend with a recurring payee counts as fixed: its
- *  latest regular payment plus a quarter ([fixedShares]).
+ *  necessity at all. No amount THRESHOLD decides whether a payee is recurring — one would
+ *  classify a one-off impulse buy as fixed, which is precisely the spend the gate exists to
+ *  notice; a payee's payments are only compared with each other. Amounts also cap HOW MUCH of a
+ *  month's spend with a recurring payee counts as fixed: the smaller of its regular payments in the
+ *  look-back months, plus a quarter ([fixedShares]).
  *
  *  COMPLETE MONTHS ONLY, and that is the load-bearing part. Were the current month included, a
  *  payee's status would flip mid-month: on the 2nd a food-delivery payee has a single order
@@ -45,9 +46,9 @@ object RecurringPayees {
      * @param ledgerBeganAt when the ledger began (StreakBaseline.ledgerBeganAt); null = unknown,
      *   which keeps every month with data eligible. Required rather than defaulted: four callers
      *   compute fixed spend, and a default would let one quietly skip the floor.
-     * @return payee id → its monthly cap in paise: its regular payment in the latest complete
-     *   look-back month plus a quarter. Empty when there is no complete month of history yet, which
-     *   degrades to the plain linear projection.
+     * @return payee id → its monthly cap in paise: the smaller of its regular payments in the
+     *   complete look-back months, plus a quarter. Empty when there is no complete month of history
+     *   yet, which degrades to the plain linear projection.
      */
     fun detect(
         txns: List<TransactionEntity>,
@@ -84,9 +85,10 @@ object RecurringPayees {
                 .mapValues { (_, paid) -> paid.maxOf { it.amountPaise } }
         }
         val recurring = regularByMonth.map { it.keys }.reduce { acc, ids -> acc intersect ids }
-        // lookBack runs newest first, so the latest month sets the cap: a quarter's slack absorbs a
-        // bill that drifts or a rent hike.
-        return recurring.associateWith { regularByMonth.first().getValue(it) * 5 / 4 }
+        // The smaller month sets the cap, so a one-off big payment can't become next month's
+        // allowance (final review, 2026-10-20); a quarter's slack absorbs a bill that drifts or a
+        // modest rent hike.
+        return recurring.associateWith { id -> regularByMonth.minOf { it.getValue(id) } * 5 / 4 }
     }
 
     /** Day granularity, as in StreakBaseline: a ledger that began on the 1st watched the month. */

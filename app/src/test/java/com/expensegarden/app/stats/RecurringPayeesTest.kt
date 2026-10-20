@@ -95,12 +95,19 @@ class RecurringPayeesTest {
         assertEquals(setOf(1L), detect(txns))
     }
 
-    @Test fun `the cap is the latest month's regular payment plus a quarter`() {
+    @Test fun `the cap is the smaller look-back month's regular payment plus a quarter`() {
         val txns = listOf(
-            txn(1, 2026, 7, 1, amountPaise = 1_800_000),
-            txn(1, 2026, 8, 1, amountPaise = 2_000_000), txn(1, 2026, 8, 20, amountPaise = 50_000),
+            txn(1, 2026, 7, 1, amountPaise = 30_000), txn(1, 2026, 7, 2, amountPaise = 1_800_000),   // July: ₹300, then ₹18,000 rent
+            txn(1, 2026, 8, 1, amountPaise = 2_000_000), txn(1, 2026, 8, 20, amountPaise = 50_000),  // August: rent up to ₹20,000
         )
-        assertEquals(mapOf(1L to 2_500_000L), RecurringPayees.detect(txns, YearMonth.of(2026, 9), zone, null))
+        assertEquals(mapOf(1L to 2_250_000L), RecurringPayees.detect(txns, YearMonth.of(2026, 9), zone, null))
+    }
+
+    @Test fun `a one-off big payment doesn't become next month's allowance`() {
+        // ₹300 in November, then a ₹10,000 one-off in December that the cap already called spending:
+        // January's cap stays at ₹375, so the same order is spending again.
+        val txns = listOf(txn(3, 2026, 11, 5, amountPaise = 30_000), txn(3, 2026, 12, 3, amountPaise = 1_000_000))
+        assertEquals(mapOf(3L to 37_500L), RecurringPayees.detect(txns, YearMonth.of(2027, 1), zone, null))
     }
 
     @Test fun `payments to a recurring payee fill its cap in date order`() {
