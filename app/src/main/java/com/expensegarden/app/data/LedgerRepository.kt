@@ -190,9 +190,10 @@ class LedgerRepository(
      *  @param ledgerBeganAt see StreakBaseline.ledgerBeganAt. Required: this repository has no
      *    GardenPrefs of its own to look it up, so every caller has to bring it.
      *  @param payeeVpa who is being paid, when the payment has a VPA. Required: a payment to a
-     *    recurring payee is a fixed cost the moment it is logged, and leaving it out of the fixed
-     *    term here made the gate contradict the strip (final review, 2026-10-19). The manual path
-     *    passes its null VPA; it reads only BREACH, which no fixed term moves. */
+     *    recurring payee takes what is left of its fixed cap the moment it is logged, and leaving
+     *    that out of the fixed term here made the gate contradict the strip (final review,
+     *    2026-10-19). The manual path passes its null VPA; it reads only BREACH, which no fixed
+     *    term moves. */
     suspend fun evaluateGate(
         categoryId: Long,
         amountPaise: Long,
@@ -209,12 +210,15 @@ class LedgerRepository(
         // Fixed costs leave the overall pace line, so a day-1 rent payment doesn't raise a dialog on
         // nearly every purchase for three weeks (review, 2026-09-06). Read from the payment's own
         // month, so a backdated payment isn't paced against rent it never saw. The payment itself
-        // is fixed only as its payee's first of the month.
+        // takes what is left of its payee's cap: the share RecurringPayees.fixedShares gives it once
+        // logged, since a payment dated now fills last.
         val fixed = RecurringPayees.fixedSpentPaise(monthTxns, caps)
-        val firstThisMonth = monthTxns.none { it.payeeId == payeeId }
+        val capLeft = payeeId?.let { id ->
+            caps[id]?.let { cap -> (cap - monthTxns.filter { it.payeeId == id }.sumOf { it.amountPaise }).coerceAtLeast(0L) }
+        } ?: 0L
         return GateAggregator.aggregate(
             scopeInputs(categoryId, occurredAt), amountPaise, fixed, day, days,
-            candidateFixedPaise = if (payeeId != null && payeeId in caps && firstThisMonth) amountPaise else 0L,
+            candidateFixedPaise = minOf(amountPaise, capLeft),
         )
     }
 

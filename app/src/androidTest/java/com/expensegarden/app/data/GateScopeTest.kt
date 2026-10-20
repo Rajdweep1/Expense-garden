@@ -121,21 +121,54 @@ class GateScopeTest {
         assertEquals(Severity.PACE_WARNING, repo.evaluateGate(101, 100_000, nov2, ledgerBeganAt = null, payeeVpa = "new@ybl").severity)
     }
 
-    @Test fun a_second_payment_to_a_recurring_payee_in_a_month_is_variable() = runBlocking {
+    @Test fun a_payment_past_a_recurring_payees_cap_is_spending() = runBlocking {
         fun noonOn(m: Int, d: Int) = LocalDate.of(2026, m, d).atTime(12, 0).atZone(zone).toInstant().toEpochMilli()
-        db.budgetDao().insert(BudgetEntity(categoryId = null, month = "2026-11", amountPaise = 1_500_000, updatedAt = 1L))  // ₹15,000
         suspend fun paid(vpa: String?, payee: String, paise: Long, m: Int, d: Int) = repo.saveManualLogged(
             LedgerRepository.Draft(vpa = vpa, payeeName = payee, amountPaise = paise, categoryId = 101, note = null,
                 occurredAt = noonOn(m, d)),
             breachedAtLogging = false,
         )
-        paid("tiffin@ybl", "Tiffin", 100_000, 10, 2)   // once in October: recurring in November
-        paid("tiffin@ybl", "Tiffin", 100_000, 11, 1)   // November's first tiffin bill: the fixed one
+        db.budgetDao().insert(BudgetEntity(categoryId = null, month = "2026-11", amountPaise = 1_500_000, updatedAt = 1L))  // ₹15,000
+        paid("tiffin@ybl", "Tiffin", 100_000, 10, 2)   // once in October: recurring in November, a ₹1,250 cap
+        paid("tiffin@ybl", "Tiffin", 100_000, 11, 1)
         paid(null, "Chai", 30_000, 11, 1)
-        // A second ₹1,000 tiffin bill is spending: ₹2,300 against the ₹2,073 line is a warning.
+        // ₹250 of the ₹1,250 cap is left, so ₹1,750 of this bill is spending.
         assertEquals(
             Severity.PACE_WARNING,
-            repo.evaluateGate(101, 100_000, noonOn(11, 2), ledgerBeganAt = null, payeeVpa = "tiffin@ybl").severity,
+            repo.evaluateGate(101, 200_000, noonOn(11, 2), ledgerBeganAt = null, payeeVpa = "tiffin@ybl").severity,
+        )
+    }
+
+    @Test fun a_small_payment_before_rent_leaves_the_rent_fixed() = runBlocking {
+        fun noonOn(m: Int, d: Int) = LocalDate.of(2026, m, d).atTime(12, 0).atZone(zone).toInstant().toEpochMilli()
+        suspend fun paid(vpa: String?, payee: String, paise: Long, m: Int, d: Int) = repo.saveManualLogged(
+            LedgerRepository.Draft(vpa = vpa, payeeName = payee, amountPaise = paise, categoryId = 101, note = null,
+                occurredAt = noonOn(m, d)),
+            breachedAtLogging = false,
+        )
+        db.budgetDao().insert(BudgetEntity(categoryId = null, month = "2026-11", amountPaise = 4_500_000, updatedAt = 1L))  // ₹45,000
+        paid("landlord@ybl", "Landlord", 1_800_000, 10, 1)   // October's rent: a ₹22,500 cap in November
+        paid("landlord@ybl", "Landlord", 50_000, 11, 1)      // ₹500 to the landlord before rent
+        assertEquals(
+            Severity.OK,
+            repo.evaluateGate(101, 1_800_000, noonOn(11, 3), ledgerBeganAt = null, payeeVpa = "landlord@ybl").severity,
+        )
+    }
+
+    @Test fun a_big_order_to_a_payee_with_a_small_regular_payment_is_mostly_spending() = runBlocking {
+        fun noonOn(m: Int, d: Int) = LocalDate.of(2026, m, d).atTime(12, 0).atZone(zone).toInstant().toEpochMilli()
+        suspend fun paid(vpa: String?, payee: String, paise: Long, m: Int, d: Int) = repo.saveManualLogged(
+            LedgerRepository.Draft(vpa = vpa, payeeName = payee, amountPaise = paise, categoryId = 101, note = null,
+                occurredAt = noonOn(m, d)),
+            breachedAtLogging = false,
+        )
+        db.budgetDao().insert(BudgetEntity(categoryId = null, month = "2026-12", amountPaise = 3_000_000, updatedAt = 1L))  // ₹30,000
+        paid("shop@ybl", "Shop", 30_000, 11, 5)       // ₹300 once in November: "recurring" in December, a ₹375 cap
+        paid(null, "Chai", 200_000, 12, 1)
+        // Only ₹375 of a ₹10,000 order is fixed: ₹12,000 against a ₹3,671 line is a warning.
+        assertEquals(
+            Severity.PACE_WARNING,
+            repo.evaluateGate(101, 1_000_000, noonOn(12, 3), ledgerBeganAt = null, payeeVpa = "shop@ybl").severity,
         )
     }
 }
