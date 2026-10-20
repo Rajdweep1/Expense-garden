@@ -89,6 +89,7 @@ class GardenRepository(
             GardenFolder.fold(
                 monthKey, txns, cats, budgets, events, sips, LocalDate.now(zone), zone, firstObservedDayOf(month),
                 overallByDay = overallByDayOf(month),
+                recurringCaps = ledger.recurringCaps(monthKey, ledgerBeganAt()),
             )
         }
     }
@@ -234,7 +235,7 @@ class GardenRepository(
             overallByDay = overallByDayOf(YearMonth.parse(monthKey)),
             // The monthly digest and the album narrate this month's streak; it paces against the
             // same fixed costs the strip's did.
-            recurringPayeeIds = ledger.recurringPayeeIds(monthKey, ledgerBeganAt()),
+            recurringCaps = ledger.recurringCaps(monthKey, ledgerBeganAt()),
         )
     }
 
@@ -266,13 +267,13 @@ class GardenRepository(
             txns.groupBy { Instant.ofEpochMilli(it.occurredAt).atZone(zone).dayOfMonth }
                 .mapValues { (_, l) -> l.sumOf { it.amountPaise } }
         }
-        // The same fixed payments the gate takes out of its line (RecurringPayees.fixedPayments).
-        val recurring = ledger.recurringPayeeIds(monthKey, ledgerBeganAt())
+        // The same fixed shares the gate takes out of its line (RecurringPayees.fixedShares).
+        val caps = ledger.recurringCaps(monthKey, ledgerBeganAt())
         val overall = db.budgetDao().allForMonth(monthKey).firstOrNull { it.categoryId == null }?.amountPaise
         return StreakMath.underPaceStreak(
             byDay(monthTxns), overall, LocalDate.now(zone).dayOfMonth, nowMonth.lengthOfMonth(),
             firstObservedDayOf(nowMonth),
-            fixedByDayPaise = byDay(RecurringPayees.fixedPayments(monthTxns, recurring)),
+            fixedByDayPaise = byDay(RecurringPayees.fixedShares(monthTxns, caps)),
             budgetByDayPaise = overallByDayOf(nowMonth),
         )
     }

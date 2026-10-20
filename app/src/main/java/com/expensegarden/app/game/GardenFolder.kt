@@ -29,9 +29,9 @@ object GardenFolder {
         /** The overall budget in force on each day of this month (BudgetInForce); null judges
          *  every day against this month's row. Read by the streak only. */
         overallByDay: Map<Int, Long>? = null,
-        /** Payees whose spend counts as fixed this month (LedgerRepository.recurringPayeeIds). This
-         *  fold sees one month, so the caller brings them. Read by the streak only. */
-        recurringPayeeIds: Set<Long> = emptySet(),
+        /** Each recurring payee's fixed cap this month (LedgerRepository.recurringCaps). This fold
+         *  sees one month, so the caller brings them. Read by the streak only. */
+        recurringCaps: Map<Long, Long>,
     ): GardenState {
         val ym = YearMonth.parse(monthKey)
         val archived = YearMonth.from(today) > ym
@@ -50,7 +50,7 @@ object GardenFolder {
         val leafSums = ordered.groupBy { it.categoryId }.mapValues { (_, l) -> l.sumOf { it.amountPaise } }
         // fixedPaise = 0 here, and deliberately so rather than by omission. This fold only ever
         // receives ONE month's transactions, so it can't detect recurring payees itself: the
-        // caller brings [recurringPayeeIds], and only the streak below uses them.
+        // caller brings [recurringCaps], and only the streak below uses them.
         //
         // It also cannot matter. This path serves archived months, where effectiveDay is the
         // last day, so the pace allowance is budget * 1.15 — above the budget itself. Anything
@@ -74,7 +74,7 @@ object GardenFolder {
             butterflies = minOf(5, monthEvents.count { it.type == "gate.dodged" }),
             streakDays = StreakMath.underPaceStreak(
                 dayTotals, overall, streakToday, daysInMonth, firstObservedDay,
-                fixedByDayPaise = dayTotalsOf(RecurringPayees.fixedPayments(ordered, recurringPayeeIds), zone),
+                fixedByDayPaise = dayTotalsOf(RecurringPayees.fixedShares(ordered, recurringCaps), zone),
                 budgetByDayPaise = overallByDay,
             ),
             noSpendDays = StreakMath.noSpendDays(dayTotals, streakToday, firstObservedDay),
@@ -170,12 +170,12 @@ object GardenFolder {
 
         val currentTxns = ordered.filter { YearMonth.from(Instant.ofEpochMilli(it.occurredAt).atZone(zone)) == ym }
         val leafSums = currentTxns.groupBy { it.categoryId }.mapValues { (_, l) -> l.sumOf { it.amountPaise } }
-        val recurring = RecurringPayees.detect(ordered, ym, zone, ledgerBeganAt)
-        val fixedPaise = RecurringPayees.fixedSpentPaise(currentTxns, recurring)
+        val caps = RecurringPayees.detect(ordered, ym, zone, ledgerBeganAt)
+        val fixedPaise = RecurringPayees.fixedSpentPaise(currentTxns, caps)
         val severity = MonthStatsFolder.fold(categories, leafSums, currentBudgets, fixedPaise, today.dayOfMonth, daysInMonth).overallSeverity
         val dayTotals = dayTotalsOf(currentTxns, zone)
-        // The recurring-payee slice of each day, so the streak paces against the line the gate drew.
-        val fixedByDay = dayTotalsOf(RecurringPayees.fixedPayments(currentTxns, recurring), zone)
+        // Each day's fixed share, so the streak paces against the line the gate drew.
+        val fixedByDay = dayTotalsOf(RecurringPayees.fixedShares(currentTxns, caps), zone)
         val overall = currentBudgets.firstOrNull { it.categoryId == null }?.amountPaise
 
         return GardenState(

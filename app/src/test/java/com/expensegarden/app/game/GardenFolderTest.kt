@@ -41,10 +41,10 @@ class GardenFolderTest {
         allTimeInvestmentCount: Int = 0,
         today: LocalDate = LocalDate.of(2026, 7, 10),
         overallByDay: Map<Int, Long>? = null,
-        recurringPayeeIds: Set<Long> = emptySet(),
+        recurringCaps: Map<Long, Long> = emptyMap(),
     ) = GardenFolder.fold(
         "2026-07", txns, categories, budgets, events, allTimeInvestmentCount, today, zone,
-        overallByDay = overallByDay, recurringPayeeIds = recurringPayeeIds,
+        overallByDay = overallByDay, recurringCaps = recurringCaps,
     )
 
     @Test fun `every logged txn plants in chronological order`() {
@@ -87,7 +87,7 @@ class GardenFolderTest {
         val budget = listOf(BudgetEntity(categoryId = null, month = "2026-07", amountPaise = 100_000, updatedAt = 1L))
         val g = GardenFolder.fold(
             "2026-07", listOf(txn(103, 2, paise = 150_000)), categories, budget, emptyList(),
-            allTimeInvestmentCount = 0, today = LocalDate.of(2026, 8, 15), zone = zone,
+            allTimeInvestmentCount = 0, today = LocalDate.of(2026, 8, 15), zone = zone, recurringCaps = emptyMap(),
         )
         assertTrue(g.archived)
         assertEquals(Weather.DROUGHT, g.weather)
@@ -131,7 +131,7 @@ class GardenFolderTest {
         val chai = (1..9).map { txn(103, day = it, paise = 10_000) }
         val budget = listOf(BudgetEntity(categoryId = null, month = "2026-07", amountPaise = 1_500_000, updatedAt = 1L))
         val today = LocalDate.of(2026, 7, 10)
-        assertEquals(9, fold(chai + rent, budget, today = today, recurringPayeeIds = setOf(77L)).streakDays)
+        assertEquals(9, fold(chai + rent, budget, today = today, recurringCaps = mapOf(77L to 1_250_000L)).streakDays)
         assertEquals(0, fold(chai + rent, budget, today = today).streakDays)   // the plain line: rent fails day 1
     }
 
@@ -145,8 +145,17 @@ class GardenFolderTest {
         )
         val budget = listOf(BudgetEntity(categoryId = null, month = "2026-07", amountPaise = 3_000_000, updatedAt = 1L))
         val today = LocalDate.of(2026, 7, 10)
-        assertEquals(0, fold(july, budget, today = today, recurringPayeeIds = setOf(77L)).streakDays)
+        assertEquals(0, fold(july, budget, today = today, recurringCaps = mapOf(77L to 1_250_000L)).streakDays)
         assertEquals(0, foldAll(listOf(juneRent) + july, budget, today = today).streakDays)   // detects 77 from June
+    }
+
+    @Test fun `a small payment before rent doesn't make the rent spending`() {
+        val july = listOf(
+            txn(2, day = 1, paise = 50_000).copy(payeeId = 77),       // ₹500 to the landlord
+            txn(2, day = 2, paise = 1_000_000).copy(payeeId = 77),    // rent
+        )
+        val budget = listOf(BudgetEntity(categoryId = null, month = "2026-07", amountPaise = 3_000_000, updatedAt = 1L))
+        assertEquals(9, fold(july, budget, today = LocalDate.of(2026, 7, 10), recurringCaps = mapOf(77L to 1_250_000L)).streakDays)
     }
 
     @Test fun `all-time fold plants every month on one island in chronological order`() {

@@ -3,7 +3,7 @@ package com.expensegarden.app.stats
 /** Classical-stats month pace (spec §8.3). Money stays paise-Long; division truncates at
  *  display precision.
  *
- *  `fixedPaise` is this month's spend on recurring payees — see [RecurringPayees]. It is added
+ *  `fixedPaise` is this month's fixed spend (RecurringPayees.fixedSpentPaise). It is added
  *  back once instead of being extrapolated, because linear projection over a day-1 rent
  *  payment multiplies it by the length of the month. Measured on three months of real
  *  spending before this fix: a headline of ₹1,65,305 by month end, against actual months of

@@ -22,10 +22,10 @@ data class GateVerdict(
 )
 
 object GateAggregator {
-    /** @param fixedPaise this month's spend on recurring payees, applied to the OVERALL scope
-     *    only. A category budget paces that category, and rent is not inside Shopping — giving
-     *    every scope the overall fixed allowance would hand each of them room it has not
-     *    earned, and would quietly disable the per-category gate.
+    /** @param fixedPaise this month's fixed spend (RecurringPayees.fixedSpentPaise), applied to the
+     *    OVERALL scope only. A category budget paces that category, and rent is not inside
+     *    Shopping — giving every scope the overall fixed allowance would hand each of them room it
+     *    has not earned, and would quietly disable the per-category gate.
      *  @param candidateFixedPaise the part of [candidatePaise] that is itself a fixed cost: all of
      *    it when its payee is recurring this month. It joins the overall fixed term, as it will the
      *    moment it is logged; left out, the gate warned about a payment the strip called fixed a

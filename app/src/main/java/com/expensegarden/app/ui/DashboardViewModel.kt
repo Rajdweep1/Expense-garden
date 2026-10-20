@@ -47,8 +47,8 @@ class DashboardViewModel(private val container: AppContainer) : ViewModel() {
                     container.db.transactionDao().observeLoggedBetween(lookBackFrom, to),
                 ) { cats, sums, budgets, window ->
                     val (day, days) = ledger.today()
-                    val recurring = RecurringPayees.detect(window, ym, zone, began)
-                    val fixed = RecurringPayees.fixedSpentPaise(window.filter { it.occurredAt in from..to }, recurring)
+                    val caps = RecurringPayees.detect(window, ym, zone, began)
+                    val fixed = RecurringPayees.fixedSpentPaise(window.filter { it.occurredAt in from..to }, caps)
                     MonthStatsFolder.fold(
                         cats, sums.associate { it.categoryId to it.totalPaise }, budgets, fixed, day, days,
                     )

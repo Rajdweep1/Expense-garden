@@ -89,8 +89,8 @@ class MainViewModel(private val container: AppContainer, private val saved: Save
                 ) { spent, budgets, window ->
                     val overall = budgets.firstOrNull { it.categoryId == null }?.amountPaise
                     val (day, days) = ledger.today()
-                    val recurring = RecurringPayees.detect(window, ym, zone, began)
-                    val fixed = RecurringPayees.fixedSpentPaise(window.filter { it.occurredAt in from..to }, recurring)
+                    val caps = RecurringPayees.detect(window, ym, zone, began)
+                    val fixed = RecurringPayees.fixedSpentPaise(window.filter { it.occurredAt in from..to }, caps)
                     HomeHeader(spent, overall, GateEvaluator.evaluate(spent, overall, 0L, fixed, day, days))
                 }
             )

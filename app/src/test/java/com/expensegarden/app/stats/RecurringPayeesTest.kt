@@ -27,7 +27,7 @@ class RecurringPayeesTest {
         txns: List<TransactionEntity>,
         current: YearMonth = YearMonth.of(2026, 9),
         ledgerBeganAt: Long? = null,
-    ) = RecurringPayees.detect(txns, current, zone, ledgerBeganAt)
+    ) = RecurringPayees.detect(txns, current, zone, ledgerBeganAt).keys
 
     @Test fun `a payee billed once a month in every look-back month is recurring`() {
         assertEquals(setOf(1L), detect(listOf(txn(1, 2026, 7, 1), txn(1, 2026, 8, 1))))
@@ -86,38 +86,58 @@ class RecurringPayeesTest {
         assertEquals(emptySet<Long>(), detect(txns) - 99L)
     }
 
-    @Test fun `only a recurring payee's first payment of the month is fixed`() {
-        val month = listOf(
-            txn(1, 2026, 9, 9, amountPaise = 500),          // the same payee again: variable spend
-            txn(1, 2026, 9, 1, amountPaise = 1_800_000),    // rent: the month's first payment to it
-            txn(2, 2026, 9, 3, amountPaise = 45_000),       // lunch, not recurring
+    @Test fun `a small extra payment doesn't stop the regular one being recurring`() {
+        // Rent plus a ₹500 top-up in July; rent alone in August.
+        val txns = listOf(
+            txn(1, 2026, 7, 1, amountPaise = 1_800_000), txn(1, 2026, 7, 15, amountPaise = 50_000),
+            txn(1, 2026, 8, 1, amountPaise = 1_800_000),
         )
-        assertEquals(1_800_000L, RecurringPayees.fixedSpentPaise(month, setOf(1L)))
-        assertEquals(listOf(1_800_000L), RecurringPayees.fixedPayments(month, setOf(1L)).map { it.amountPaise })
+        assertEquals(setOf(1L), detect(txns))
     }
 
-    @Test fun `the first payment is chosen the same way whatever order the rows arrive in`() {
-        // Same day, so the uuid breaks the tie, and every caller must pick the same row.
+    @Test fun `the cap is the latest month's regular payment plus a quarter`() {
+        val txns = listOf(
+            txn(1, 2026, 7, 1, amountPaise = 1_800_000),
+            txn(1, 2026, 8, 1, amountPaise = 2_000_000), txn(1, 2026, 8, 20, amountPaise = 50_000),
+        )
+        assertEquals(mapOf(1L to 2_500_000L), RecurringPayees.detect(txns, YearMonth.of(2026, 9), zone, null))
+    }
+
+    @Test fun `payments to a recurring payee fill its cap in date order`() {
+        val caps = mapOf(1L to 2_250_000L)                     // ₹18,000 rent last month
+        val month = listOf(
+            txn(1, 2026, 9, 9, amountPaise = 500_000),          // ₹5,000 more: only ₹4,000 fits
+            txn(1, 2026, 9, 3, amountPaise = 1_800_000),        // rent
+            txn(1, 2026, 9, 1, amountPaise = 50_000),           // ₹500 before rent
+            txn(2, 2026, 9, 3, amountPaise = 45_000),           // lunch, not recurring
+        )
+        assertEquals(2_250_000L, RecurringPayees.fixedSpentPaise(month, caps))
+        assertEquals(listOf(50_000L, 1_800_000L, 400_000L), RecurringPayees.fixedShares(month, caps).map { it.amountPaise })
+    }
+
+    @Test fun `the fill is the same whatever order the rows arrive in`() {
+        // Same day, so the uuid breaks the tie.
         val small = txn(1, 2026, 9, 1, amountPaise = 500)
         val rent = txn(1, 2026, 9, 1, amountPaise = 1_800_000)
-        assertEquals(listOf(rent), RecurringPayees.fixedPayments(listOf(small, rent), setOf(1L)))
-        assertEquals(listOf(rent), RecurringPayees.fixedPayments(listOf(rent, small), setOf(1L)))
+        val caps = mapOf(1L to 1_000_000L)
+        val expected = listOf(rent.copy(amountPaise = 1_000_000))
+        assertEquals(expected, RecurringPayees.fixedShares(listOf(small, rent), caps))
+        assertEquals(expected, RecurringPayees.fixedShares(listOf(rent, small), caps))
     }
 
-    @Test fun `the earliest payment is the fixed one even when a later one is bigger`() {
-        // Earliest, not largest: the gate decides "first" before any later payment exists, and the
-        // totals must agree with it. The cost, ruled with the plan: ₹500 to the landlord before rent
-        // leaves the rent as spending that month.
-        val month = listOf(
-            txn(1, 2026, 9, 9, amountPaise = 1_800_000),
-            txn(1, 2026, 9, 1, amountPaise = 500),
-        )
-        assertEquals(500L, RecurringPayees.fixedSpentPaise(month, setOf(1L)))
+    @Test fun `a small payment before the regular one leaves the regular one fixed`() {
+        val month = listOf(txn(1, 2026, 9, 9, amountPaise = 1_800_000), txn(1, 2026, 9, 1, amountPaise = 50_000))
+        assertEquals(1_850_000L, RecurringPayees.fixedSpentPaise(month, mapOf(1L to 2_250_000L)))
+    }
+
+    @Test fun `a big order to a payee with a small regular payment is mostly spending`() {
+        // ₹300 once last month made the shop "recurring"; this month only ₹375 of a ₹10,000 order is fixed.
+        assertEquals(37_500L, RecurringPayees.fixedSpentPaise(listOf(txn(3, 2026, 9, 3, amountPaise = 1_000_000)), mapOf(3L to 37_500L)))
     }
 
     @Test fun `fixed spend ignores non-LOGGED rows`() {
         val month = listOf(txn(1, 2026, 9, 1, amountPaise = 1_800_000).copy(status = TxnStatus.DISCARDED))
-        assertEquals(0L, RecurringPayees.fixedSpentPaise(month, setOf(1L)))
+        assertEquals(0L, RecurringPayees.fixedSpentPaise(month, mapOf(1L to 2_250_000L)))
     }
 
     // ---- a ledger that wasn't watching (review fix, 2026-10-11) ----

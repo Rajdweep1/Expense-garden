@@ -28,7 +28,7 @@ object MonthStatsFolder {
         categories: List<CategoryEntity>,
         leafSums: Map<Long, Long>,
         budgets: List<BudgetEntity>,
-        /** This month's spend on recurring payees — see [RecurringPayees]. Deliberately has no
+        /** This month's fixed spend (RecurringPayees.fixedSpentPaise). Deliberately has no
          *  default: a default is precisely how a call site silently keeps the old behaviour,
          *  and the review found the old behaviour projecting 3.5x high. */
         fixedPaise: Long,

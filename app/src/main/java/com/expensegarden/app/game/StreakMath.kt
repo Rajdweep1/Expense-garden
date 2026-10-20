@@ -15,10 +15,11 @@ object StreakMath {
      *   12-day streak it never earned, which is both a cosmetic lie on the home strip and enough
      *   to fire STREAK_7 and grow a rare. Defaults to 1, which is the whole month and therefore
      *   the previous behaviour exactly.
-     *  @param fixedByDayPaise spend on recurring payees, per day — the slice of [dayTotalsPaise]
-     *   the gate takes out of the pace line. Each day is judged against the line the gate drew that
-     *   day, with the fixed spend so far: without it, rent on the 1st failed every day until about
-     *   the 22nd while the gate and the strip said "on pace" (review, 2026-10-18).
+     *  @param fixedByDayPaise fixed spend per day (RecurringPayees.fixedShares) — the slice of
+     *   [dayTotalsPaise] the gate takes out of the pace line. Each day is judged against the line
+     *   the gate drew that day, with the fixed spend so far: without it, rent on the 1st failed
+     *   every day until about the 22nd while the gate and the strip said "on pace" (review,
+     *   2026-10-18).
      *  @param budgetByDayPaise the overall budget in force on each day (BudgetInForce): a day is
      *   judged against its own budget, and a day without one can't extend the streak. null judges
      *   every day against [budgetPaise], for callers with no budget history. */

@@ -175,10 +175,10 @@ class LedgerRepository(
         }
     }
 
-    /** The payees whose spend counts as fixed in [monthKey] (RecurringPayees.detect over its
+    /** Each recurring payee's fixed cap in [monthKey] (RecurringPayees.detect over its
      *  look-back window). Shared by the gate's fixed total and the streak's per-day fixed spend,
      *  so the two can't disagree about what rent is. */
-    suspend fun recurringPayeeIds(monthKey: String, ledgerBeganAt: Long?): Set<Long> {
+    suspend fun recurringCaps(monthKey: String, ledgerBeganAt: Long?): Map<Long, Long> {
         val ym = YearMonth.parse(monthKey)
         val lookBackFrom =
             boundsOfMonth(ym.minusMonths(RecurringPayees.LOOK_BACK_MONTHS.toLong()).toString()).first
@@ -204,17 +204,17 @@ class LedgerRepository(
         val monthKey = monthKeyOf(occurredAt)
         val (from, to) = boundsOfMonth(monthKey)
         val monthTxns = db.transactionDao().loggedBetween(from, to)
-        val recurring = recurringPayeeIds(monthKey, ledgerBeganAt)
+        val caps = recurringCaps(monthKey, ledgerBeganAt)
         val payeeId = payeeVpa?.let { db.payeeDao().byVpa(it)?.id }
         // Fixed costs leave the overall pace line, so a day-1 rent payment doesn't raise a dialog on
         // nearly every purchase for three weeks (review, 2026-09-06). Read from the payment's own
         // month, so a backdated payment isn't paced against rent it never saw. The payment itself
-        // is fixed only as its payee's first of the month, as RecurringPayees.fixedPayments counts it.
-        val fixed = RecurringPayees.fixedSpentPaise(monthTxns, recurring)
+        // is fixed only as its payee's first of the month.
+        val fixed = RecurringPayees.fixedSpentPaise(monthTxns, caps)
         val firstThisMonth = monthTxns.none { it.payeeId == payeeId }
         return GateAggregator.aggregate(
             scopeInputs(categoryId, occurredAt), amountPaise, fixed, day, days,
-            candidateFixedPaise = if (payeeId != null && payeeId in recurring && firstThisMonth) amountPaise else 0L,
+            candidateFixedPaise = if (payeeId != null && payeeId in caps && firstThisMonth) amountPaise else 0L,
         )
     }
 
