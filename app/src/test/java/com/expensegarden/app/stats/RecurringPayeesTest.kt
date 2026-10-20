@@ -135,6 +135,29 @@ class RecurringPayeesTest {
         assertEquals(37_500L, RecurringPayees.fixedSpentPaise(listOf(txn(3, 2026, 9, 3, amountPaise = 1_000_000)), mapOf(3L to 37_500L)))
     }
 
+    @Test fun `a new payment takes what is left of its payee's cap, as the fill gives it once logged`() {
+        // The gate's share must equal what logging the payment adds to the month's fixed spend, or
+        // the gate's line disagrees with the strip's a second later.
+        val caps = mapOf(1L to 125_000L)                       // ₹1,000 last month
+        fun share(paidSoFar: List<Long>, amount: Long): Long {
+            val month = paidSoFar.mapIndexed { i, paise -> txn(1, 2026, 9, i + 1, amountPaise = paise) }
+            val logged = RecurringPayees.fixedSpentPaise(month + txn(1, 2026, 9, 20, amountPaise = amount), caps) -
+                RecurringPayees.fixedSpentPaise(month, caps)
+            val atGate = RecurringPayees.newPaymentShare(month, caps, payeeId = 1L, amountPaise = amount)
+            assertEquals(logged, atGate)
+            return atGate
+        }
+        assertEquals(100_000L, share(emptyList(), 100_000))       // nothing paid yet
+        assertEquals(25_000L, share(listOf(100_000), 200_000))      // ₹250 of the cap left
+        assertEquals(0L, share(listOf(200_000), 100_000))           // already past the cap
+        assertEquals(5_000L, share(listOf(50_000), 5_000))          // a small payment with room to spare
+    }
+
+    @Test fun `a payment to a payee without a cap has no fixed share`() {
+        assertEquals(0L, RecurringPayees.newPaymentShare(emptyList(), mapOf(1L to 125_000L), payeeId = 2L, amountPaise = 100_000))
+        assertEquals(0L, RecurringPayees.newPaymentShare(emptyList(), mapOf(1L to 125_000L), payeeId = null, amountPaise = 100_000))
+    }
+
     @Test fun `fixed spend ignores non-LOGGED rows`() {
         val month = listOf(txn(1, 2026, 9, 1, amountPaise = 1_800_000).copy(status = TxnStatus.DISCARDED))
         assertEquals(0L, RecurringPayees.fixedSpentPaise(month, mapOf(1L to 2_250_000L)))

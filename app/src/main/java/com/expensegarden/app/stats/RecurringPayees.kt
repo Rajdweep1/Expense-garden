@@ -109,6 +109,15 @@ object RecurringPayees {
      *  order to a shop paid ₹300 last month is mostly spending (review, 2026-10-20).
      *  Returns copies of the rows carrying only their share, for folds and sums: never write one
      *  back. */
+    /** The fixed share a new payment takes: what is left of its payee's cap after the month's
+     *  LOGGED payments, never more than the payment. It is what [fixedShares] adds once the payment
+     *  is logged after them, so the gate's line and the strip's agree (final review, 2026-10-20). */
+    fun newPaymentShare(monthTxns: List<TransactionEntity>, caps: Map<Long, Long>, payeeId: Long?, amountPaise: Long): Long {
+        val cap = payeeId?.let { caps[it] } ?: return 0L
+        val paid = monthTxns.filter { it.status == TxnStatus.LOGGED && it.payeeId == payeeId }.sumOf { it.amountPaise }
+        return minOf(amountPaise, (cap - paid).coerceAtLeast(0L))
+    }
+
     fun fixedShares(monthTxns: List<TransactionEntity>, caps: Map<Long, Long>): List<TransactionEntity> {
         val left = caps.toMutableMap()
         return monthTxns

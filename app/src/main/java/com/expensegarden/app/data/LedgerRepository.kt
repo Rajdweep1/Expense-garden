@@ -210,15 +210,11 @@ class LedgerRepository(
         // Fixed costs leave the overall pace line, so a day-1 rent payment doesn't raise a dialog on
         // nearly every purchase for three weeks (review, 2026-09-06). Read from the payment's own
         // month, so a backdated payment isn't paced against rent it never saw. The payment itself
-        // takes what is left of its payee's cap: the share RecurringPayees.fixedShares gives it once
-        // logged, since a payment dated now fills last.
+        // takes what is left of its payee's cap (RecurringPayees.newPaymentShare).
         val fixed = RecurringPayees.fixedSpentPaise(monthTxns, caps)
-        val capLeft = payeeId?.let { id ->
-            caps[id]?.let { cap -> (cap - monthTxns.filter { it.payeeId == id }.sumOf { it.amountPaise }).coerceAtLeast(0L) }
-        } ?: 0L
         return GateAggregator.aggregate(
             scopeInputs(categoryId, occurredAt), amountPaise, fixed, day, days,
-            candidateFixedPaise = minOf(amountPaise, capLeft),
+            candidateFixedPaise = RecurringPayees.newPaymentShare(monthTxns, caps, payeeId, amountPaise),
         )
     }
 
