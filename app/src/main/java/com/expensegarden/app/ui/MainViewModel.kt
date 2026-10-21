@@ -75,8 +75,7 @@ class MainViewModel(private val container: AppContainer, private val saved: Save
             val monthKey = ledger.currentMonthKey()   // fresh on every (re)subscription
             val ym = YearMonth.parse(monthKey)
             val (from, to) = ledger.boundsOfMonth(monthKey)
-            val lookBackFrom =
-                ledger.boundsOfMonth(ym.minusMonths(RecurringPayees.LOOK_BACK_MONTHS.toLong()).toString()).first
+            val lookBackFrom = RecurringPayees.windowStart(ym, zone)
             val began = container.garden.ledgerBeganAt()   // once per (re)subscription
             emitAll(
                 combine(

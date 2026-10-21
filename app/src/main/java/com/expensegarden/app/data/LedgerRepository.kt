@@ -180,8 +180,7 @@ class LedgerRepository(
      *  so the two can't disagree about what rent is. */
     suspend fun recurringCaps(monthKey: String, ledgerBeganAt: Long?): Map<Long, Long> {
         val ym = YearMonth.parse(monthKey)
-        val lookBackFrom =
-            boundsOfMonth(ym.minusMonths(RecurringPayees.LOOK_BACK_MONTHS.toLong()).toString()).first
+        val lookBackFrom = RecurringPayees.windowStart(ym, zone)
         val (_, to) = boundsOfMonth(monthKey)
         return RecurringPayees.detect(db.transactionDao().loggedBetween(lookBackFrom, to), ym, zone, ledgerBeganAt)
     }

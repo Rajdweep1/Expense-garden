@@ -36,8 +36,7 @@ class DashboardViewModel(private val container: AppContainer) : ViewModel() {
             // and it keeps the whole thing reactive rather than a suspend read that would go
             // stale the moment a transaction lands.
             val ym = YearMonth.parse(monthKey)
-            val lookBackFrom =
-                ledger.boundsOfMonth(ym.minusMonths(RecurringPayees.LOOK_BACK_MONTHS.toLong()).toString()).first
+            val lookBackFrom = RecurringPayees.windowStart(ym, zone)
             val began = container.garden.ledgerBeganAt()   // once per (re)subscription
             emitAll(
                 combine(

@@ -171,4 +171,24 @@ class GateScopeTest {
             repo.evaluateGate(101, 1_000_000, noonOn(12, 3), ledgerBeganAt = null, payeeVpa = "shop@ybl").severity,
         )
     }
+
+    @Test fun rent_paid_early_stays_a_fixed_cost() = runBlocking {
+        fun noonOn(m: Int, d: Int) = LocalDate.of(2026, m, d).atTime(12, 0).atZone(zone).toInstant().toEpochMilli()
+        suspend fun paid(vpa: String?, payee: String, paise: Long, m: Int, d: Int) = repo.saveManualLogged(
+            LedgerRepository.Draft(vpa = vpa, payeeName = payee, amountPaise = paise, categoryId = 101, note = null,
+                occurredAt = noonOn(m, d)),
+            breachedAtLogging = false,
+        )
+        db.budgetDao().insert(BudgetEntity(categoryId = null, month = "2026-12", amountPaise = 4_500_000, updatedAt = 1L))  // ₹45,000
+        paid("landlord@ybl", "Landlord", 1_800_000, 9, 30)    // October's rent, paid early
+        paid(null, "Chai", 10_000, 10, 10)                    // October has data even without that rent
+        paid("landlord@ybl", "Landlord", 1_800_000, 10, 31)   // November's rent, paid early
+        paid(null, "Dinner", 150_000, 11, 15)
+        // December's rent is the fixed cost it was in October and November: ₹18,000 under a ₹19,001
+        // line. As spending, it is over a ₹1,669 line.
+        assertEquals(
+            Severity.OK,
+            repo.evaluateGate(101, 1_800_000, noonOn(12, 1), ledgerBeganAt = null, payeeVpa = "landlord@ybl").severity,
+        )
+    }
 }

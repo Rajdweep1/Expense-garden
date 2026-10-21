@@ -221,4 +221,9 @@ class RecurringPayeesTest {
             detect(listOf(txn(1, 2026, 10, 31, 1_800_000)), YearMonth.of(2026, 12), ledgerBeganAt = at(2026, 10, 28)),
         )
     }
+
+    @Test fun `the look-back window starts on the 25th before its first month`() {
+        // January looks back to November and December, and November's detection month begins on 25 Oct.
+        assertEquals(at(2026, 10, 25), RecurringPayees.windowStart(YearMonth.of(2027, 1), zone))
+    }
 }

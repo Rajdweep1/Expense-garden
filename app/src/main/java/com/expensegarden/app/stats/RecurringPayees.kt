@@ -47,14 +47,22 @@ object RecurringPayees {
 
     /** How many complete months back to look. Two is enough to tell rent from lunch, and short
      *  enough that a cancelled subscription stops counting quickly. */
-    const val LOOK_BACK_MONTHS = 2
+    private const val LOOK_BACK_MONTHS = 2
 
     /** A detection month begins on this day of the calendar month before it, so rent paid in the
      *  week before the 1st counts toward the month it is for. */
     private const val NEXT_MONTH_FROM_DAY = 25
 
+    /** Where a query that feeds [detect] must start: the first day of its earliest look-back month,
+     *  the 25th of the calendar month before that one. A window from a calendar 1st cut off the rent
+     *  paid early for that month, and the landlord dropped out again. The only way in: the constants
+     *  are private, so no caller rebuilds the window from whole calendar months. */
+    fun windowStart(currentMonth: YearMonth, zone: ZoneId): Long =
+        currentMonth.minusMonths(LOOK_BACK_MONTHS + 1L).atDay(NEXT_MONTH_FROM_DAY)
+            .atStartOfDay(zone).toInstant().toEpochMilli()
+
     /**
-     * @param txns any superset of the look-back window; non-LOGGED rows are ignored.
+     * @param txns any superset of the window from [windowStart]; non-LOGGED rows are ignored.
      * @param ledgerBeganAt when the ledger began (StreakBaseline.ledgerBeganAt); null = unknown,
      *   which keeps every month with data eligible. Required rather than defaulted: four callers
      *   compute fixed spend, and a default would let one quietly skip the floor.
