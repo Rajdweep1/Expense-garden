@@ -40,6 +40,11 @@ import java.time.ZoneId
  *  a payee paid on the 24th twice in October and never in September. Only detection shifts;
  *  spending is still counted by calendar month.
  *
+ *  The edge moved rather than vanished. A payee whose payment day crosses it drops out the way rent
+ *  did, such as a bill usually paid on the 27th that once goes out on the 23rd, and a payee paid
+ *  from the 25th on is detected a month later. That costs less here than on the 1st: from about the
+ *  27th the pace line is at or above the budget anyway, so being fixed matters for days, not weeks.
+ *
  *  A false positive costs little. A genuinely one-off payment is added once rather than
  *  extrapolated, which is arguably the more honest treatment of a one-off anyway, and the cap
  *  holds what passes as fixed to about last month's payment. */
@@ -81,7 +86,7 @@ object RecurringPayees {
             .groupBy { detectionMonth(it.occurredAt, zone) }
 
         // A month counts as a look-back month only if the dataset has data in it AND the ledger
-        // watched all of it.
+        // watched it from its calendar 1st (see observedInFull).
         //
         // The first half is what lets a fresh install with one month of history get detection
         // instead of waiting for a second. It means "absent from a look-back month" only
