@@ -32,6 +32,14 @@ import java.time.ZoneId
  *  month fills in. Judging on finished months alone keeps the answer constant for the whole
  *  month it is used in.
  *
+ *  Months here run from the 25th to the 24th: a payment from the 25th on counts toward the next
+ *  month, so November's rent paid on 31 October is November's. On calendar months October held two
+ *  rents and November none, and the landlord dropped out of fixed costs for three months (final
+ *  review, 2026-10-20). The edge is a day of the month, not a number of days before the 1st,
+ *  because months differ in length: seven days before 1 October is 24 September, which would count
+ *  a payee paid on the 24th twice in October and never in September. Only detection shifts;
+ *  spending is still counted by calendar month.
+ *
  *  A false positive costs little. A genuinely one-off payment is added once rather than
  *  extrapolated, which is arguably the more honest treatment of a one-off anyway, and the cap
  *  holds what passes as fixed to about last month's payment. */
@@ -40,6 +48,10 @@ object RecurringPayees {
     /** How many complete months back to look. Two is enough to tell rent from lunch, and short
      *  enough that a cancelled subscription stops counting quickly. */
     const val LOOK_BACK_MONTHS = 2
+
+    /** A detection month begins on this day of the calendar month before it, so rent paid in the
+     *  week before the 1st counts toward the month it is for. */
+    private const val NEXT_MONTH_FROM_DAY = 25
 
     /**
      * @param txns any superset of the look-back window; non-LOGGED rows are ignored.
@@ -58,7 +70,7 @@ object RecurringPayees {
     ): Map<Long, Long> {
         val byMonth = txns.asSequence()
             .filter { it.status == TxnStatus.LOGGED }
-            .groupBy { YearMonth.from(Instant.ofEpochMilli(it.occurredAt).atZone(zone)) }
+            .groupBy { detectionMonth(it.occurredAt, zone) }
 
         // A month counts as a look-back month only if the dataset has data in it AND the ledger
         // watched all of it.
@@ -91,7 +103,16 @@ object RecurringPayees {
         return recurring.associateWith { id -> regularByMonth.minOf { it.getValue(id) } * 5 / 4 }
     }
 
-    /** Day granularity, as in StreakBaseline: a ledger that began on the 1st watched the month. */
+    private fun detectionMonth(occurredAt: Long, zone: ZoneId): YearMonth {
+        val date = Instant.ofEpochMilli(occurredAt).atZone(zone).toLocalDate()
+        val month = YearMonth.from(date)
+        return if (date.dayOfMonth >= NEXT_MONTH_FROM_DAY) month.plusMonths(1) else month
+    }
+
+    /** Day granularity, as in StreakBaseline: a ledger that began on the 1st watched the month.
+     *  Keyed to the calendar 1st although a detection month starts on the 25th before it: a ledger
+     *  begun in that last week missed at most a few early payments, and requiring the 25th would
+     *  cost it its first full month of detection, with rent on the 1st tripping the gate again. */
     private fun observedInFull(month: YearMonth, ledgerBeganAt: Long?, zone: ZoneId): Boolean =
         ledgerBeganAt == null ||
             !Instant.ofEpochMilli(ledgerBeganAt).atZone(zone).toLocalDate().isAfter(month.atDay(1))
@@ -105,12 +126,6 @@ object RecurringPayees {
     fun fixedSpentPaise(monthTxns: List<TransactionEntity>, caps: Map<Long, Long>): Long =
         fixedShares(monthTxns, caps).sumOf { it.amountPaise }
 
-    /** Each LOGGED payment's fixed share. Payments to a recurring payee fill its cap in
-     *  (`occurredAt`, `uuid`) order, the same whatever order a caller's rows arrive in, and anything
-     *  past the cap is spending: a ₹500 top-up before rent leaves the rent fixed, and a ₹10,000
-     *  order to a shop paid ₹300 last month is mostly spending (review, 2026-10-20).
-     *  Returns copies of the rows carrying only their share, for folds and sums: never write one
-     *  back. */
     /** The fixed share a new payment takes: what is left of its payee's cap after the month's
      *  LOGGED payments, never more than the payment. It is what [fixedShares] adds once the payment
      *  is logged after them, so the gate's line and the strip's agree (final review, 2026-10-20). */
@@ -120,6 +135,12 @@ object RecurringPayees {
         return minOf(amountPaise, (cap - paid).coerceAtLeast(0L))
     }
 
+    /** Each LOGGED payment's fixed share. Payments to a recurring payee fill its cap in
+     *  (`occurredAt`, `uuid`) order, the same whatever order a caller's rows arrive in, and anything
+     *  past the cap is spending: a ₹500 top-up before rent leaves the rent fixed, and a ₹10,000
+     *  order to a shop paid ₹300 last month is mostly spending (review, 2026-10-20).
+     *  Returns copies of the rows carrying only their share, for folds and sums: never write one
+     *  back. */
     fun fixedShares(monthTxns: List<TransactionEntity>, caps: Map<Long, Long>): List<TransactionEntity> {
         val left = caps.toMutableMap()
         return monthTxns

@@ -187,4 +187,38 @@ class RecurringPayeesTest {
 
     @Test fun `an unknown beginning keeps every month with data`() =
         assertEquals(setOf(7L), detect(dinnerInOctober, november, ledgerBeganAt = null))
+
+    // ---- early payments across a month boundary (final review I3, 2026-10-20) ----
+
+    @Test fun `November's rent paid on 31 October keeps the landlord fixed through January`() {
+        // Calendar months gave October two rents and November none. The ₹100 on 15 Nov gives November
+        // data, so the landlord's absence from it counts.
+        val rent = 1_800_000L
+        val txns = listOf(
+            txn(1, 2026, 9, 1, rent), txn(1, 2026, 10, 1, rent), txn(1, 2026, 10, 31, rent), txn(1, 2026, 12, 1, rent),
+            txn(2, 2026, 11, 15, 10_000),
+        )
+        for (current in listOf(YearMonth.of(2026, 11), YearMonth.of(2026, 12), YearMonth.of(2027, 1))) {
+            assertEquals("$current", mapOf(1L to 2_250_000L), RecurringPayees.detect(txns, current, zone, null))
+        }
+    }
+
+    @Test fun `a payment counts toward the next month from the 25th, not the 24th`() {
+        val rentOnThe1st = listOf(txn(1, 2026, 9, 1, 1_800_000), txn(1, 2026, 10, 1, 1_800_000))
+        assertEquals(setOf(1L), detect(rentOnThe1st + txn(1, 2026, 10, 25, 1_800_000), november))        // November's rent, early
+        assertEquals(emptySet<Long>(), detect(rentOnThe1st + txn(1, 2026, 10, 24, 1_800_000), november))  // a second October rent
+    }
+
+    @Test fun `a payee paid on the 24th every month is recurring`() {
+        // Seven days before 1 Oct is 24 Sep: a fixed shift would put both payments in October.
+        assertEquals(setOf(1L), detect(listOf(txn(1, 2026, 9, 24), txn(1, 2026, 10, 24)), november))
+    }
+
+    @Test fun `a ledger begun after the 25th still watched the next month`() {
+        // Its first days count toward November, but a month is watched from its calendar 1st.
+        assertEquals(
+            setOf(1L),
+            detect(listOf(txn(1, 2026, 10, 31, 1_800_000)), YearMonth.of(2026, 12), ledgerBeganAt = at(2026, 10, 28)),
+        )
+    }
 }
