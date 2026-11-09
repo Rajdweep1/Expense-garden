@@ -43,4 +43,10 @@ class SyncFailureTest {
         assertEquals("push failed: HTTP 401", syncLogLine("push", 401, null))
         assertEquals("snapshot failed: ConnectException: refused", syncLogLine("snapshot", null, java.net.ConnectException("refused")))
     }
+
+    @Test fun `the release build's blocked cleartext is named`() {
+        // Measured on the release build on 2026-11-10: a plain IOException, not UnknownServiceException.
+        val blocked = java.io.IOException("Cleartext HTTP traffic to 10.0.2.2 not permitted")
+        assertEquals(SyncFailure.CLEARTEXT_BLOCKED, SyncFailure.classify(null, blocked))
+    }
 }

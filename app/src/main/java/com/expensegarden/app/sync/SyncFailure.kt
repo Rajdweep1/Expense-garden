@@ -24,7 +24,10 @@ enum class SyncFailure(val label: String) {
             code == 404 -> NOT_FOUND
             code != null && code in 300..399 -> REDIRECTED   // HttpURLConnection won't follow http → https
             code != null -> SERVER
-            error is UnknownServiceException -> CLEARTEXT_BLOCKED   // the release build's network config
+            // The release build's network config. On API 35 it arrives as a plain IOException
+            // whose message says so (measured 2026-11-10); UnknownServiceException on older stacks.
+            error is UnknownServiceException -> CLEARTEXT_BLOCKED
+            error is IOException && error.message?.startsWith("Cleartext HTTP traffic") == true -> CLEARTEXT_BLOCKED
             error is MalformedURLException || error is ClassCastException -> BAD_URL   // ClassCast: not an http(s) url
             error is IllegalArgumentException -> INVALID_CHARACTER   // e.g. a header value it can't send
             error is IOException -> UNREACHABLE
