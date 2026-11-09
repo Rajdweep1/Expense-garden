@@ -39,6 +39,16 @@ class SyncPrefs(context: Context) : SyncClock.Store {
         get() = prefs.getLong(KEY_LAST_OK, 0L)
         set(value) = prefs.edit().putLong(KEY_LAST_OK, value).apply()
 
+    /** The last failed request's name, null when none or unrecognised; drives the status line. */
+    var lastFailure: SyncFailure?
+        get() = prefs.getString(KEY_LAST_FAILURE, null)?.let { name -> SyncFailure.entries.firstOrNull { it.name == name } }
+        set(value) = prefs.edit().putString(KEY_LAST_FAILURE, value?.name).apply()
+
+    /** Epoch millis of [lastFailure]. */
+    var lastFailureAt: Long
+        get() = prefs.getLong(KEY_LAST_FAILURE_AT, 0L)
+        set(value) = prefs.edit().putLong(KEY_LAST_FAILURE_AT, value).apply()
+
     /** SyncClock.Store — the logical clock's persisted high-water mark. */
     override var lastStamp: Long
         get() = prefs.getLong(KEY_LAST_STAMP, 0L)
@@ -53,5 +63,7 @@ class SyncPrefs(context: Context) : SyncClock.Store {
         const val KEY_PUSHED_EVENT = "lastPushedEventId"
         const val KEY_LAST_OK = "lastSuccessAt"
         const val KEY_LAST_STAMP = "lastStamp"
+        const val KEY_LAST_FAILURE = "lastFailure"
+        const val KEY_LAST_FAILURE_AT = "lastFailureAt"
     }
 }

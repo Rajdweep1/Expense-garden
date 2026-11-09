@@ -39,7 +39,10 @@ class SyncRepository(
         val batch = collect()
         if (batch.isEmpty) return false
 
-        if (!client.push(batch)) return false
+        when (val r = client.push(batch)) {
+            is SyncResult.Failed -> { recordFailure(r); return false }
+            is SyncResult.Ok -> Unit
+        }
 
         val advanced = CursorMath.advanced(Cursors(prefs.lastPushedAt, prefs.lastPushedEventId), batch)
         prefs.lastPushedAt = advanced.lastPushedAt
@@ -56,7 +59,28 @@ class SyncRepository(
 
     /** The server's copy, read once: Settings shows its counts (RestorePlan) and then restores
      *  this same snapshot, so the counts describe what is applied. */
-    suspend fun fetchSnapshot(): SyncSnapshot? = if (prefs.isConfigured) client.snapshot() else null
+    suspend fun fetchSnapshot(): SyncResult<SyncSnapshot> {
+        if (!prefs.isConfigured) return SyncResult.Failed(SyncFailure.BAD_URL, null)
+        return client.snapshot().also { if (it is SyncResult.Failed) recordFailure(it) }
+    }
+
+    /** Save's connection check: an empty push authenticates and writes nothing (settings plan,
+     *  ruling 2). Recorded like a real push, without touching the cursors. */
+    suspend fun checkConnection(): SyncResult<Unit> {
+        if (!prefs.isConfigured) return SyncResult.Failed(SyncFailure.BAD_URL, null)
+        val empty = SyncBatch(emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList())
+        return client.push(empty).also {
+            when (it) {
+                is SyncResult.Ok -> prefs.lastSuccessAt = System.currentTimeMillis()
+                is SyncResult.Failed -> recordFailure(it)
+            }
+        }
+    }
+
+    private fun recordFailure(r: SyncResult.Failed) {
+        prefs.lastFailure = r.failure
+        prefs.lastFailureAt = System.currentTimeMillis()
+    }
 
     /** (transactions on the phone, rows not yet backed up), for RestorePlan. */
     suspend fun localCounts(): Pair<Int, Int> = db.syncDao().txnCount() to pendingCount()

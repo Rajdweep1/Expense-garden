@@ -254,3 +254,20 @@ func TestSnapshotRoundTripsEveryTable(t *testing.T) {
 		t.Fatal("the overall budget's NULL category came back non-nil")
 	}
 }
+
+// The phone's "test connection" is an empty push (settings plan, ruling 2, 2026-11-10): it must
+// succeed and write nothing, or every Save would report the backup as broken.
+func TestAnEmptyBatchApplies(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+	if err := s.ApplyBatch(ctx, Batch{}); err != nil {
+		t.Fatalf("an empty batch was refused: %v", err)
+	}
+	snap, err := s.Snapshot(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := len(snap.Categories) + len(snap.Payees) + len(snap.Txns) + len(snap.Budgets) + len(snap.Events); n != 0 {
+		t.Fatalf("an empty batch wrote %d rows", n)
+	}
+}

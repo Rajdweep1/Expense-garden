@@ -28,8 +28,8 @@ import java.net.URL
  *  exception's class or message. See logFailure. */
 class SyncClient(private val prefs: SyncPrefs) {
 
-    /** True when the server accepted the whole batch. */
-    suspend fun push(batch: SyncBatch): Boolean = withContext(Dispatchers.IO) {
+    /** Ok when the server accepted the whole batch. An empty batch is the connection check. */
+    suspend fun push(batch: SyncBatch): SyncResult<Unit> = withContext(Dispatchers.IO) {
         val body = JSONObject()
             .put("categories", JSONArray(batch.categories.map(::categoryJson)))
             .put("payees", JSONArray(batch.payees.map(::payeeJson)))
@@ -45,11 +45,17 @@ class SyncClient(private val prefs: SyncPrefs) {
                 )
             )
             .put("events", JSONArray(batch.events.map(::eventJson)))
-        post("/v1/sync/push", body) != null
+        when (val r = post("/v1/sync/push", body)) {
+            is SyncResult.Ok -> SyncResult.Ok(Unit)
+            is SyncResult.Failed -> r
+        }
     }
 
-    suspend fun snapshot(): SyncSnapshot? = withContext(Dispatchers.IO) {
-        val body = get("/v1/sync/snapshot") ?: return@withContext null
+    suspend fun snapshot(): SyncResult<SyncSnapshot> = withContext(Dispatchers.IO) {
+        val body = when (val r = get("/v1/sync/snapshot")) {
+            is SyncResult.Ok -> r.value
+            is SyncResult.Failed -> return@withContext r
+        }
         runCatching {
             SyncSnapshot(
                 categories = body.getJSONArray("categories").mapObjects(::readCategory),
@@ -58,7 +64,7 @@ class SyncClient(private val prefs: SyncPrefs) {
                 budgets = body.getJSONArray("budgets").mapObjects(::readBudget),
                 events = body.getJSONArray("events").mapObjects(::readEvent),
             )
-        }.getOrNull()
+        }.fold({ SyncResult.Ok(it) }, { SyncResult.Failed(SyncFailure.SERVER, 200) })
     }
 
     // ---------- transport ----------
@@ -72,30 +78,25 @@ class SyncClient(private val prefs: SyncPrefs) {
             readTimeout = READ_TIMEOUT_MS
         }
 
-    private fun post(path: String, body: JSONObject): JSONObject? {
-        var conn: HttpURLConnection? = null
-        return try {
-            conn = open(path, "POST").apply { doOutput = true }
-            conn.outputStream.use { it.write(body.toString().toByteArray()) }
-            if (conn.responseCode !in 200..299) return null
-            JSONObject(conn.inputStream.bufferedReader().use(BufferedReader::readText))
-        } catch (e: Exception) {
-            logFailure("push", e)
-            null
-        } finally {
-            conn?.disconnect()
-        }
-    }
+    private fun post(path: String, body: JSONObject): SyncResult<JSONObject> =
+        request("push") { open(path, "POST").apply { doOutput = true; outputStream.use { it.write(body.toString().toByteArray()) } } }
 
-    private fun get(path: String): JSONObject? {
+    private fun get(path: String): SyncResult<JSONObject> = request("snapshot") { open(path, "GET") }
+
+    /** Every failure, a non-2xx included, comes back named (SyncFailure) and is logged once. */
+    private fun request(verb: String, connect: () -> HttpURLConnection): SyncResult<JSONObject> {
         var conn: HttpURLConnection? = null
         return try {
-            conn = open(path, "GET")
-            if (conn.responseCode !in 200..299) return null
-            JSONObject(conn.inputStream.bufferedReader().use(BufferedReader::readText))
+            conn = connect()
+            val code = conn.responseCode
+            if (code !in 200..299) {
+                android.util.Log.w("SyncClient", "$verb failed: HTTP $code")
+                return SyncResult.Failed(SyncFailure.classify(code, null), code)
+            }
+            SyncResult.Ok(JSONObject(conn.inputStream.bufferedReader().use(BufferedReader::readText)))
         } catch (e: Exception) {
-            logFailure("snapshot", e)
-            null
+            logFailure(verb, e)
+            SyncResult.Failed(SyncFailure.classify(null, e), null)
         } finally {
             conn?.disconnect()
         }

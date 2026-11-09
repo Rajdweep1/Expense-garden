@@ -39,6 +39,7 @@ import com.expensegarden.app.data.AiPrefs
 import com.expensegarden.app.game.Tone
 import com.expensegarden.app.sync.SyncPrefs
 import com.expensegarden.app.sync.SyncRepository
+import com.expensegarden.app.sync.SyncResult
 import kotlinx.coroutines.launch
 
 /** The app's settings surface (1D spec §3, 2A spec §5).
@@ -212,7 +213,7 @@ fun SettingsScreen(
                 TextButton(onClick = {
                     confirmingRestore = false
                     scope.launch {
-                        val ok = runCatching { sync.fetchSnapshot()?.let { sync.restore(it) } ?: false }.getOrDefault(false)
+                        val ok = runCatching { (sync.fetchSnapshot() as? SyncResult.Ok)?.let { sync.restore(it.value) } ?: false }.getOrDefault(false)
                         restoreResult = if (ok) "Restored from the server." else "Restore failed — check the url and token."
                     }
                 }) { Text("Restore") }
