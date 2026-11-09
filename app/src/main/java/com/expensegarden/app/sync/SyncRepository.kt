@@ -38,11 +38,13 @@ class SyncRepository(
         if (!prefs.isConfigured) return false
         val batch = collect()
         if (batch.isEmpty) return false
+        return send(batch) is SyncResult.Ok
+    }
 
-        when (val r = client.push(batch)) {
-            is SyncResult.Failed -> { recordFailure(r); return false }
-            is SyncResult.Ok -> Unit
-        }
+    /** Pushes [batch]; on success advances the cursors from it, on failure records why. */
+    private suspend fun send(batch: SyncBatch): SyncResult<Unit> {
+        val r = client.push(batch)
+        if (r is SyncResult.Failed) { recordFailure(r); return r }
 
         val advanced = CursorMath.advanced(Cursors(prefs.lastPushedAt, prefs.lastPushedEventId), batch)
         prefs.lastPushedAt = advanced.lastPushedAt
@@ -51,7 +53,7 @@ class SyncRepository(
         // Tombstones the server has accepted have done their job. Bounded by what was sent, so
         // a clear that happened during the round trip survives to be pushed next time.
         db.syncDao().clearTombstonesUpTo(batch.tombstones.maxOfOrNull { it.deletedAt } ?: 0L)
-        return true
+        return r
     }
 
     /** How many rows are waiting. Drives the Settings status line (spec §5). */
@@ -64,12 +66,15 @@ class SyncRepository(
         return client.snapshot().also { if (it is SyncResult.Failed) recordFailure(it) }
     }
 
-    /** Save's connection check: an empty push authenticates and writes nothing (settings plan,
-     *  ruling 2). Recorded like a real push, without touching the cursors. */
+    /** Save's check. With rows waiting it is a real push: an empty one could pass while every real
+     *  push failed, and stamping that as a success read "Backed up just now" over a backup that
+     *  wasn't (final review, 2026-11-10). With nothing waiting, an empty push authenticates and
+     *  writes nothing (settings plan, ruling 2), and the backup really is current. */
     suspend fun checkConnection(): SyncResult<Unit> {
         if (!prefs.isConfigured) return SyncResult.Failed(SyncFailure.BAD_URL, null)
-        val empty = SyncBatch(emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList())
-        return client.push(empty).also {
+        val batch = collect()
+        if (!batch.isEmpty) return send(batch)
+        return client.push(batch).also {
             when (it) {
                 is SyncResult.Ok -> prefs.lastSuccessAt = System.currentTimeMillis()
                 is SyncResult.Failed -> recordFailure(it)
@@ -103,6 +108,9 @@ class SyncRepository(
             dao.wipeBudgets()
             dao.wipeTxns()
             dao.wipePayees()
+            // A delete waiting to be pushed is about the ledger being replaced: pushed afterwards,
+            // it would delete the restored row on the server (final review, 2026-11-10).
+            dao.clearTombstonesUpTo(Long.MAX_VALUE)
 
             db.categoryDao().upsertAll(snap.categories)
             db.payeeDao().insertAll(snap.payees)
