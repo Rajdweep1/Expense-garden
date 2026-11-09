@@ -14,7 +14,11 @@ import com.expensegarden.app.game.DigestReason
 import com.expensegarden.app.game.DigestSnapshot
 import com.expensegarden.app.game.DigestTrigger
 import com.expensegarden.app.game.GardenState
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
@@ -30,14 +34,24 @@ import java.time.ZoneId
  *  and the screens observe them. */
 class AiViewModel(private val container: AppContainer) : ViewModel() {
 
-    /** Resolved once at construction. A session that spans midnight keeps yesterday's key
-     *  until the ViewModel is recreated — acceptable, and simpler than pulling in an
-     *  experimental flatMapLatest for a card that only matters on the day it is written. */
+    /** Today's key, moved on every foreground: an app left in memory past midnight showed
+     *  yesterday's card until a cold start (review R12). */
+    private val dayKey = MutableStateFlow(LocalDate.now().toString())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
     val dailyCard: StateFlow<DigestEntity?> =
-        container.digests.observeDaily(LocalDate.now().toString())
+        dayKey.flatMapLatest { container.digests.observeDaily(it) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    init { viewModelScope.launch { runAiJob() } }
+    private var job: Job? = null
+
+    /** Every foreground, not just a cold start, like GardenViewModel.onForeground. One run at a
+     *  time; DigestTrigger decides whether a run says anything. */
+    fun onForeground() {
+        dayKey.value = LocalDate.now().toString()
+        if (job?.isActive == true) return
+        job = viewModelScope.launch { runAiJob() }
+    }
 
     /** "Not today" — mutes the persona for 24h without touching logging (spec §8). */
     fun notToday() {

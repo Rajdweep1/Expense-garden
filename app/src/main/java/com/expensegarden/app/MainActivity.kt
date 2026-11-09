@@ -66,8 +66,10 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         // Every foreground, so a month that turns while the app sits in memory still carries its
-        // budgets and closes the old month (GardenViewModel.onForeground).
+        // budgets and closes the old month (GardenViewModel.onForeground), and a new day still
+        // gets its card and digest (AiViewModel.onForeground).
         gardenVm.onForeground()
+        aiVm.onForeground()
     }
 }
 
