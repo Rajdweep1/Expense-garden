@@ -35,12 +35,18 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.expensegarden.app.ai.GeminiClient
+import com.expensegarden.app.ai.KeyCheck
 import com.expensegarden.app.data.AiPrefs
 import com.expensegarden.app.game.Tone
+import com.expensegarden.app.sync.RestorePlan
 import com.expensegarden.app.sync.SyncPrefs
 import com.expensegarden.app.sync.SyncRepository
 import com.expensegarden.app.sync.SyncResult
+import com.expensegarden.app.sync.SyncSnapshot
+import com.expensegarden.app.sync.syncStatusLine
 import kotlinx.coroutines.launch
+import java.time.ZoneId
 
 /** The app's settings surface (1D spec §3, 2A spec §5).
  *
@@ -52,6 +58,9 @@ fun SettingsScreen(
     aiPrefs: AiPrefs,
     syncPrefs: SyncPrefs,
     sync: SyncRepository,
+    /** A saved key or voice takes effect now: Settings is in the same activity, so returning
+     *  from it is no foreground (review R16). */
+    onAiChanged: () -> Unit,
     onBack: () -> Unit,
 ) {
     // `remember`, not `rememberSaveable`, on purpose: a secret does not belong in the saved-state
@@ -64,15 +73,22 @@ fun SettingsScreen(
 
     var pending by remember { mutableStateOf<Int?>(null) }
     var lastSuccessAt by remember { mutableStateOf(syncPrefs.lastSuccessAt) }
-    var confirmingRestore by remember { mutableStateOf(false) }
+    var lastFailure by remember { mutableStateOf(syncPrefs.lastFailure) }
+    var lastFailureAt by remember { mutableStateOf(syncPrefs.lastFailureAt) }
+    var statusRefresh by remember { mutableStateOf(0) }
+    var keyCheck by remember { mutableStateOf<String?>(null) }
+    // The plan and the very snapshot it describes: confirming restores what was counted (ruling 1).
+    var restoreOffer by remember { mutableStateOf<Pair<RestorePlan, SyncSnapshot>?>(null) }
     var restoreResult by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     SystemBarIcons(darkIcons = !isSystemInDarkTheme())
 
-    LaunchedEffect(saved, restoreResult) {
+    LaunchedEffect(statusRefresh, restoreResult) {
         pending = runCatching { sync.pendingCount() }.getOrNull()
         lastSuccessAt = syncPrefs.lastSuccessAt
+        lastFailure = syncPrefs.lastFailure
+        lastFailureAt = syncPrefs.lastFailureAt
     }
 
     // Scrolls and pads for the keyboard: Save must never be unreachable on this screen, since it
@@ -108,6 +124,7 @@ fun SettingsScreen(
                     visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth(),
                 )
+                keyCheck?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
             }
         }
 
@@ -125,7 +142,16 @@ fun SettingsScreen(
                             .selectable(
                                 selected = tone == option,
                                 role = Role.RadioButton,        // one TalkBack item per option, not two
-                                onClick = { tone = option; saved = false },
+                                // Kept on tap, not on Save, and refreshed at once: the quip refresh
+                                // is otherwise throttled to a day (review R16).
+                                onClick = {
+                                    if (option != tone) {
+                                        tone = option
+                                        aiPrefs.tone = option
+                                        aiPrefs.lastQuipRefreshAt = 0L
+                                        onAiChanged()
+                                    }
+                                },
                             )
                             .padding(vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -168,10 +194,29 @@ fun SettingsScreen(
                     visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Text(syncStatus(lastSuccessAt, pending), style = MaterialTheme.typography.labelMedium)
+                Text(
+                    syncStatusLine(syncPrefs.isConfigured, lastSuccessAt, lastFailure, lastFailureAt, pending, System.currentTimeMillis()),
+                    style = MaterialTheme.typography.labelMedium,
+                )
 
                 TextButton(
-                    onClick = { confirmingRestore = true },
+                    onClick = {
+                        scope.launch {
+                            restoreResult = "Checking the server…"
+                            when (val r = sync.fetchSnapshot()) {
+                                is SyncResult.Failed -> restoreResult = "Couldn't read the server: ${r.failure.label}"
+                                is SyncResult.Ok -> {
+                                    val (phoneTxns, unsynced) = sync.localCounts()
+                                    val snap = r.value
+                                    restoreOffer = RestorePlan.of(
+                                        phoneTxns, unsynced, snap.txns.size, snap.txns.maxOfOrNull { it.occurredAt },
+                                        ZoneId.systemDefault(),
+                                    ) to snap
+                                    restoreResult = null
+                                }
+                            }
+                        }
+                    },
                     enabled = syncPrefs.isConfigured,
                     contentPadding = PaddingValues(horizontal = 8.dp),
                 ) { Text("Restore from backup") }
@@ -182,60 +227,54 @@ fun SettingsScreen(
 
         Button(
             onClick = {
+                val keyChanged = key != aiPrefs.apiKey
                 aiPrefs.apiKey = key
-                aiPrefs.tone = tone
                 syncPrefs.serverUrl = url
                 syncPrefs.token = token
                 saved = true
+                // Save tells the truth about what was saved (review R15, R16).
+                scope.launch {
+                    if (keyChanged && key.isNotBlank()) {
+                        keyCheck = "Checking the key…"
+                        keyCheck = when (GeminiClient(aiPrefs).checkKey(key)) {
+                            KeyCheck.WORKS -> "Key works"
+                            KeyCheck.REJECTED -> "Key rejected — check it"
+                            KeyCheck.UNREACHABLE -> "Couldn't reach Gemini — saved anyway"
+                        }
+                    } else if (key.isBlank()) {
+                        keyCheck = null
+                    }
+                    if (syncPrefs.isConfigured) sync.checkConnection()
+                    statusRefresh += 1
+                    if (keyChanged) onAiChanged()
+                }
             },
             modifier = Modifier.fillMaxWidth(),
         ) { Text(if (saved) "Saved" else "Save") }
 
-        if (saved) {
-            Text(
-                "The garden will speak on your next visit home, if anything changed.",
-                style = MaterialTheme.typography.bodySmall,
-            )
-        }
     }
 
-    if (confirmingRestore) {
+    restoreOffer?.let { (plan, snap) ->
         AlertDialog(
-            onDismissRequest = { confirmingRestore = false },
-            title = { Text("Replace everything on this phone?") },
-            text = {
-                Text(
-                    "This deletes the local ledger and garden, then rebuilds them from the " +
-                        "server. It cannot be undone."
-                )
-            },
+            onDismissRequest = { restoreOffer = null },
+            title = { Text(if (plan is RestorePlan.Refuse) "Not restoring" else "Replace everything on this phone?") },
+            text = { Text(plan.message) },
             confirmButton = {
-                TextButton(onClick = {
-                    confirmingRestore = false
-                    scope.launch {
-                        val ok = runCatching { (sync.fetchSnapshot() as? SyncResult.Ok)?.let { sync.restore(it.value) } ?: false }.getOrDefault(false)
-                        restoreResult = if (ok) "Restored from the server." else "Restore failed — check the url and token."
-                    }
-                }) { Text("Restore") }
+                if (plan is RestorePlan.Refuse) {
+                    TextButton(onClick = { restoreOffer = null }) { Text("OK") }
+                } else {
+                    TextButton(onClick = {
+                        restoreOffer = null
+                        scope.launch {
+                            val ok = runCatching { sync.restore(snap) }.getOrDefault(false)
+                            restoreResult = if (ok) "Restored from the server." else "Restore failed."
+                        }
+                    }) { Text("Restore") }
+                }
             },
-            dismissButton = { TextButton(onClick = { confirmingRestore = false }) { Text("Cancel") } },
+            dismissButton = if (plan is RestorePlan.Refuse) null else {
+                { TextButton(onClick = { restoreOffer = null }) { Text("Cancel") } }
+            },
         )
-    }
-}
-
-/** Spec §5. The AI layer routes every failure to silence because nothing waits on it. A
- *  backup is the opposite: a dead one looks exactly like a healthy one until the day it
- *  matters, so this refuses to let that happen quietly. It never blocks or interrupts —
- *  it just tells the truth. */
-private fun syncStatus(lastSuccessAt: Long, pending: Int?): String {
-    val waiting = pending?.let { if (it == 0) "" else " · $it waiting" } ?: ""
-    if (lastSuccessAt == 0L) return "Never backed up$waiting"
-    val ageMs = System.currentTimeMillis() - lastSuccessAt
-    val hours = ageMs / 3_600_000
-    val stale = if (hours >= 24) "  ⚠ not backed up in ${hours / 24}d" else ""
-    return when {
-        ageMs < 60_000 -> "Backed up just now$waiting$stale"
-        ageMs < 3_600_000 -> "Backed up ${ageMs / 60_000}m ago$waiting$stale"
-        else -> "Backed up ${hours}h ago$waiting$stale"
     }
 }

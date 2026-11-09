@@ -141,6 +141,7 @@ private fun GardenNav(
                 aiPrefs = (context.applicationContext as GardenApp).container.aiPrefs,
                 syncPrefs = (context.applicationContext as GardenApp).container.syncPrefs,
                 sync = (context.applicationContext as GardenApp).container.sync,
+                onAiChanged = aiVm::onForeground,
                 onBack = { nav.popBackStack() },
             )
         }
