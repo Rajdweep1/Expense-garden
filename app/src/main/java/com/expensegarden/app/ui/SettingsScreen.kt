@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import com.expensegarden.app.ai.GeminiClient
 import com.expensegarden.app.ai.KeyCheck
 import com.expensegarden.app.data.AiPrefs
+import com.expensegarden.app.data.TxnStatus
 import com.expensegarden.app.game.Tone
 import com.expensegarden.app.sync.RestorePlan
 import com.expensegarden.app.sync.SyncPrefs
@@ -208,8 +209,9 @@ fun SettingsScreen(
                                 is SyncResult.Ok -> {
                                     val (phoneTxns, unsynced) = sync.localCounts()
                                     val snap = r.value
+                                    val payments = snap.txns.filter { it.status != TxnStatus.DISCARDED }
                                     restoreOffer = RestorePlan.of(
-                                        phoneTxns, unsynced, snap.txns.size, snap.txns.maxOfOrNull { it.occurredAt },
+                                        phoneTxns, unsynced, payments.size, payments.maxOfOrNull { it.occurredAt },
                                         ZoneId.systemDefault(),
                                     ) to snap
                                     restoreResult = null

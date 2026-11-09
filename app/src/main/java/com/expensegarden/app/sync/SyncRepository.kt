@@ -2,6 +2,7 @@ package com.expensegarden.app.sync
 
 import androidx.room.withTransaction
 import com.expensegarden.app.data.AppDatabase
+import com.expensegarden.app.data.TxnStatus
 
 /** Drives one push and owns restore (spec §3.2, §3.3).
  *
@@ -88,7 +89,7 @@ class SyncRepository(
     }
 
     /** (transactions on the phone, rows not yet backed up), for RestorePlan. */
-    suspend fun localCounts(): Pair<Int, Int> = db.syncDao().txnCount() to pendingCount()
+    suspend fun localCounts(): Pair<Int, Int> = db.syncDao().paymentCount() to pendingCount()
 
     /** Replace local data with [snap] (spec §3.3). False, touching nothing, when [snap] holds no
      *  transactions and the phone has some: checked here as well as in Settings, so no caller can
@@ -100,7 +101,7 @@ class SyncRepository(
      *  SQLite's AUTOINCREMENT sequence, so the next new payee cannot collide with a
      *  restored one. */
     suspend fun restore(snap: SyncSnapshot): Boolean {
-        if (snap.txns.isEmpty() && db.syncDao().txnCount() > 0) return false
+        if (snap.txns.none { it.status != TxnStatus.DISCARDED } && db.syncDao().paymentCount() > 0) return false
 
         db.withTransaction {
             val dao = db.syncDao()

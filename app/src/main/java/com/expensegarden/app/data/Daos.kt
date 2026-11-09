@@ -345,4 +345,7 @@ interface SyncDao {
     @Query("DELETE FROM payee") suspend fun wipePayees()
 
     @Query("SELECT COUNT(*) FROM txn") suspend fun txnCount(): Int
+
+    /** Payments as the ledger shows them: discarded rows never happened (cleanup plan, ruling 5). */
+    @Query("SELECT COUNT(*) FROM txn WHERE status IN ('LOGGED', 'PENDING_CONFIRM')") suspend fun paymentCount(): Int
 }

@@ -126,4 +126,12 @@ class SyncRestoreTest {
         assertTrue(sync.restore(snapshot(withTxn = true)))
         assertEquals(0, sync.collect().tombstones.size)
     }
+
+    @Test fun restore_refuses_a_snapshot_holding_only_discarded_rows() = runBlocking {
+        // Discarded rows are payments that never happened: a server holding only those is empty.
+        val mine = logOne()
+        val discarded = snapshot(withTxn = true).let { s -> s.copy(txns = s.txns.map { it.copy(status = TxnStatus.DISCARDED) }) }
+        assertFalse(sync.restore(discarded))
+        assertNotNull(db.transactionDao().byUuid(mine))
+    }
 }

@@ -12,7 +12,7 @@ class RestorePlanTest {
     @Test fun `an empty server is never restored over a ledger`() {
         val plan = RestorePlan.of(phoneTxns = 42, unsynced = 0, serverTxns = 0, serverLatestAt = null, zone = zone)
         assertTrue(plan is RestorePlan.Refuse)
-        assertEquals("The server has no payments. Restoring would erase this phone's 42, so it won't.", plan.message)
+        assertEquals("The server has no payments. Restoring would erase this phone's 42 payments, so it won't.", plan.message)
     }
 
     @Test fun `the restore warning counts what isn't backed up yet`() {
@@ -29,6 +29,18 @@ class RestorePlanTest {
             "The server has 40 payments, the latest on 8 Nov 2026. This phone has none. Restoring replaces " +
                 "this phone's ledger and garden.",
             RestorePlan.of(0, 0, 40, at, zone).message,
+        )
+    }
+
+    @Test fun `restore copy counts in singulars`() {
+        assertEquals(
+            "The server has 1 payment. This phone has 1, and 1 change isn't backed up yet — it will be lost. " +
+                "Restoring replaces this phone's ledger and garden.",
+            RestorePlan.of(phoneTxns = 1, unsynced = 1, serverTxns = 1, serverLatestAt = null, zone = zone).message,
+        )
+        assertEquals(
+            "The server has no payments. Restoring would erase this phone's 1 payment, so it won't.",
+            RestorePlan.of(1, 0, 0, null, zone).message,
         )
     }
 }
