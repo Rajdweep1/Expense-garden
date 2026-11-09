@@ -16,7 +16,7 @@ private fun rgb(token: Int) = Color(0xFF000000.toInt() or token)
 
 /**
  * The three budget states. Carried beside the ColorScheme because Material 3 has no slot for
- * them: borrowing `primary` and `tertiary` is what made "on pace" and "ahead of pace" render as
+ * them: borrowing `primary` and `tertiary` is what made "on pace" and "over pace" render as
  * two indistinguishable purples.
  */
 @Immutable

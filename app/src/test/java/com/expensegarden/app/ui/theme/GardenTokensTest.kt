@@ -163,4 +163,18 @@ class GardenTokensTest {
             }
         }
     }
+
+    /** The home strip tints "over pace" and "over budget" (review R13, 2026-10-18). Home is light in
+     *  both modes (MainActivity's GardenTheme(dark = false)), so these are the light tokens. */
+    @Test
+    fun `status text over the canvas clears 4_5 to 1 on every sky`() {
+        for (weather in Weather.values()) {
+            for (stop in GardenPalette.sky(weather)) {
+                val sky = stop.toArgb() and 0xFFFFFF
+                val backdrop = ContrastMath.over(0xFFFFFF, GardenTokens.CanvasChromeAlpha, sky)
+                assertContrast("warning over $weather #%06X".format(sky), GardenTokens.LightWarning, backdrop, 4.5)
+                assertContrast("over-budget over $weather #%06X".format(sky), GardenTokens.LightOver, backdrop, 4.5)
+            }
+        }
+    }
 }

@@ -48,7 +48,7 @@ sealed interface GateView {
         override val backOutReturnsToForm: Boolean get() = false
     }
 
-    /** Ahead of pace on a discretionary purchase — nothing ugly grows, and the streak may end.
+    /** Over pace on a discretionary purchase — nothing ugly grows, and the streak may end.
      *
      *  [days] is the streak this payment really ends, and 0 when it ends none: the streak is the
      *  overall budget's, so a category running ahead can't end it, and spend already over today's
@@ -84,6 +84,15 @@ sealed interface GateView {
     }
 }
 
+/** The streak card's title: what this payment does, and nothing it doesn't. */
+fun GateView.Streak.headline(): String = when {
+    scopeLabel != null && alreadyAhead -> "This puts $scopeLabel further over pace"
+    scopeLabel != null -> "This puts $scopeLabel over pace"
+    days > 0 -> "This ends a $days-day streak"
+    alreadyAhead -> "This puts you further over pace"
+    else -> "This puts you over pace"
+}
+
 /**
  * What to flag on the saved transaction. Only a breach flags it — that flag is what grows the weed.
  *
@@ -92,15 +101,6 @@ sealed interface GateView {
  * there either way, and this keeps `breachedAtLogging` meaning "this grew a weed" rather than
  * "this was over budget" — which is what the garden actually reads it for.
  */
-/** The streak card's title: what this payment does, and nothing it doesn't. */
-fun GateView.Streak.headline(): String = when {
-    scopeLabel != null && alreadyAhead -> "This puts $scopeLabel further ahead of pace"
-    scopeLabel != null -> "This puts $scopeLabel ahead of pace"
-    days > 0 -> "This ends a $days-day streak"
-    alreadyAhead -> "This puts you further ahead of pace"
-    else -> "This puts you ahead of pace"
-}
-
 fun GateView.severityForLogging(): Severity = when (this) {
     is GateView.Weed -> Severity.BREACH
     is GateView.Streak -> Severity.PACE_WARNING

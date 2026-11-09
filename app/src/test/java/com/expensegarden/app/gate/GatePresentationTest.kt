@@ -87,7 +87,7 @@ class GatePresentationTest {
         // The streak is the overall budget's; Shopping running ahead doesn't end it.
         val v = view(Severity.PACE_WARNING, isNecessity = false, spentPaise = 10_000L) as GateView.Streak
         assertEquals(0, v.days)
-        assertEquals("This puts Shopping ahead of pace", v.headline())
+        assertEquals("This puts Shopping over pace", v.headline())
     }
 
     @Test
@@ -96,13 +96,13 @@ class GatePresentationTest {
         val v = view(Severity.PACE_WARNING, isNecessity = false, scopeLabel = null, spentPaise = 20_000L) as GateView.Streak
         assertEquals(0, v.days)
         assertTrue(v.alreadyAhead)
-        assertEquals("This puts you further ahead of pace", v.headline())
+        assertEquals("This puts you further over pace", v.headline())
     }
 
     @Test
     fun `with no streak yet the card names only the pace`() {
         val v = view(Severity.PACE_WARNING, isNecessity = false, streakDays = 0, scopeLabel = null, spentPaise = 10_000L)
-        assertEquals("This puts you ahead of pace", (v as GateView.Streak).headline())
+        assertEquals("This puts you over pace", (v as GateView.Streak).headline())
     }
 
     @Test
@@ -180,7 +180,7 @@ class GatePresentationTest {
         // Rent raises today's line from ₹11,500 to ₹20,750; ₹12,000 spent before it was already over.
         val ahead = view(Severity.PACE_WARNING, isNecessity = false, scopeLabel = null,
             spentPaise = 1_200_000L, allowancePaise = 2_075_000L, allowanceBeforePaise = 1_150_000L) as GateView.Streak
-        assertEquals("This puts you further ahead of pace", ahead.headline())
+        assertEquals("This puts you further over pace", ahead.headline())
         val onPace = view(Severity.PACE_WARNING, isNecessity = false, scopeLabel = null,
             spentPaise = 800_000L, allowancePaise = 2_075_000L, allowanceBeforePaise = 1_150_000L) as GateView.Streak
         assertEquals("This ends a 9-day streak", onPace.headline())

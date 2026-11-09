@@ -249,7 +249,7 @@ private fun CategoryRow(row: ScopeStat, modifier: Modifier = Modifier, onClick: 
 }
 
 /** Green / amber / red. Never `primary`/`tertiary` again — those are brand slots, and using
- *  them here rendered "on pace" and "ahead of pace" as two purples 1.00:1 apart. */
+ *  them here rendered "on pace" and "over pace" as two purples 1.00:1 apart. */
 @Composable
 private fun severityColor(s: Severity): Color = when (s) {
     Severity.OK -> GardenStatus.colors.onPace

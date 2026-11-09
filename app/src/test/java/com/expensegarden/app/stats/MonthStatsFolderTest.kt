@@ -53,7 +53,7 @@ class MonthStatsFolderTest {
         assertEquals(60_000L, food.spentPaise)                      // rolled up from the child
         assertEquals(Severity.BREACH, food.severity)                // 600 > 500₹ budget
         val chai = s.rows.first { it.categoryId == 103L }
-        // 600 vs own 1000₹ at day 15/30: pace line = 1000 * 15/30 * 1.15 = ₹575 < 600 → ahead of pace, not breached
+        // 600 vs own 1000₹ at day 15/30: pace line = 1000 * 15/30 * 1.15 = ₹575 < 600 → over pace, not breached
         assertEquals(Severity.PACE_WARNING, chai.severity)
     }
 

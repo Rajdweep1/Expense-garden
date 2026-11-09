@@ -65,6 +65,7 @@ import com.expensegarden.app.gate.Severity
 import com.expensegarden.app.render.GardenCanvas
 import com.expensegarden.app.render.PlantPainter
 import com.expensegarden.app.render.SpriteCache
+import com.expensegarden.app.ui.theme.GardenStatus
 import com.expensegarden.app.ui.theme.GardenTokens
 import java.time.Instant
 import java.time.ZoneId
@@ -137,8 +138,7 @@ fun GardenHomeScreen(
                     if (h == null) Text(" ", style = MaterialTheme.typography.titleMedium)
                     else {
                         Text(Money.display(h.spentPaise), style = MaterialTheme.typography.titleMedium)
-                        val streak = homestead?.state?.streakDays ?: 0
-                        val streakSuffix = if (streak > 0) " · 🌱${streak}d" else ""   // the streaks-lite counter (spec §1)
+                        val streak = homestead?.state?.streakDays ?: 0   // the streaks-lite counter (spec §1)
                         // The chevron is unconditional on purpose. This label used to read
                         // "dashboard →" ONLY while no budget was set, so the one hint that the
                         // strip is tappable was visible to brand-new users and to nobody else.
@@ -147,8 +147,14 @@ fun GardenHomeScreen(
                         // two unbounded Texts, SpaceBetween let this one overrun the amount on
                         // its left at large font scales.
                         Text(
-                            (h.overallBudgetPaise?.let { "${Money.display(it)} · ${gardenHint(h.hint)}" }
-                                ?: "set a budget") + streakSuffix + "  ›",
+                            stripLabel(h.overallBudgetPaise, h.hint, streak),
+                            // Tinted like the dashboard: untinted, "over pace" read as good news (review R13).
+                            color = when {
+                                h.overallBudgetPaise == null -> Color.Unspecified
+                                h.hint == Severity.PACE_WARNING -> GardenStatus.colors.warning
+                                h.hint == Severity.BREACH -> GardenStatus.colors.over
+                                else -> Color.Unspecified
+                            },
                             style = MaterialTheme.typography.labelMedium,
                             textAlign = TextAlign.End,
                             modifier = Modifier.weight(1f).padding(start = 8.dp),
@@ -284,12 +290,6 @@ fun GardenHomeScreen(
             confirmButton = { TextButton(onClick = { plantTarget = null }) { Text("Close") } },
         )
     }
-}
-
-private fun gardenHint(s: Severity) = when (s) {
-    Severity.OK -> "on pace"
-    Severity.PACE_WARNING -> "ahead of pace"
-    Severity.BREACH -> "over budget"
 }
 
 /** Springy press-scale so the chrome acknowledges every touch, FC-style. Share the
