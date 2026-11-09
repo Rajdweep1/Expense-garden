@@ -123,7 +123,9 @@ already pins `hw.ramSize=2G`.
   screens only read them. That is what makes the gate work offline — structurally, not by
   timeout.
 - **Never punish the log.** Loss-aversion pressure lives at the pre-payment gate only;
-  necessities are never shamed; every bad state has a redemption path.
+  necessities are never shamed; every bad state has a redemption path. Two exceptions, by his
+  call on 2026-11-10 (review R9): weeds are permanent (no compost, though the parent spec lists
+  it), and a manual log that crosses the budget still grows one.
 - **Sync cursors are monotonic ids or a logical clock, never wall-clock time.** A timestamp
   cursor over colliding timestamps loses rows; this has bitten twice.
 - **DB standards:** every FK explicit with a deliberate ON DELETE; encode invariants as
