@@ -22,9 +22,18 @@ sealed interface GateView {
      */
     val recordsDodge: Boolean
 
+    /**
+     * Whether the quiet button goes back to the form instead of leaving the payment. Backing out
+     * of a necessity usually means the amount was wrong, so it returns to fix it (spec 2026-09-17:
+     * Back "only dismisses"); a discretionary Not now abandons the purchase. Kept apart from
+     * [recordsDodge]: "is this restraint" and "where does the button go" only agree today.
+     */
+    val backOutReturnsToForm: Boolean
+
     /** Nothing to say. The silence rule: an OK verdict never interrupts. */
     data object None : GateView {
         override val recordsDodge: Boolean get() = false
+        override val backOutReturnsToForm: Boolean get() = false
     }
 
     /** A breach on a discretionary purchase — this really does grow a weed. */
@@ -36,6 +45,7 @@ sealed interface GateView {
         val overPaise: Long,
     ) : GateView {
         override val recordsDodge: Boolean get() = true
+        override val backOutReturnsToForm: Boolean get() = false
     }
 
     /** Ahead of pace on a discretionary purchase — nothing ugly grows, and the streak may end.
@@ -53,6 +63,7 @@ sealed interface GateView {
         val alreadyAhead: Boolean = false,
     ) : GateView {
         override val recordsDodge: Boolean get() = true
+        override val backOutReturnsToForm: Boolean get() = false
 
         /** A brand-new ledger has no streak yet, and "this ends a 0-day streak" is nonsense.
          *  At zero there is simply nothing to lose but the pace itself. */
@@ -69,6 +80,7 @@ sealed interface GateView {
         val budgetPaise: Long,
     ) : GateView {
         override val recordsDodge: Boolean get() = false
+        override val backOutReturnsToForm: Boolean get() = true
     }
 }
 

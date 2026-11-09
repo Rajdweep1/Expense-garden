@@ -278,9 +278,13 @@ fun EntryScreen(vm: MainViewModel, onDone: () -> Unit) {
                 fireAndFinish(amountPaise, severity)
             },
             onBackOut = {
-                if (view.recordsDodge) vm.recordDodge(amountPaise)
-                gate = null
-                onDone()
+                if (view.backOutReturnsToForm) {
+                    gate = null; submitting = false
+                } else {
+                    if (view.recordsDodge) vm.recordDodge(amountPaise)
+                    gate = null
+                    onDone()
+                }
             },
             // Back to the form, which can be submitted again.
             onDismiss = { gate = null; submitting = false },

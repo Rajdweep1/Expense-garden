@@ -134,6 +134,17 @@ class GatePresentationTest {
     }
 
     @Test
+    fun `only a necessity's Back returns to the form`() {
+        // Backing out of a necessity usually means the amount was wrong, so it goes back to fix it
+        // (spec 2026-09-17: Back "only dismisses"). A discretionary Not now abandons the purchase.
+        assertEquals(true, view(Severity.BREACH, isNecessity = true).backOutReturnsToForm)
+        assertEquals(true, view(Severity.PACE_WARNING, isNecessity = true).backOutReturnsToForm)
+        assertEquals(false, view(Severity.BREACH, isNecessity = false).backOutReturnsToForm)
+        assertEquals(false, view(Severity.PACE_WARNING, isNecessity = false).backOutReturnsToForm)
+        assertEquals(false, GateView.None.backOutReturnsToForm)
+    }
+
+    @Test
     fun `the neutral card reports the total after this payment`() {
         val v = view(Severity.BREACH, isNecessity = true) as GateView.Neutral
         assertEquals(624_000L, v.afterPaise)      // 400000 spent + 224000 candidate
