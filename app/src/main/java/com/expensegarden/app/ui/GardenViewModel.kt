@@ -75,12 +75,12 @@ class GardenViewModel(private val container: AppContainer) : ViewModel() {
      *  never re-creates this ViewModel, so work tied to `init` waited for the next process death —
      *  and with it the new month's budgets. One job at a time, because two concurrent reconcilers
      *  could both emit the same streak.hit. */
-    fun onForeground() {
-        if (foregroundJob?.isActive == true) return
-        foregroundJob = viewModelScope.launch {
+    fun onForeground(): Job {
+        foregroundJob?.takeIf { it.isActive }?.let { return it }
+        return viewModelScope.launch {
             container.budgets.carryForward(container.ledger.currentMonthKey())
             container.garden.runReconciler()   // month.closed / streak.hit
-        }
+        }.also { foregroundJob = it }
     }
 
     suspend fun plantRow(uuid: String): TxnRow? = container.db.transactionDao().rowByUuid(uuid)

@@ -12,4 +12,9 @@ class KeyCheckTest {
         assertEquals(KeyCheck.UNREACHABLE, KeyCheck.classify(500, null))
         assertEquals(KeyCheck.UNREACHABLE, KeyCheck.classify(null, java.net.UnknownHostException()))
     }
+
+    @Test fun `a rate-limited key works and a retired model is named`() {
+        assertEquals(KeyCheck.WORKS, KeyCheck.classify(429, null))
+        assertEquals(KeyCheck.MODEL_MISSING, KeyCheck.classify(404, null))
+    }
 }

@@ -227,26 +227,31 @@ fun SettingsScreen(
 
         Button(
             onClick = {
-                val keyChanged = key != aiPrefs.apiKey
-                aiPrefs.apiKey = key
+                // Compared and checked as stored: AiPrefs trims the key.
+                val entered = key.trim()
+                val keyChanged = entered != aiPrefs.apiKey
+                aiPrefs.apiKey = entered
                 syncPrefs.serverUrl = url
                 syncPrefs.token = token
                 saved = true
+                // Before the checks, not after: leaving Settings cancels this scope, and a saved key
+                // must take effect at once either way (cleanup plan, ruling 3).
+                if (keyChanged) onAiChanged()
                 // Save tells the truth about what was saved (review R15, R16).
                 scope.launch {
-                    if (keyChanged && key.isNotBlank()) {
+                    if (keyChanged && entered.isNotBlank()) {
                         keyCheck = "Checking the key…"
-                        keyCheck = when (GeminiClient(aiPrefs).checkKey(key)) {
+                        keyCheck = when (GeminiClient(aiPrefs).checkKey(entered)) {
                             KeyCheck.WORKS -> "Key works"
                             KeyCheck.REJECTED -> "Key rejected — check it"
+                            KeyCheck.MODEL_MISSING -> "Key works, but this app's Gemini model is gone — update the app"
                             KeyCheck.UNREACHABLE -> "Couldn't reach Gemini — saved anyway"
                         }
-                    } else if (key.isBlank()) {
+                    } else if (entered.isBlank()) {
                         keyCheck = null
                     }
                     if (syncPrefs.isConfigured) sync.checkConnection()
                     statusRefresh += 1
-                    if (keyChanged) onAiChanged()
                 }
             },
             modifier = Modifier.fillMaxWidth(),

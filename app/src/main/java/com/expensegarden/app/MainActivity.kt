@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -34,6 +35,7 @@ import com.expensegarden.app.ui.SettingsScreen
 import com.expensegarden.app.ui.theme.GardenTheme
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private val vm: MainViewModel by viewModels {
@@ -68,8 +70,10 @@ class MainActivity : ComponentActivity() {
         // Every foreground, so a month that turns while the app sits in memory still carries its
         // budgets and closes the old month (GardenViewModel.onForeground), and a new day still
         // gets its card and digest (AiViewModel.onForeground).
-        gardenVm.onForeground()
-        aiVm.onForeground()
+        // The AI job waits for the garden's: started together, the digest could read the month
+        // before its month.closed existed, and the 1st's postcard waited a day (cleanup plan, ruling 4).
+        val garden = gardenVm.onForeground()
+        lifecycleScope.launch { garden.join(); aiVm.onForeground() }
     }
 }
 

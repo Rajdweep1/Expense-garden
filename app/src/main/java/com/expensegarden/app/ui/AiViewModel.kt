@@ -44,13 +44,21 @@ class AiViewModel(private val container: AppContainer) : ViewModel() {
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     private var job: Job? = null
+    private var rerun = false
 
-    /** Every foreground, not just a cold start, like GardenViewModel.onForeground. One run at a
-     *  time; DigestTrigger decides whether a run says anything. */
+    /** Every foreground, not just a cold start, like GardenViewModel.onForeground, and after a key
+     *  or voice change in Settings. One run at a time; a call during a run queues exactly one more,
+     *  so a voice tapped mid-run still applies now (cleanup plan, ruling 3). DigestTrigger decides
+     *  whether a run says anything. */
     fun onForeground() {
         dayKey.value = LocalDate.now().toString()
-        if (job?.isActive == true) return
-        job = viewModelScope.launch { runAiJob() }
+        if (job?.isActive == true) { rerun = true; return }
+        job = viewModelScope.launch {
+            do {
+                rerun = false
+                runAiJob()
+            } while (rerun)
+        }
     }
 
     /** "Not today" — mutes the persona for 24h without touching logging (spec §8). */
