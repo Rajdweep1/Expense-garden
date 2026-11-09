@@ -48,6 +48,24 @@ class GeminiClient(private val aiPrefs: AiPrefs) : LlmClient {
         }
     }
 
+    /** Settings' key check: model metadata, which proves the key without spending quota. Logs
+     *  nothing, as [complete] doesn't; the key travels only in the query string, as there. */
+    suspend fun checkKey(key: String): KeyCheck = withContext(Dispatchers.IO) {
+        var conn: HttpURLConnection? = null
+        try {
+            conn = (URL("$BASE/models/$MODEL?key=$key").openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = CONNECT_TIMEOUT_MS
+                readTimeout = CONNECT_TIMEOUT_MS
+            }
+            KeyCheck.classify(conn.responseCode, null)
+        } catch (e: Exception) {
+            KeyCheck.classify(null, e)
+        } finally {
+            conn?.disconnect()
+        }
+    }
+
     private fun requestBody(prompt: String): JSONObject =
         JSONObject().put(
             "contents",
@@ -78,8 +96,8 @@ class GeminiClient(private val aiPrefs: AiPrefs) : LlmClient {
          *  the same reason `libs.versions.toml` is pinned: the persona's voice should not
          *  change under us without a commit saying so. */
         const val MODEL = "gemini-3.6-flash"
-        const val ENDPOINT =
-            "https://generativelanguage.googleapis.com/v1beta/models/$MODEL:generateContent"
+        const val BASE = "https://generativelanguage.googleapis.com/v1beta"
+        const val ENDPOINT = "$BASE/models/$MODEL:generateContent"
 
         /** Establishing the connection should be quick; a slow handshake means no network. */
         const val CONNECT_TIMEOUT_MS = 15_000
