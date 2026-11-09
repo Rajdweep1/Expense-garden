@@ -141,13 +141,17 @@ interface TransactionDao {
      *  through, and leaving it out judged a second scan without the first (review R10). */
     @Query(
         """SELECT categoryId, COALESCE(SUM(amountPaise), 0) AS totalPaise FROM txn
-           WHERE status IN ('LOGGED', 'PENDING_CONFIRM') AND occurredAt BETWEEN :fromMillis AND :toMillis GROUP BY categoryId"""
+           WHERE status IN ('LOGGED', 'PENDING_CONFIRM') AND occurredAt BETWEEN :fromMillis AND :toMillis
+             AND (:excludeUuid IS NULL OR uuid != :excludeUuid) GROUP BY categoryId"""
     )
-    suspend fun loggedOrPendingSumsByCategory(fromMillis: Long, toMillis: Long): List<CategorySum>
+    suspend fun loggedOrPendingSumsByCategory(fromMillis: Long, toMillis: Long, excludeUuid: String?): List<CategorySum>
 
-    /** The rows behind [loggedOrPendingSumsByCategory]. */
-    @Query("SELECT * FROM txn WHERE status IN ('LOGGED', 'PENDING_CONFIRM') AND occurredAt BETWEEN :fromMillis AND :toMillis")
-    suspend fun loggedOrPendingBetween(fromMillis: Long, toMillis: Long): List<TransactionEntity>
+    /** The rows behind [loggedOrPendingSumsByCategory]. [excludeUuid] is the payment being judged. */
+    @Query(
+        """SELECT * FROM txn WHERE status IN ('LOGGED', 'PENDING_CONFIRM') AND occurredAt BETWEEN :fromMillis AND :toMillis
+             AND (:excludeUuid IS NULL OR uuid != :excludeUuid)"""
+    )
+    suspend fun loggedOrPendingBetween(fromMillis: Long, toMillis: Long, excludeUuid: String?): List<TransactionEntity>
 
     @Query("SELECT * FROM txn WHERE status = 'LOGGED' AND occurredAt BETWEEN :fromMillis AND :toMillis")
     fun observeLoggedBetween(fromMillis: Long, toMillis: Long): Flow<List<TransactionEntity>>

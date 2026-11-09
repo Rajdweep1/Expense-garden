@@ -143,7 +143,7 @@ class MainViewModel(private val container: AppContainer, private val saved: Save
         // the new month against no budget at all.
         container.budgets.carryForward(ledger.currentMonthKey())
         val d = draft.value
-        val verdict = ledger.evaluateGate(d.categoryId!!, amountPaise, d.occurredAt, container.garden.ledgerBeganAt(), d.vpa)
+        val verdict = ledger.evaluateGate(d.categoryId!!, amountPaise, d.occurredAt, container.garden.ledgerBeganAt(), d.vpa, d.txnUuid)
         if (verdict.severity == Severity.OK) return GateView.None
 
         val isNecessity = ledger.isNecessity(d.categoryId!!)

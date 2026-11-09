@@ -219,4 +219,20 @@ class GateScopeTest {
         // Counted as spending but not as fixed, it would be a warning against a ₹3,450 line.
         assertEquals(Severity.OK, repo.evaluateGate(101, 100_000, noonOn(11, 2), ledgerBeganAt = null, payeeVpa = null).severity)
     }
+
+    @Test fun a_retried_scan_does_not_count_its_own_pending_row() = runBlocking {
+        fun noonOn(d: Int) = LocalDate.of(2026, 11, d).atTime(12, 0).atZone(zone).toInstant().toEpochMilli()
+        db.budgetDao().insert(BudgetEntity(categoryId = null, month = "2026-11", amountPaise = 1_500_000, updatedAt = 1L))  // ₹15,000
+        // The first attempt saved its pending row, then a rotation cancelled it before the UPI app opened.
+        repo.savePendingOnce(
+            LedgerRepository.Draft(vpa = "shop@ybl", payeeName = "Shop", amountPaise = 100_000, categoryId = 7,
+                note = null, occurredAt = noonOn(2)),
+            breachedAtLogging = false, uuid = "scan-1",
+        )
+        // The retry is the same ₹1,000, under the ₹1,150 line; counting its own row made it ₹2,000.
+        assertEquals(
+            Severity.OK,
+            repo.evaluateGate(7, 100_000, noonOn(2), ledgerBeganAt = null, payeeVpa = "shop@ybl", candidateUuid = "scan-1").severity,
+        )
+    }
 }

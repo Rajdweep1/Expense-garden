@@ -150,14 +150,14 @@ class LedgerRepository(
 
     /** Budget scopes relevant to a payment in [categoryId] during [occurredAt]'s month:
      *  overall (depth 0) + every budgeted category on the ancestor chain (deeper = more specific). */
-    suspend fun scopeInputs(categoryId: Long, occurredAt: Long): List<ScopeInput> {
+    suspend fun scopeInputs(categoryId: Long, occurredAt: Long, candidateUuid: String?): List<ScopeInput> {
         val monthKey = monthKeyOf(occurredAt)
         val budgets = db.budgetDao().allForMonth(monthKey)
         if (budgets.isEmpty()) return emptyList()
         val tree = CategoryTree(db.categoryDao().all())
         val chain = tree.ancestorChain(categoryId)                       // [self, …, root]
         val (from, to) = boundsOfMonth(monthKey)
-        val leafSums = db.transactionDao().loggedOrPendingSumsByCategory(from, to)
+        val leafSums = db.transactionDao().loggedOrPendingSumsByCategory(from, to, candidateUuid)
             .associate { it.categoryId to it.totalPaise }
         val rolled = tree.rollupSums(leafSums)
         return budgets.mapNotNull { b ->
@@ -192,20 +192,24 @@ class LedgerRepository(
      *    recurring payee takes what is left of its fixed cap the moment it is logged, and leaving
      *    that out of the fixed term here made the gate contradict the strip (final review,
      *    2026-10-19). The manual path passes its null VPA; it reads only BREACH, which no fixed
-     *    term moves. */
+     *    term moves.
+     *  @param candidateUuid the payment's own uuid when it may already be saved: a scan retried
+     *    after a rotation killed the first attempt finds its own pending row, which must not count
+     *    against itself (final review, 2026-11-10). null on the manual path, saved only after. */
     suspend fun evaluateGate(
         categoryId: Long,
         amountPaise: Long,
         occurredAt: Long,
         ledgerBeganAt: Long?,
         payeeVpa: String?,
+        candidateUuid: String? = null,
     ): GateVerdict {
         val (day, days) = dayAndLengthOf(occurredAt)
         val monthKey = monthKeyOf(occurredAt)
         val (from, to) = boundsOfMonth(monthKey)
         // Pending payments count here as they will once answered (review R10), including in the
         // fixed-cost math, which reads LOGGED rows only: a pending rent is fixed, not spending.
-        val monthTxns = db.transactionDao().loggedOrPendingBetween(from, to).map { it.copy(status = TxnStatus.LOGGED) }
+        val monthTxns = db.transactionDao().loggedOrPendingBetween(from, to, candidateUuid).map { it.copy(status = TxnStatus.LOGGED) }
         val caps = recurringCaps(monthKey, ledgerBeganAt)
         val payeeId = payeeVpa?.let { db.payeeDao().byVpa(it)?.id }
         // Fixed costs leave the overall pace line, so a day-1 rent payment doesn't raise a dialog on
@@ -214,7 +218,7 @@ class LedgerRepository(
         // takes what is left of its payee's cap (RecurringPayees.newPaymentShare).
         val fixed = RecurringPayees.fixedSpentPaise(monthTxns, caps)
         return GateAggregator.aggregate(
-            scopeInputs(categoryId, occurredAt), amountPaise, fixed, day, days,
+            scopeInputs(categoryId, occurredAt, candidateUuid), amountPaise, fixed, day, days,
             candidateFixedPaise = RecurringPayees.newPaymentShare(monthTxns, caps, payeeId, amountPaise),
         )
     }
