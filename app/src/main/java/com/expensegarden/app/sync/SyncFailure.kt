@@ -12,6 +12,8 @@ enum class SyncFailure(val label: String) {
     SERVER("server error"),
     UNREACHABLE("can't reach the server"),
     CLEARTEXT_BLOCKED("http:// is blocked on this build — use https"),
+    REDIRECTED("the server redirected — use its final url, likely https"),
+    INVALID_CHARACTER("the url or token has a character it can't send"),
     BAD_URL("that isn't a url");
 
     companion object {
@@ -20,13 +22,25 @@ enum class SyncFailure(val label: String) {
         fun classify(code: Int?, error: Exception?): SyncFailure = when {
             code == 401 || code == 403 -> UNAUTHORIZED
             code == 404 -> NOT_FOUND
+            code != null && code in 300..399 -> REDIRECTED   // HttpURLConnection won't follow http → https
             code != null -> SERVER
             error is UnknownServiceException -> CLEARTEXT_BLOCKED   // the release build's network config
-            error is MalformedURLException || error is IllegalArgumentException -> BAD_URL
+            error is MalformedURLException || error is ClassCastException -> BAD_URL   // ClassCast: not an http(s) url
+            error is IllegalArgumentException -> INVALID_CHARACTER   // e.g. a header value it can't send
             error is IOException -> UNREACHABLE
             else -> SERVER   // an answer that wouldn't parse
         }
     }
+}
+
+/** The one line a failed request logs. An IOException's message names hosts and timeouts, which
+ *  debugging needs; any other exception's message is dropped, because a header setter's can quote
+ *  the header, and the header is "Bearer <token>" (cleanup plan, ruling 0). */
+internal fun syncLogLine(verb: String, code: Int?, error: Exception?): String = when {
+    code != null -> "$verb failed: HTTP $code"
+    error is java.io.IOException -> "$verb failed: ${error.javaClass.simpleName}: ${error.message}"
+    error != null -> "$verb failed: ${error.javaClass.simpleName}"
+    else -> "$verb failed"
 }
 
 /** A request's outcome, so callers can say what went wrong instead of getting null. */

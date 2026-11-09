@@ -90,7 +90,7 @@ class SyncClient(private val prefs: SyncPrefs) {
             conn = connect()
             val code = conn.responseCode
             if (code !in 200..299) {
-                android.util.Log.w("SyncClient", "$verb failed: HTTP $code")
+                android.util.Log.w("SyncClient", syncLogLine(verb, code, null))
                 return SyncResult.Failed(SyncFailure.classify(code, null), code)
             }
             SyncResult.Ok(JSONObject(conn.inputStream.bufferedReader().use(BufferedReader::readText)))
@@ -102,15 +102,12 @@ class SyncClient(private val prefs: SyncPrefs) {
         }
     }
 
-    /** Deliberate, and a considered departure from ai/GeminiClient, which logs nothing.
-     *
-     *  A quiet persona costs nothing; a quiet BACKUP costs everything precisely when you need
-     *  it, and every failure mode here — wrong url, dead server, blocked cleartext, bad token —
-     *  renders on screen as the same nothing. Exactly one line, carrying the exception class
-     *  and message only: the bearer token travels in a header and is never part of either, so
-     *  nothing secret can reach logcat through here. */
+    /** Deliberate, and a considered departure from ai/GeminiClient, which logs nothing: a quiet
+     *  backup costs everything precisely when you need it. Exactly one line, built by
+     *  syncLogLine, which keeps any exception's message that could quote the bearer header out
+     *  of logcat. */
     private fun logFailure(verb: String, e: Exception) {
-        android.util.Log.w("SyncClient", "$verb failed: ${e.javaClass.simpleName}: ${e.message}")
+        android.util.Log.w("SyncClient", syncLogLine(verb, null, e))
     }
 
     // ---------- writers ----------

@@ -29,4 +29,18 @@ class SyncFailureTest {
     @Test fun `an unconfigured backup is off, not broken`() {
         assertEquals("Backup off", syncStatusLine(false, 0L, null, 0L, 5, 10_000L))
     }
+
+    @Test fun `a redirect, a non-http scheme and a bad character get their own names`() {
+        assertEquals(SyncFailure.REDIRECTED, SyncFailure.classify(301, null))
+        assertEquals(SyncFailure.REDIRECTED, SyncFailure.classify(308, null))
+        assertEquals(SyncFailure.BAD_URL, SyncFailure.classify(null, ClassCastException()))
+        assertEquals(SyncFailure.INVALID_CHARACTER, SyncFailure.classify(null, IllegalArgumentException()))
+    }
+
+    @Test fun `a log line never carries a non-IO exception's message`() {
+        val leaky = IllegalArgumentException("Unexpected char 0x0a in header value: Bearer s3cr3t-token")
+        assertEquals("push failed: IllegalArgumentException", syncLogLine("push", null, leaky))
+        assertEquals("push failed: HTTP 401", syncLogLine("push", 401, null))
+        assertEquals("snapshot failed: ConnectException: refused", syncLogLine("snapshot", null, java.net.ConnectException("refused")))
+    }
 }
