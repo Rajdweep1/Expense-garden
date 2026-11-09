@@ -54,19 +54,24 @@ class SyncRepository(
     /** How many rows are waiting. Drives the Settings status line (spec §5). */
     suspend fun pendingCount(): Int = collect().rowCount
 
-    /** Replace local data with the server's (spec §3.3).
-     *
-     *  Guarded by the caller, not here: the UI refuses to offer this against a non-empty
-     *  ledger without an explicit confirmation.
+    /** The server's copy, read once: Settings shows its counts (RestorePlan) and then restores
+     *  this same snapshot, so the counts describe what is applied. */
+    suspend fun fetchSnapshot(): SyncSnapshot? = if (prefs.isConfigured) client.snapshot() else null
+
+    /** (transactions on the phone, rows not yet backed up), for RestorePlan. */
+    suspend fun localCounts(): Pair<Int, Int> = db.syncDao().txnCount() to pendingCount()
+
+    /** Replace local data with [snap] (spec §3.3). False, touching nothing, when [snap] holds no
+     *  transactions and the phone has some: checked here as well as in Settings, so no caller can
+     *  wipe a ledger with an empty server (review R5).
      *
      *  Ids are preserved, which is mandatory rather than cosmetic — txn.payeeId and
      *  game_event.transactionUuid are real foreign keys, and the garden's month markers
      *  depend on event ordering. Verified separately: an explicit-id insert also advances
      *  SQLite's AUTOINCREMENT sequence, so the next new payee cannot collide with a
      *  restored one. */
-    suspend fun restore(): Boolean {
-        if (!prefs.isConfigured) return false
-        val snap = client.snapshot() ?: return false
+    suspend fun restore(snap: SyncSnapshot): Boolean {
+        if (snap.txns.isEmpty() && db.syncDao().txnCount() > 0) return false
 
         db.withTransaction {
             val dao = db.syncDao()
@@ -94,5 +99,4 @@ class SyncRepository(
         return true
     }
 
-    suspend fun isLedgerEmpty(): Boolean = db.syncDao().txnCount() == 0
 }

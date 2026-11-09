@@ -212,7 +212,7 @@ fun SettingsScreen(
                 TextButton(onClick = {
                     confirmingRestore = false
                     scope.launch {
-                        val ok = runCatching { sync.restore() }.getOrDefault(false)
+                        val ok = runCatching { sync.fetchSnapshot()?.let { sync.restore(it) } ?: false }.getOrDefault(false)
                         restoreResult = if (ok) "Restored from the server." else "Restore failed — check the url and token."
                     }
                 }) { Text("Restore") }
