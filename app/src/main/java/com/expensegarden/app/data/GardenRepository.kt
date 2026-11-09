@@ -14,9 +14,12 @@ import com.expensegarden.app.game.RareSignal
 import com.expensegarden.app.game.RareTier
 import com.expensegarden.app.stats.CategoryTree
 import com.expensegarden.app.stats.RecurringPayees
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.time.Instant
 import java.time.LocalDate
@@ -95,7 +98,10 @@ class GardenRepository(
     }
 
     /** 1C.5: the persistent island — every LOGGED txn ever, with the current month's sky.
-     *  1C.7: houseLevelOverride folds the same txns at a previous level, for the expansion. */
+     *  1C.7: houseLevelOverride folds the same txns at a previous level, for the expansion.
+     *
+     *  This and the other folds here run on Dispatchers.Default: they fold the whole ledger, and
+     *  their callers collect on the main thread, so main-safety belongs here (review R19). */
     fun observeAllTimeGarden(houseLevelOverride: Int? = null): Flow<GardenState> {
         val monthKey = ledger.currentMonthKey()
         val (from, to) = ledger.boundsOfMonth(monthKey)
@@ -120,7 +126,7 @@ class GardenRepository(
                     allEvents, budgets.firstOrNull { it.categoryId == null }, YearMonth.parse(monthKey),
                 ),
             )
-        }
+        }.flowOn(Dispatchers.Default)
     }
 
     /** Turns raw rows into the typed signals [RareEngine] consumes (spec §4A).
@@ -164,7 +170,7 @@ class GardenRepository(
      *  moment it is earned.
      *
      *  Derived from the same fold the island uses, so the album can never disagree with it. */
-    suspend fun collection(): CollectionState {
+    suspend fun collection(): CollectionState = withContext(Dispatchers.Default) {
         val garden = observeAllTimeGarden().first()
 
         val events = db.gameEventDao().eventsBetween(0L, Long.MAX_VALUE)
@@ -186,7 +192,7 @@ class GardenRepository(
         val landmarks = RareCatalog.landmarkAssignment(earns).associate { (e, s) -> s.id to e.trigger }
         // Plantable earns still waiting for a purchase to land on.
         val pending = earns.count { it.tier != RareTier.LANDMARK } - awards.size
-        return CollectionState(foundBy + landmarks, pending.coerceAtLeast(0))
+        CollectionState(foundBy + landmarks, pending.coerceAtLeast(0))
     }
 
     /** The album re-derives these from the same transactions the fold saw, so it cannot drift
@@ -217,10 +223,10 @@ class GardenRepository(
             .mapValues { (_, list) -> list.mapNotNull { tree.ancestorChain(it.categoryId).lastOrNull() }.distinct().size }
     }
 
-    suspend fun foldMonth(monthKey: String): GardenState {
+    suspend fun foldMonth(monthKey: String): GardenState = withContext(Dispatchers.Default) {
         val (from, to) = ledger.boundsOfMonth(monthKey)
         val cats = db.categoryDao().all()
-        return GardenFolder.fold(
+        GardenFolder.fold(
             monthKey,
             db.transactionDao().loggedBetween(from, to),
             cats,
