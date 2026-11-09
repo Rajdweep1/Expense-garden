@@ -157,7 +157,7 @@ class LedgerRepository(
         val tree = CategoryTree(db.categoryDao().all())
         val chain = tree.ancestorChain(categoryId)                       // [self, …, root]
         val (from, to) = boundsOfMonth(monthKey)
-        val leafSums = db.transactionDao().loggedSumsByCategory(from, to)
+        val leafSums = db.transactionDao().loggedOrPendingSumsByCategory(from, to)
             .associate { it.categoryId to it.totalPaise }
         val rolled = tree.rollupSums(leafSums)
         return budgets.mapNotNull { b ->
@@ -203,7 +203,9 @@ class LedgerRepository(
         val (day, days) = dayAndLengthOf(occurredAt)
         val monthKey = monthKeyOf(occurredAt)
         val (from, to) = boundsOfMonth(monthKey)
-        val monthTxns = db.transactionDao().loggedBetween(from, to)
+        // Pending payments count here as they will once answered (review R10), including in the
+        // fixed-cost math, which reads LOGGED rows only: a pending rent is fixed, not spending.
+        val monthTxns = db.transactionDao().loggedOrPendingBetween(from, to).map { it.copy(status = TxnStatus.LOGGED) }
         val caps = recurringCaps(monthKey, ledgerBeganAt)
         val payeeId = payeeVpa?.let { db.payeeDao().byVpa(it)?.id }
         // Fixed costs leave the overall pace line, so a day-1 rent payment doesn't raise a dialog on

@@ -135,6 +135,18 @@ interface TransactionDao {
     @Query("SELECT * FROM txn WHERE status = 'LOGGED' AND occurredAt BETWEEN :fromMillis AND :toMillis")
     suspend fun loggedBetween(fromMillis: Long, toMillis: Long): List<TransactionEntity>
 
+    /** The gate's view of a month: payments made, answered or not. A pending one most likely went
+     *  through, and leaving it out judged a second scan without the first (review R10). */
+    @Query(
+        """SELECT categoryId, COALESCE(SUM(amountPaise), 0) AS totalPaise FROM txn
+           WHERE status IN ('LOGGED', 'PENDING_CONFIRM') AND occurredAt BETWEEN :fromMillis AND :toMillis GROUP BY categoryId"""
+    )
+    suspend fun loggedOrPendingSumsByCategory(fromMillis: Long, toMillis: Long): List<CategorySum>
+
+    /** The rows behind [loggedOrPendingSumsByCategory]. */
+    @Query("SELECT * FROM txn WHERE status IN ('LOGGED', 'PENDING_CONFIRM') AND occurredAt BETWEEN :fromMillis AND :toMillis")
+    suspend fun loggedOrPendingBetween(fromMillis: Long, toMillis: Long): List<TransactionEntity>
+
     @Query("SELECT * FROM txn WHERE status = 'LOGGED' AND occurredAt BETWEEN :fromMillis AND :toMillis")
     fun observeLoggedBetween(fromMillis: Long, toMillis: Long): Flow<List<TransactionEntity>>
 

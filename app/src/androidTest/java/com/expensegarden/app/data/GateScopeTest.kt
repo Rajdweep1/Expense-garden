@@ -191,4 +191,32 @@ class GateScopeTest {
             repo.evaluateGate(101, 1_800_000, noonOn(12, 1), ledgerBeganAt = null, payeeVpa = "landlord@ybl").severity,
         )
     }
+
+    @Test fun a_pending_payment_counts_at_the_gate() = runBlocking {
+        fun noonOn(d: Int) = LocalDate.of(2026, 11, d).atTime(12, 0).atZone(zone).toInstant().toEpochMilli()
+        db.budgetDao().insert(BudgetEntity(categoryId = null, month = "2026-11", amountPaise = 1_500_000, updatedAt = 1L))  // ₹15,000
+        // Scan 1: ₹1,000 at a shop, paid but not yet answered.
+        val first = repo.savePending(
+            LedgerRepository.Draft(vpa = "shop@ybl", payeeName = "Shop", amountPaise = 100_000, categoryId = 7,
+                note = null, occurredAt = noonOn(2)),
+            breachedAtLogging = false,
+        )
+        // Scan 2, ₹200 on 2 Nov: ₹1,200 against a ₹1,150 line is a warning. Without scan 1 it was ₹200.
+        assertEquals(Severity.PACE_WARNING, repo.evaluateGate(7, 20_000, noonOn(2), ledgerBeganAt = null, payeeVpa = "shop@ybl").severity)
+        // Discarded, scan 1 counts nowhere.
+        repo.discard(first)
+        assertEquals(Severity.OK, repo.evaluateGate(7, 20_000, noonOn(2), ledgerBeganAt = null, payeeVpa = "shop@ybl").severity)
+    }
+
+    @Test fun a_pending_rent_counts_as_fixed_at_the_gate() = runBlocking {
+        fun noonOn(m: Int, d: Int) = LocalDate.of(2026, m, d).atTime(12, 0).atZone(zone).toInstant().toEpochMilli()
+        fun rent(m: Int, d: Int) = LedgerRepository.Draft(vpa = "landlord@ybl", payeeName = "Landlord", amountPaise = 1_800_000,
+            categoryId = 101, note = null, occurredAt = noonOn(m, d))
+        db.budgetDao().insert(BudgetEntity(categoryId = null, month = "2026-11", amountPaise = 4_500_000, updatedAt = 1L))  // ₹45,000
+        repo.saveManualLogged(rent(10, 1), breachedAtLogging = false)    // October's rent: a ₹22,500 cap in November
+        repo.savePending(rent(11, 1), breachedAtLogging = false)         // November's, not yet answered
+        // ₹1,000 on 2 Nov. The pending rent is fixed, so the line is ₹20,070 and ₹19,000 is under it.
+        // Counted as spending but not as fixed, it would be a warning against a ₹3,450 line.
+        assertEquals(Severity.OK, repo.evaluateGate(101, 100_000, noonOn(11, 2), ledgerBeganAt = null, payeeVpa = null).severity)
+    }
 }
