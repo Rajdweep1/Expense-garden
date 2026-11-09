@@ -31,7 +31,9 @@ interface PayeeDao {
     @Query("SELECT * FROM payee WHERE vpa = :vpa LIMIT 1")
     suspend fun byVpa(vpa: String): PayeeEntity?
 
-    @Query("SELECT * FROM payee WHERE vpa IS NULL AND name = :name LIMIT 1")
+    /** Case-insensitive: "Chai Point" and "CHAI POINT" are one cash payee (review R11). The caller
+     *  normalises spacing. NOCASE folds ASCII only; Devanagari has no case to fold. */
+    @Query("SELECT * FROM payee WHERE vpa IS NULL AND name = :name COLLATE NOCASE LIMIT 1")
     suspend fun cashPayeeByName(name: String): PayeeEntity?
 
     @Insert

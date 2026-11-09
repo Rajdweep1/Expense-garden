@@ -9,6 +9,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -71,5 +72,17 @@ class LedgerTransitionTest {
     @Test fun pending_rows_carry_the_payee_name() = runBlocking {
         repo.savePending(draft(payeeName = "Sharma Chai"), false)
         assertEquals("Sharma Chai", repo.observePendingRows().first().single().payeeName)
+    }
+
+    @Test fun cash_payees_match_whatever_the_spacing_or_case() = runBlocking {
+        fun cash(name: String, vpa: String? = null) = LedgerRepository.Draft(vpa = vpa, payeeName = name, amountPaise = 10_000,
+            categoryId = 103, note = null, occurredAt = 1_000L)
+        val uuids = listOf("Chai Point", "  chai   point ", "CHAI POINT").map { repo.saveManualLogged(cash(it), breachedAtLogging = false) }
+        val payeeIds = uuids.map { db.transactionDao().byUuid(it)!!.payeeId }
+        assertEquals(1, payeeIds.toSet().size)
+        assertEquals("Chai Point", db.transactionDao().rowByUuid(uuids.last())?.payeeName)   // the first spelling is kept
+        // A UPI payee with the same name is someone else: those match on their VPA.
+        val upi = repo.saveManualLogged(cash("Chai Point", vpa = "chai@ybl"), breachedAtLogging = false)
+        assertNotEquals(payeeIds.first(), db.transactionDao().byUuid(upi)!!.payeeId)
     }
 }

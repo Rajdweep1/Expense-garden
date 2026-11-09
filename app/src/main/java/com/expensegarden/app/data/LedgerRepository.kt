@@ -257,11 +257,14 @@ class LedgerRepository(
     }
 
     private suspend fun resolvePayee(draft: Draft): Long {
+        // A cash payee is known only by its typed name, so "  chai   point " must find "Chai Point"
+        // (review R11). UPI payees match on their VPA and keep the name as given.
+        val name = if (draft.vpa != null) draft.payeeName else draft.payeeName.trim().replace(Regex("\\s+"), " ")
         val existing = if (draft.vpa != null) db.payeeDao().byVpa(draft.vpa)
-                       else db.payeeDao().cashPayeeByName(draft.payeeName)
+                       else db.payeeDao().cashPayeeByName(name)
         if (existing != null) return existing.id
         return db.payeeDao().insert(
-            PayeeEntity(name = draft.payeeName, vpa = draft.vpa, defaultCategoryId = draft.categoryId, updatedAt = clock.next())
+            PayeeEntity(name = name, vpa = draft.vpa, defaultCategoryId = draft.categoryId, updatedAt = clock.next())
         )
     }
 
