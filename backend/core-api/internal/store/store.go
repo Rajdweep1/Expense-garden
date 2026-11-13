@@ -325,3 +325,43 @@ func HashToken(token string) []byte {
 func (s *Store) UserByToken(ctx context.Context, token string) (int64, bool, error) {
 	return s.UserByTokenHash(ctx, HashToken(token))
 }
+
+// ImportHistory writes imported history under userID in one transaction. Unlike ApplyBatch it
+// never overwrites: every insert is ON CONFLICT DO NOTHING, so a re-import neither restamps a
+// row nor undoes a later rename. Returns how many txns were new.
+func (s *Store) ImportHistory(ctx context.Context, userID int64, cats []Category, payee Payee, txns []Txn) (int, error) {
+	inserted := 0
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		for _, c := range cats {
+			if _, err := tx.Exec(ctx, `
+				INSERT INTO category (user_id, id, name, parent_id, is_necessity, updated_at)
+				VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING`,
+				userID, c.ID, c.Name, c.ParentID, c.IsNecessity, c.UpdatedAt); err != nil {
+				return err
+			}
+		}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO payee (user_id, id, name, vpa, default_category_id, updated_at)
+			VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING`,
+			userID, payee.ID, payee.Name, payee.VPA, payee.DefaultCategoryID, payee.UpdatedAt); err != nil {
+			return err
+		}
+		for _, t := range txns {
+			tag, err := tx.Exec(ctx, `
+				INSERT INTO txn (user_id, uuid, amount_paise, payee_id, category_id, source, status,
+					regret, breached_at_logging, note, occurred_at, created_at, updated_at)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) ON CONFLICT DO NOTHING`,
+				userID, t.UUID, t.AmountPaise, t.PayeeID, t.CategoryID, t.Source, t.Status, t.Regret,
+				t.BreachedAtLogging, t.Note, t.OccurredAt, t.CreatedAt, t.UpdatedAt)
+			if err != nil {
+				return err
+			}
+			inserted += int(tag.RowsAffected())
+		}
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	return inserted, nil
+}
