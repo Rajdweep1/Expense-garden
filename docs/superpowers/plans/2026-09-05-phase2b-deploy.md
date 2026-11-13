@@ -11,6 +11,10 @@ decision — which host — is recorded below with the evidence it was made on.
 `.github/workflows/ci.yml` landed in `041b89f`. Since `d7ec41f` and `939a597` the server fails
 closed on an unset token, trims `SYNC_TOKEN`, and refuses one under 32 characters.
 
+> **Revised 2026-11-13: users replace `SYNC_TOKEN`** (spec `2026-11-13-users-and-fc-history-design.md`).
+> There is no `SYNC_TOKEN` any more: each user's token is created by `cmd/admin` and only its
+> SHA-256 lives in `app_user`. §3, §5 and §7 below are rewritten for that.
+
 > **Revised 2026-10-18: Koyeb → Cloud Run.** The first version of this runbook (2026-09-05)
 > chose Koyeb. Re-checked on the day, as §1 requires, Koyeb had stopped being free for new
 > accounts. Everything below §1 is written for Cloud Run.
@@ -75,18 +79,22 @@ so the first deploy creates the tables itself.
 
 ---
 
-## 3. Generate the sync token (needs Rajdweep)
+## 3. Your account on Neon (needs Rajdweep; after §2, before §7)
 
-Not a password you invent — 32 random bytes:
+Run from `backend/core-api` on the Mac, pointed at Neon's direct string (it applies the
+migrations first). The history is imported again rather than copied from the local database: his
+local account holds nothing but the import, and the import is idempotent.
 
 ```bash
-openssl rand -base64 32
+export DATABASE_URL='<the direct Neon string from §2>'
+go run ./cmd/admin create-user rajdweep ~/Documents/fortune-city-export/rajdweep-neon.token
+go run ./cmd/admin import-fc rajdweep ~/Documents/fortune-city-export/<the latest export>.json
 ```
 
-That prints 44 characters; the server refuses anything under 32. Store it in your password
-manager. **This is the credential that authorises a restore, so it must survive the phone.** It
-goes in exactly two places: the `sync-token` secret (§5), and the app's Settings → Backup → token
-field (§7). Never paste it into a chat.
+The token goes to a new 0600 file and is never printed. Store it in your password manager.
+**This is the credential that authorises a restore, so it must survive the phone.** It goes in
+exactly one place: the app's Settings → Backup → token field (§7). Never paste it into a chat.
+The import prints per-category counts and totals; they must match the local import.
 
 ---
 
@@ -107,9 +115,8 @@ field (§7). Never paste it into a chat.
 ## 5. Cloud Run (needs Rajdweep)
 
 - [ ] **Secrets first.** Security → Secret Manager (enable the API when asked). Create two
-      secrets, each pasted without a trailing newline:
+      a secret, pasted without a trailing newline:
       - `database-url` = the direct Neon string from §2
-      - `sync-token` = the token from §3
 - [ ] **Create the service.** Cloud Run → **Connect repository** → **Cloud Build** → GitHub
       (authenticate when asked) → `Rajdweep1/Expense-garden` → **Next**.
 - [ ] **Build configuration:** Branch `^main$`. Build Type **Dockerfile**. Source location
@@ -129,8 +136,8 @@ field (§7). Never paste it into a chat.
       - Container port **8080** (the default; the server listens on `:8080`). Memory and CPU at
         their defaults.
       - Variables & Secrets → **Reference a secret**: `DATABASE_URL` ← `database-url`, version
-        `latest`; `SYNC_TOKEN` ← `sync-token`, version `latest`. Accept the prompt to grant the
-        service account access.
+        `latest`. Accept the prompt to grant the service account access. (No token variable:
+        tokens live in the database.)
       - Health checks: leave the default startup probe. If you add a liveness probe, make it
         HTTP **`/v1/health`**.
 - [ ] **Create.** The first build and deploy take a few minutes; the service page then shows its
@@ -178,8 +185,10 @@ password manager and the phone.
 
 ## 7. Point the phone at it
 
-In the app: Settings → Backup → server url = the `https://…run.app` URL, token = §3's token,
-then Save.
+In the app: Settings → Backup → type server url = the `https://…run.app` URL and token = §3's
+token, then tap **Restore from backup — not Save**. The dialog should read 1,779+ payments; Restore
+replaces the phone's test data with your history and saves the url and token. Save first would push
+the phone's test rows into your account before the restore.
 
 > **`https` is now mandatory, not preferred.** `network_security_config.xml` is strict in the
 > `main` source set, so a release build physically cannot talk to an `http://` URL. The debug
