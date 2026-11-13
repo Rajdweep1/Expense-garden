@@ -80,7 +80,7 @@ fun SettingsScreen(
     var statusRefresh by remember { mutableStateOf(0) }
     var keyCheck by remember { mutableStateOf<String?>(null) }
     // The plan and the very snapshot it describes: confirming restores what was counted (ruling 1).
-    var restoreOffer by remember { mutableStateOf<Pair<RestorePlan, SyncSnapshot>?>(null) }
+    var restoreOffer by remember { mutableStateOf<Triple<RestorePlan, SyncSnapshot, SyncEndpoint>?>(null) }
     var restoreResult by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
@@ -203,24 +203,32 @@ fun SettingsScreen(
 
                 TextButton(
                     onClick = {
+                        // What is typed, not what is saved: Save would push this phone's rows into
+                        // the account first (users spec, finding 1). The endpoint travels with the
+                        // snapshot so an edit while the dialog is open can't be saved in its place.
+                        val endpoint = SyncEndpoint.of(url, token)
                         scope.launch {
                             restoreResult = "Checking the server…"
-                            when (val r = sync.fetchSnapshot(SyncEndpoint.of(syncPrefs.serverUrl, syncPrefs.token))) {
+                            when (val r = sync.fetchSnapshot(endpoint)) {
                                 is SyncResult.Failed -> restoreResult = "Couldn't read the server: ${r.failure.label}"
                                 is SyncResult.Ok -> {
                                     val (phoneTxns, unsynced) = sync.localCounts()
                                     val snap = r.value
                                     val payments = snap.txns.filter { it.status != TxnStatus.DISCARDED }
-                                    restoreOffer = RestorePlan.of(
-                                        phoneTxns, unsynced, payments.size, payments.maxOfOrNull { it.occurredAt },
-                                        ZoneId.systemDefault(),
-                                    ) to snap
+                                    restoreOffer = Triple(
+                                        RestorePlan.of(
+                                            phoneTxns, unsynced, payments.size, payments.maxOfOrNull { it.occurredAt },
+                                            ZoneId.systemDefault(),
+                                        ),
+                                        snap,
+                                        endpoint,
+                                    )
                                     restoreResult = null
                                 }
                             }
                         }
                     },
-                    enabled = syncPrefs.isConfigured,
+                    enabled = url.isNotBlank() && token.isNotBlank(),
                     contentPadding = PaddingValues(horizontal = 8.dp),
                 ) { Text("Restore from backup") }
 
@@ -262,7 +270,7 @@ fun SettingsScreen(
 
     }
 
-    restoreOffer?.let { (plan, snap) ->
+    restoreOffer?.let { (plan, snap, endpoint) ->
         AlertDialog(
             onDismissRequest = { restoreOffer = null },
             title = { Text(if (plan is RestorePlan.Refuse) "Not restoring" else "Replace everything on this phone?") },
@@ -274,8 +282,9 @@ fun SettingsScreen(
                     TextButton(onClick = {
                         restoreOffer = null
                         scope.launch {
-                            val ok = runCatching { sync.restore(snap, SyncEndpoint.of(syncPrefs.serverUrl, syncPrefs.token)) }.getOrDefault(false)
+                            val ok = runCatching { sync.restore(snap, endpoint) }.getOrDefault(false)
                             restoreResult = if (ok) "Restored from the server." else "Restore failed."
+                            if (ok) { saved = true; statusRefresh += 1 }
                         }
                     }) { Text("Restore") }
                 }

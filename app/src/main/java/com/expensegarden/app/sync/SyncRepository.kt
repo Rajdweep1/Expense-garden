@@ -62,7 +62,10 @@ class SyncRepository(
 
     /** The server's copy, read once: Settings shows its counts (RestorePlan) and then restores
      *  this same snapshot, so the counts describe what is applied. */
-    suspend fun fetchSnapshot(endpoint: SyncEndpoint): SyncResult<SyncSnapshot> = TODO()
+    suspend fun fetchSnapshot(endpoint: SyncEndpoint): SyncResult<SyncSnapshot> {
+        if (!endpoint.isComplete) return SyncResult.Failed(SyncFailure.BAD_URL, null)
+        return client.snapshot(endpoint).also { if (it is SyncResult.Failed) recordFailure(it) }
+    }
 
     /** Save's check. With rows waiting it is a real push: an empty one could pass while every real
      *  push failed, and stamping that as a success read "Backed up just now" over a backup that
@@ -126,6 +129,9 @@ class SyncRepository(
         )
         prefs.lastPushedEventId = snap.events.maxOfOrNull { it.id } ?: 0L
         prefs.lastSuccessAt = System.currentTimeMillis()
+        // Saved only now: until the ledger is replaced, no push may reach this server.
+        prefs.serverUrl = endpoint.url
+        prefs.token = endpoint.token
         return true
     }
 

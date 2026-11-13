@@ -51,8 +51,10 @@ class SyncClient(private val prefs: SyncPrefs) {
         }
     }
 
-    suspend fun snapshot(): SyncResult<SyncSnapshot> = withContext(Dispatchers.IO) {
-        val body = when (val r = get("/v1/sync/snapshot")) {
+    /** Reads [endpoint]'s ledger. The endpoint is passed, not read from prefs, because Restore
+     *  reads the server typed in Settings before anything is saved. */
+    suspend fun snapshot(endpoint: SyncEndpoint): SyncResult<SyncSnapshot> = withContext(Dispatchers.IO) {
+        val body = when (val r = get(endpoint, "/v1/sync/snapshot")) {
             is SyncResult.Ok -> r.value
             is SyncResult.Failed -> return@withContext r
         }
@@ -69,19 +71,20 @@ class SyncClient(private val prefs: SyncPrefs) {
 
     // ---------- transport ----------
 
-    private fun open(path: String, method: String): HttpURLConnection =
-        (URL(prefs.serverUrl + path).openConnection() as HttpURLConnection).apply {
+    private fun open(endpoint: SyncEndpoint, path: String, method: String): HttpURLConnection =
+        (URL(endpoint.url + path).openConnection() as HttpURLConnection).apply {
             requestMethod = method
-            setRequestProperty("Authorization", "Bearer ${prefs.token}")
+            setRequestProperty("Authorization", "Bearer ${endpoint.token}")
             setRequestProperty("Content-Type", "application/json")
             connectTimeout = CONNECT_TIMEOUT_MS
             readTimeout = READ_TIMEOUT_MS
         }
 
     private fun post(path: String, body: JSONObject): SyncResult<JSONObject> =
-        request("push") { open(path, "POST").apply { doOutput = true; outputStream.use { it.write(body.toString().toByteArray()) } } }
+        request("push") { open(SyncEndpoint.of(prefs.serverUrl, prefs.token), path, "POST").apply { doOutput = true; outputStream.use { it.write(body.toString().toByteArray()) } } }
 
-    private fun get(path: String): SyncResult<JSONObject> = request("snapshot") { open(path, "GET") }
+    private fun get(endpoint: SyncEndpoint, path: String): SyncResult<JSONObject> =
+        request("snapshot") { open(endpoint, path, "GET") }
 
     /** Every failure, a non-2xx included, comes back named (SyncFailure) and is logged once. */
     private fun request(verb: String, connect: () -> HttpURLConnection): SyncResult<JSONObject> {
