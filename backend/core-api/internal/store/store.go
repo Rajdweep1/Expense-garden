@@ -88,35 +88,35 @@ func (s *Store) ApplyBatch(ctx context.Context, userID int64, b Batch) error {
 	return pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		for _, c := range b.Categories {
 			if _, err := tx.Exec(ctx, `
-				INSERT INTO category (id, name, parent_id, is_necessity, updated_at)
-				VALUES ($1,$2,$3,$4,$5)
-				ON CONFLICT (id) DO UPDATE SET
+				INSERT INTO category (user_id, id, name, parent_id, is_necessity, updated_at)
+				VALUES ($1,$2,$3,$4,$5,$6)
+				ON CONFLICT (user_id, id) DO UPDATE SET
 					name = EXCLUDED.name, parent_id = EXCLUDED.parent_id,
 					is_necessity = EXCLUDED.is_necessity, updated_at = EXCLUDED.updated_at
 				WHERE EXCLUDED.updated_at >= category.updated_at`,
-				c.ID, c.Name, c.ParentID, c.IsNecessity, c.UpdatedAt); err != nil {
+				userID, c.ID, c.Name, c.ParentID, c.IsNecessity, c.UpdatedAt); err != nil {
 				return err
 			}
 		}
 		for _, p := range b.Payees {
 			if _, err := tx.Exec(ctx, `
-				INSERT INTO payee (id, name, vpa, default_category_id, updated_at)
-				VALUES ($1,$2,$3,$4,$5)
-				ON CONFLICT (id) DO UPDATE SET
+				INSERT INTO payee (user_id, id, name, vpa, default_category_id, updated_at)
+				VALUES ($1,$2,$3,$4,$5,$6)
+				ON CONFLICT (user_id, id) DO UPDATE SET
 					name = EXCLUDED.name, vpa = EXCLUDED.vpa,
 					default_category_id = EXCLUDED.default_category_id,
 					updated_at = EXCLUDED.updated_at
 				WHERE EXCLUDED.updated_at >= payee.updated_at`,
-				p.ID, p.Name, p.VPA, p.DefaultCategoryID, p.UpdatedAt); err != nil {
+				userID, p.ID, p.Name, p.VPA, p.DefaultCategoryID, p.UpdatedAt); err != nil {
 				return err
 			}
 		}
 		for _, t := range b.Txns {
 			if _, err := tx.Exec(ctx, `
-				INSERT INTO txn (uuid, amount_paise, payee_id, category_id, source, status,
+				INSERT INTO txn (user_id, uuid, amount_paise, payee_id, category_id, source, status,
 					regret, breached_at_logging, note, occurred_at, created_at, updated_at)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-				ON CONFLICT (uuid) DO UPDATE SET
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+				ON CONFLICT (user_id, uuid) DO UPDATE SET
 					amount_paise = EXCLUDED.amount_paise, payee_id = EXCLUDED.payee_id,
 					category_id = EXCLUDED.category_id, source = EXCLUDED.source,
 					status = EXCLUDED.status, regret = EXCLUDED.regret,
@@ -124,29 +124,29 @@ func (s *Store) ApplyBatch(ctx context.Context, userID int64, b Batch) error {
 					occurred_at = EXCLUDED.occurred_at, created_at = EXCLUDED.created_at,
 					updated_at = EXCLUDED.updated_at
 				WHERE EXCLUDED.updated_at >= txn.updated_at`,
-				t.UUID, t.AmountPaise, t.PayeeID, t.CategoryID, t.Source, t.Status, t.Regret,
+				userID, t.UUID, t.AmountPaise, t.PayeeID, t.CategoryID, t.Source, t.Status, t.Regret,
 				t.BreachedAtLogging, t.Note, t.OccurredAt, t.CreatedAt, t.UpdatedAt); err != nil {
 				return err
 			}
 		}
 		for _, bg := range b.Budgets {
 			if _, err := tx.Exec(ctx, `
-				INSERT INTO budget (category_id, month, amount_paise, updated_at)
-				VALUES ($1,$2,$3,$4)
-				ON CONFLICT (category_id, month) DO UPDATE SET
+				INSERT INTO budget (user_id, category_id, month, amount_paise, updated_at)
+				VALUES ($1,$2,$3,$4,$5)
+				ON CONFLICT (user_id, category_id, month) DO UPDATE SET
 					amount_paise = EXCLUDED.amount_paise, updated_at = EXCLUDED.updated_at
 				WHERE EXCLUDED.updated_at >= budget.updated_at`,
-				bg.CategoryID, bg.Month, bg.AmountPaise, bg.UpdatedAt); err != nil {
+				userID, bg.CategoryID, bg.Month, bg.AmountPaise, bg.UpdatedAt); err != nil {
 				return err
 			}
 		}
 		for _, e := range b.Events {
 			// Append-only: re-sending an event is free, which is what makes blind retry safe.
 			if _, err := tx.Exec(ctx, `
-				INSERT INTO game_event (id, type, payload_json, transaction_uuid, created_at)
-				VALUES ($1,$2,$3,$4,$5)
-				ON CONFLICT (id) DO NOTHING`,
-				e.ID, e.Type, e.PayloadJSON, e.TransactionUUID, e.CreatedAt); err != nil {
+				INSERT INTO game_event (user_id, id, type, payload_json, transaction_uuid, created_at)
+				VALUES ($1,$2,$3,$4,$5,$6)
+				ON CONFLICT (user_id, id) DO NOTHING`,
+				userID, e.ID, e.Type, e.PayloadJSON, e.TransactionUUID, e.CreatedAt); err != nil {
 				return err
 			}
 		}
@@ -162,8 +162,8 @@ func (s *Store) ApplyBatch(ctx context.Context, userID int64, b Batch) error {
 			// would erase a budget the user has since re-set.
 			if _, err := tx.Exec(ctx, `
 				DELETE FROM budget
-				WHERE category_id IS NOT DISTINCT FROM $1 AND month = $2 AND updated_at <= $3`,
-				catID, month, tomb.DeletedAt); err != nil {
+				WHERE user_id = $1 AND category_id IS NOT DISTINCT FROM $2 AND month = $3 AND updated_at <= $4`,
+				userID, catID, month, tomb.DeletedAt); err != nil {
 				return err
 			}
 		}
@@ -192,12 +192,12 @@ func ParseBudgetRowKey(key string) (*int64, string, bool) {
 	return &id, month, true
 }
 
-// Snapshot is everything, for a restore. No pagination: a single user's lifetime ledger is a
+// Snapshot is everything one user has, for a restore. No pagination: a single user's lifetime ledger is a
 // few thousand rows, and streaming it would buy complexity nobody needs.
 func (s *Store) Snapshot(ctx context.Context, userID int64) (Batch, error) {
 	var b Batch
 
-	rows, err := s.Pool.Query(ctx, `SELECT id, name, parent_id, is_necessity, updated_at FROM category ORDER BY id`)
+	rows, err := s.Pool.Query(ctx, `SELECT id, name, parent_id, is_necessity, updated_at FROM category WHERE user_id = $1 ORDER BY id`, userID)
 	if err != nil {
 		return b, err
 	}
@@ -211,7 +211,7 @@ func (s *Store) Snapshot(ctx context.Context, userID int64) (Batch, error) {
 	}
 	rows.Close()
 
-	rows, err = s.Pool.Query(ctx, `SELECT id, name, vpa, default_category_id, updated_at FROM payee ORDER BY id`)
+	rows, err = s.Pool.Query(ctx, `SELECT id, name, vpa, default_category_id, updated_at FROM payee WHERE user_id = $1 ORDER BY id`, userID)
 	if err != nil {
 		return b, err
 	}
@@ -226,7 +226,7 @@ func (s *Store) Snapshot(ctx context.Context, userID int64) (Batch, error) {
 	rows.Close()
 
 	rows, err = s.Pool.Query(ctx, `SELECT uuid, amount_paise, payee_id, category_id, source, status,
-		regret, breached_at_logging, note, occurred_at, created_at, updated_at FROM txn ORDER BY created_at`)
+		regret, breached_at_logging, note, occurred_at, created_at, updated_at FROM txn WHERE user_id = $1 ORDER BY created_at`, userID)
 	if err != nil {
 		return b, err
 	}
@@ -241,7 +241,7 @@ func (s *Store) Snapshot(ctx context.Context, userID int64) (Batch, error) {
 	}
 	rows.Close()
 
-	rows, err = s.Pool.Query(ctx, `SELECT category_id, month, amount_paise, updated_at FROM budget ORDER BY month`)
+	rows, err = s.Pool.Query(ctx, `SELECT category_id, month, amount_paise, updated_at FROM budget WHERE user_id = $1 ORDER BY month`, userID)
 	if err != nil {
 		return b, err
 	}
@@ -256,7 +256,7 @@ func (s *Store) Snapshot(ctx context.Context, userID int64) (Batch, error) {
 	rows.Close()
 
 	// Ordered by id, which is the garden's replay order (parent spec §9.2).
-	rows, err = s.Pool.Query(ctx, `SELECT id, type, payload_json, transaction_uuid, created_at FROM game_event ORDER BY id`)
+	rows, err = s.Pool.Query(ctx, `SELECT id, type, payload_json, transaction_uuid, created_at FROM game_event WHERE user_id = $1 ORDER BY id`, userID)
 	if err != nil {
 		return b, err
 	}
@@ -278,15 +278,37 @@ var ErrNoSuchUser = errors.New("store: no such user")
 
 // CreateUser adds a user. A nil hash makes a user that exists but cannot sign in.
 func (s *Store) CreateUser(ctx context.Context, name string, tokenHash []byte) (int64, error) {
-	return 0, errors.New("not implemented")
+	var id int64
+	err := s.Pool.QueryRow(ctx,
+		`INSERT INTO app_user (name, token_sha256, created_at)
+		 VALUES ($1, $2, (EXTRACT(EPOCH FROM now()) * 1000)::BIGINT) RETURNING id`,
+		name, tokenHash).Scan(&id)
+	return id, err
 }
 
 // SetTokenHash replaces a user's token hash.
 func (s *Store) SetTokenHash(ctx context.Context, name string, tokenHash []byte) error {
-	return errors.New("not implemented")
+	tag, err := s.Pool.Exec(ctx, `UPDATE app_user SET token_sha256 = $2 WHERE name = $1`, name, tokenHash)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNoSuchUser
+	}
+	return nil
 }
 
 // UserByTokenHash finds the user a token hash belongs to; (0, false, nil) when none does.
 func (s *Store) UserByTokenHash(ctx context.Context, h []byte) (int64, bool, error) {
-	return 0, false, errors.New("not implemented")
+	// An empty or nil hash never matches: `token_sha256 = NULL` is never true, and no stored
+	// SHA-256 is empty.
+	var id int64
+	err := s.Pool.QueryRow(ctx, `SELECT id FROM app_user WHERE token_sha256 = $1`, h).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, false, nil
+	}
+	if err != nil {
+		return 0, false, err
+	}
+	return id, true, nil
 }
