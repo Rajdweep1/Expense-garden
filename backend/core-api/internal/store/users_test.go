@@ -190,3 +190,35 @@ func TestUserByTokenTrimsAndHashes(t *testing.T) {
 		t.Fatal("HashToken must be a SHA-256, not the token")
 	}
 }
+
+// A row the database refuses partway through must take the whole import with it.
+func TestImportHistoryRollsBackOnAFailedRow(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+	uid := newUser(t, s, "a")
+	ok := Txn{UUID: "ok", AmountPaise: 1, PayeeID: 1, CategoryID: 3, Source: "IMPORT", Status: "LOGGED",
+		Regret: "UNRATED", OccurredAt: 1, CreatedAt: 1, UpdatedAt: 1}
+	bad := ok
+	bad.UUID, bad.CategoryID = "bad", 9999
+	_, err := s.ImportHistory(ctx, uid, []Category{{ID: 3, Name: "Transport", IsNecessity: true, UpdatedAt: 1}},
+		Payee{ID: 1, Name: "Offline payment history", UpdatedAt: 1}, []Txn{ok, bad})
+	if err == nil {
+		t.Fatal("a txn with an unknown category was accepted")
+	}
+	snap := snapshotOf(t, s, uid)
+	if len(snap.Txns)+len(snap.Categories)+len(snap.Payees) != 0 {
+		t.Fatalf("a failed import left rows behind: %+v", snap)
+	}
+}
+
+func TestUserIDByName(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+	id := newUser(t, s, "a")
+	if got, err := s.UserIDByName(ctx, "a"); err != nil || got != id {
+		t.Fatalf("want (%d, nil), got (%d, %v)", id, got, err)
+	}
+	if _, err := s.UserIDByName(ctx, "nobody"); err != ErrNoSuchUser {
+		t.Fatalf("want ErrNoSuchUser, got %v", err)
+	}
+}

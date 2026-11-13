@@ -365,3 +365,8 @@ func (s *Store) ImportHistory(ctx context.Context, userID int64, cats []Category
 	}
 	return inserted, nil
 }
+
+// UserIDByName is the id of the user called name, or ErrNoSuchUser.
+func (s *Store) UserIDByName(ctx context.Context, name string) (int64, error) {
+	return 0, errors.New("not implemented")
+}

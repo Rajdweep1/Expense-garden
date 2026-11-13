@@ -268,3 +268,27 @@ func TestABadRowLeavesTheDatabaseUnchanged(t *testing.T) {
 		t.Fatal("a refused import wrote rows")
 	}
 }
+
+// Two identical rows would share a uuid and the second would be "skipped" — silently lost.
+func TestADuplicateRowRefusesThePlan(t *testing.T) {
+	es := sample(t)
+	es = append(es, es[0])
+	if _, err := Plan(es, 1, ist); err == nil || !strings.Contains(err.Error(), "duplicate") {
+		t.Fatalf("want a duplicate-row error, got %v", err)
+	}
+}
+
+// The history must never attach to a merchant the user already has as payee 1.
+func TestAnotherPayeeOneRefusesTheImport(t *testing.T) {
+	s, uid := newStore(t)
+	ctx := context.Background()
+	if err := s.ApplyBatch(ctx, uid, store.Batch{Payees: []store.Payee{{ID: 1, Name: "Chaiwala", UpdatedAt: 5}}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Import(ctx, s, uid, sample(t), 1); err == nil {
+		t.Fatal("the history was attached to another payee 1")
+	}
+	if snap, _ := s.Snapshot(ctx, uid); len(snap.Txns) != 0 || len(snap.Categories) != 0 {
+		t.Fatal("a refused import wrote rows")
+	}
+}

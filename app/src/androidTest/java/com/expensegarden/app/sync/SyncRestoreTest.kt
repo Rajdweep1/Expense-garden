@@ -196,4 +196,32 @@ class SyncRestoreTest {
         assertFalse(sync.restore(snapshot(withTxn = false), typed))
         assertFalse(prefs.isConfigured)
     }
+
+    // A saved backup that works, and a different server typed into the fields: Restore must read
+    // the typed one, and leave the saved one in place until a restore succeeds.
+    @Test fun restore_uses_the_typed_token_over_a_saved_one() = runBlocking {
+        val seen = mutableListOf<String>()
+        val server = startRecordingServer(seen)
+        try {
+            prefs.serverUrl = "http://127.0.0.1:1"
+            prefs.token = "saved-token"
+            val r = sync.fetchSnapshot(SyncEndpoint.of("http://127.0.0.1:${server.localPort}", "typed-token"))
+            assertTrue("fetch failed: $r", r is SyncResult.Ok)
+            assertEquals(listOf("GET /v1/sync/snapshot [Bearer typed-token]"), synchronized(seen) { seen.toList() })
+            assertEquals("saved-token", prefs.token)
+        } finally {
+            server.close()
+        }
+    }
+
+    // A mistyped server in Restore says nothing about the saved backup: its status line must not
+    // turn to "last try failed".
+    @Test fun a_failed_restore_fetch_leaves_the_backup_status_alone() = runBlocking {
+        prefs.serverUrl = "http://127.0.0.1:1"
+        prefs.token = "saved-token"
+        val r = sync.fetchSnapshot(SyncEndpoint.of("http://127.0.0.1:1", "typo"))
+        assertTrue(r is SyncResult.Failed)
+        assertNull(prefs.lastFailure)
+        assertEquals(0L, prefs.lastFailureAt)
+    }
 }
