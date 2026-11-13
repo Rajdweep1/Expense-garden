@@ -8,6 +8,7 @@ package store
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"strconv"
 	"strings"
@@ -313,10 +314,14 @@ func (s *Store) UserByTokenHash(ctx context.Context, h []byte) (int64, bool, err
 	return id, true, nil
 }
 
-// HashToken is what app_user stores for a token.
-func HashToken(token string) []byte { return nil }
+// HashToken is what app_user stores for a token: SHA-256 of the trimmed token. The phone trims
+// what is pasted, so the server must hash exactly what the phone sends.
+func HashToken(token string) []byte {
+	sum := sha256.Sum256([]byte(strings.TrimSpace(token)))
+	return sum[:]
+}
 
 // UserByToken is UserByTokenHash on HashToken(token).
 func (s *Store) UserByToken(ctx context.Context, token string) (int64, bool, error) {
-	return 0, false, errors.New("not implemented")
+	return s.UserByTokenHash(ctx, HashToken(token))
 }

@@ -35,7 +35,8 @@ func main() {
 		log.Fatalf("migrate: %v", err)
 	}
 
-	api := &httpapi.Server{Token: cfg.Token, Store: &store.Store{Pool: pool}}
+	st := &store.Store{Pool: pool}
+	api := &httpapi.Server{Store: st, Users: st}
 	srv := &http.Server{
 		Addr:              cfg.Addr,
 		Handler:           api.Routes(),

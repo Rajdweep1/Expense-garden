@@ -12,7 +12,6 @@ import (
 )
 
 type Server struct {
-	Token string
 	Store *store.Store
 	Users TokenLookup
 }
@@ -41,8 +40,8 @@ func (s *Server) Routes() http.Handler {
 		}
 		writeJSON(w, http.StatusOK, map[string]bool{"ready": true})
 	})
-	mux.HandleFunc("POST /v1/sync/push", s.requireToken(s.handlePush))
-	mux.HandleFunc("GET /v1/sync/snapshot", s.requireToken(s.handleSnapshot))
+	mux.HandleFunc("POST /v1/sync/push", s.requireUser(s.handlePush))
+	mux.HandleFunc("GET /v1/sync/snapshot", s.requireUser(s.handleSnapshot))
 	return logRequests(mux)
 }
 
