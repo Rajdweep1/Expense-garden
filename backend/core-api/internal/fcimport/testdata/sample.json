@@ -1,0 +1,10 @@
+[
+  {"date": "2025-03-01", "category": "Food", "note": "chai", "amount_inr": "10", "type": "expense", "source": "Fortune City", "order_in_day": 1},
+  {"date": "2025-03-01", "category": "Transportation", "note": "logix bike", "amount_inr": "20", "type": "expense", "source": "Fortune City", "order_in_day": 1},
+  {"date": "2025-03-01", "category": "Food", "note": "lunch  (office)", "amount_inr": "120.5", "type": "expense", "source": "Fortune City", "order_in_day": 2},
+  {"date": "2025-06-10", "category": "gift", "note": "flowers", "amount_inr": "300", "type": "expense", "source": "Fortune City", "order_in_day": 1},
+  {"date": "2026-02-14", "category": "gift", "note": "ring", "amount_inr": "1500", "type": "expense", "source": "Fortune City", "order_in_day": 1},
+  {"date": "2026-02-14", "category": "Drinks", "note": "juice", "amount_inr": "40", "type": "expense", "source": "Fortune City", "order_in_day": 1},
+  {"date": "2026-02-15", "category": "Misc.", "note": "tape", "amount_inr": "35", "type": "expense", "source": "Fortune City", "order_in_day": 1},
+  {"date": "2026-02-15", "category": "ph recharg", "note": "jio", "amount_inr": "299", "type": "expense", "source": "Fortune City", "order_in_day": 1}
+]
