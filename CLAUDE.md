@@ -75,10 +75,13 @@ Backend:
 
 ```bash
 cd backend/core-api
-DATABASE_URL="postgres://$(whoami)@localhost:5432/expense_garden?sslmode=disable" \
-  SYNC_TOKEN="$(openssl rand -base64 32)" go run ./cmd/api
-# Tests DELETE every row in the database they point at: never the dev server's.
-TEST_DATABASE_URL="postgres://$(whoami)@localhost:5432/expense_garden_test?sslmode=disable" go test ./...
+export DATABASE_URL="postgres://$(whoami)@localhost:5432/expense_garden?sslmode=disable"
+go run ./cmd/api
+# Users and tokens: each token goes to a new 0600 file and is never printed.
+go run ./cmd/admin create-user <name> <token-file>   # or set-token for an existing user
+# Tests DELETE every row in the database they point at: never the dev server's. -p 1 because
+# four packages share that one database.
+TEST_DATABASE_URL="postgres://$(whoami)@localhost:5432/expense_garden_test?sslmode=disable" go test -p 1 ./...
 ```
 
 Emulator — the bare `-avd` command is not enough, all three flags matter:
