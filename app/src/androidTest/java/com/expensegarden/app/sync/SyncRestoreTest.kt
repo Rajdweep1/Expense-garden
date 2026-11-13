@@ -69,6 +69,39 @@ class SyncRestoreTest {
         return server
     }
 
+    private val typed = SyncEndpoint.of(" http://127.0.0.1:1/ ", " typed-token\n")
+
+    /** A one-port HTTP server that answers GET /v1/sync/snapshot with [snapshotJson] and records
+     *  every request line and its Authorization header, in order. */
+    private fun startRecordingServer(seen: MutableList<String>): ServerSocket {
+        val server = ServerSocket(0)
+        thread(isDaemon = true) {
+            while (!server.isClosed) {
+                val socket = runCatching { server.accept() }.getOrNull() ?: break
+                socket.use { s ->
+                    val input = s.getInputStream().bufferedReader()
+                    val requestLine = input.readLine() ?: return@use
+                    var auth = ""
+                    while (true) {
+                        val line = input.readLine() ?: break
+                        if (line.isEmpty()) break
+                        if (line.startsWith("Authorization:", ignoreCase = true)) auth = line.substringAfter(":").trim()
+                    }
+                    synchronized(seen) { seen += "${requestLine.substringBeforeLast(" ")} [$auth]" }
+                    val body = if (requestLine.startsWith("GET /v1/sync/snapshot")) snapshotJson else "{}"
+                    s.getOutputStream().write(
+                        "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: ${body.toByteArray().size}\r\nConnection: close\r\n\r\n$body".toByteArray()
+                    )
+                }
+            }
+        }
+        return server
+    }
+
+    private val snapshotJson = """{"categories":[],"payees":[{"id":500,"name":"Server shop","vpa":null,"defaultCategoryId":null,"updatedAt":1}],""" +
+        """"txns":[{"uuid":"server-1","amountPaise":1000,"payeeId":500,"categoryId":103,"source":"IMPORT","status":"LOGGED",""" +
+        """"regret":"UNRATED","breachedAtLogging":false,"note":"logix bike","occurredAt":1000,"createdAt":1,"updatedAt":1}],"budgets":[],"events":[]}"""
+
     private fun logOne(): String = runBlocking {
         ledger.saveManualLogged(
             LedgerRepository.Draft(vpa = null, payeeName = "Phone shop", amountPaise = 10_000, categoryId = 103,
@@ -93,13 +126,13 @@ class SyncRestoreTest {
 
     @Test fun restore_refuses_an_empty_snapshot_over_a_ledger() = runBlocking {
         logOne()
-        assertFalse(sync.restore(snapshot(withTxn = false)))
+        assertFalse(sync.restore(snapshot(withTxn = false), typed))
         assertEquals(1, db.syncDao().txnCount())
     }
 
     @Test fun restore_replaces_the_ledger_with_a_snapshot() = runBlocking {
         val mine = logOne()
-        assertTrue(sync.restore(snapshot(withTxn = true)))
+        assertTrue(sync.restore(snapshot(withTxn = true), typed))
         assertEquals(1, db.syncDao().txnCount())
         assertNotNull(db.transactionDao().byUuid("server-1"))
         assertNull(db.transactionDao().byUuid(mine))
@@ -123,7 +156,7 @@ class SyncRestoreTest {
         // A budget cleared while offline: pushed after a restore, it would delete the restored budget on the server.
         db.syncDao().putTombstone(SyncTombstoneEntity(tableName = "budget", rowKey = "*|2026-11", deletedAt = 5L))
         logOne()
-        assertTrue(sync.restore(snapshot(withTxn = true)))
+        assertTrue(sync.restore(snapshot(withTxn = true), typed))
         assertEquals(0, sync.collect().tombstones.size)
     }
 
@@ -131,7 +164,36 @@ class SyncRestoreTest {
         // Discarded rows are payments that never happened: a server holding only those is empty.
         val mine = logOne()
         val discarded = snapshot(withTxn = true).let { s -> s.copy(txns = s.txns.map { it.copy(status = TxnStatus.DISCARDED) }) }
-        assertFalse(sync.restore(discarded))
+        assertFalse(sync.restore(discarded, typed))
         assertNotNull(db.transactionDao().byUuid(mine))
+    }
+
+    // AC-11: Restore reads what is typed, before anything is saved, so nothing on this phone is
+    // pushed into the account being restored.
+    @Test fun restore_reads_the_typed_endpoint_without_saving_it() = runBlocking {
+        val seen = mutableListOf<String>()
+        val server = startRecordingServer(seen)
+        try {
+            logOne()   // test data on the phone that must never reach the server
+            val r = sync.fetchSnapshot(SyncEndpoint.of("http://127.0.0.1:${server.localPort}/", " typed-token "))
+            assertTrue("fetch failed: $r", r is SyncResult.Ok)
+            assertEquals("logix bike", (r as SyncResult.Ok).value.txns.single().note)
+            assertFalse(prefs.isConfigured)
+            assertEquals(listOf("GET /v1/sync/snapshot [Bearer typed-token]"), synchronized(seen) { seen.toList() })
+        } finally {
+            server.close()
+        }
+    }
+
+    @Test fun a_successful_restore_saves_the_endpoint() = runBlocking {
+        assertTrue(sync.restore(snapshot(withTxn = true), typed))
+        assertEquals("http://127.0.0.1:1", prefs.serverUrl)
+        assertEquals("typed-token", prefs.token)
+    }
+
+    @Test fun a_refused_restore_saves_nothing() = runBlocking {
+        logOne()
+        assertFalse(sync.restore(snapshot(withTxn = false), typed))
+        assertFalse(prefs.isConfigured)
     }
 }

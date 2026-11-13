@@ -62,10 +62,7 @@ class SyncRepository(
 
     /** The server's copy, read once: Settings shows its counts (RestorePlan) and then restores
      *  this same snapshot, so the counts describe what is applied. */
-    suspend fun fetchSnapshot(): SyncResult<SyncSnapshot> {
-        if (!prefs.isConfigured) return SyncResult.Failed(SyncFailure.BAD_URL, null)
-        return client.snapshot().also { if (it is SyncResult.Failed) recordFailure(it) }
-    }
+    suspend fun fetchSnapshot(endpoint: SyncEndpoint): SyncResult<SyncSnapshot> = TODO()
 
     /** Save's check. With rows waiting it is a real push: an empty one could pass while every real
      *  push failed, and stamping that as a success read "Backed up just now" over a backup that
@@ -100,7 +97,7 @@ class SyncRepository(
      *  depend on event ordering. Verified separately: an explicit-id insert also advances
      *  SQLite's AUTOINCREMENT sequence, so the next new payee cannot collide with a
      *  restored one. */
-    suspend fun restore(snap: SyncSnapshot): Boolean {
+    suspend fun restore(snap: SyncSnapshot, endpoint: SyncEndpoint): Boolean {
         if (snap.txns.none { it.status != TxnStatus.DISCARDED } && db.syncDao().paymentCount() > 0) return false
 
         db.withTransaction {

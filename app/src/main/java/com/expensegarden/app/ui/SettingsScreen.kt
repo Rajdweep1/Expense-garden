@@ -41,6 +41,7 @@ import com.expensegarden.app.data.AiPrefs
 import com.expensegarden.app.data.TxnStatus
 import com.expensegarden.app.game.Tone
 import com.expensegarden.app.sync.RestorePlan
+import com.expensegarden.app.sync.SyncEndpoint
 import com.expensegarden.app.sync.SyncPrefs
 import com.expensegarden.app.sync.SyncRepository
 import com.expensegarden.app.sync.SyncResult
@@ -204,7 +205,7 @@ fun SettingsScreen(
                     onClick = {
                         scope.launch {
                             restoreResult = "Checking the server…"
-                            when (val r = sync.fetchSnapshot()) {
+                            when (val r = sync.fetchSnapshot(SyncEndpoint.of(syncPrefs.serverUrl, syncPrefs.token))) {
                                 is SyncResult.Failed -> restoreResult = "Couldn't read the server: ${r.failure.label}"
                                 is SyncResult.Ok -> {
                                     val (phoneTxns, unsynced) = sync.localCounts()
@@ -273,7 +274,7 @@ fun SettingsScreen(
                     TextButton(onClick = {
                         restoreOffer = null
                         scope.launch {
-                            val ok = runCatching { sync.restore(snap) }.getOrDefault(false)
+                            val ok = runCatching { sync.restore(snap, SyncEndpoint.of(syncPrefs.serverUrl, syncPrefs.token)) }.getOrDefault(false)
                             restoreResult = if (ok) "Restored from the server." else "Restore failed."
                         }
                     }) { Text("Restore") }
