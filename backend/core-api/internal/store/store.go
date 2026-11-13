@@ -10,6 +10,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -346,6 +347,17 @@ func (s *Store) ImportHistory(ctx context.Context, userID int64, cats []Category
 			userID, payee.ID, payee.Name, payee.VPA, payee.DefaultCategoryID, payee.UpdatedAt); err != nil {
 			return err
 		}
+		// DO NOTHING keeps an existing payee with this id: if it is someone else, every imported
+		// txn would silently become a payment to them.
+		var have string
+		if err := tx.QueryRow(ctx, `SELECT name FROM payee WHERE user_id = $1 AND id = $2`,
+			userID, payee.ID).Scan(&have); err != nil {
+			return err
+		}
+		if have != payee.Name {
+			return fmt.Errorf("store: payee %d is already %q, not %q; refusing to attach history to it",
+				payee.ID, have, payee.Name)
+		}
 		for _, t := range txns {
 			tag, err := tx.Exec(ctx, `
 				INSERT INTO txn (user_id, uuid, amount_paise, payee_id, category_id, source, status,
@@ -368,5 +380,10 @@ func (s *Store) ImportHistory(ctx context.Context, userID int64, cats []Category
 
 // UserIDByName is the id of the user called name, or ErrNoSuchUser.
 func (s *Store) UserIDByName(ctx context.Context, name string) (int64, error) {
-	return 0, errors.New("not implemented")
+	var id int64
+	err := s.Pool.QueryRow(ctx, `SELECT id FROM app_user WHERE name = $1`, name).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, ErrNoSuchUser
+	}
+	return id, err
 }

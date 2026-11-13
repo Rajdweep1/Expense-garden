@@ -108,6 +108,7 @@ var HistoryPayee = store.Payee{ID: 1, Name: "Offline payment history"}
 func Plan(entries []Entry, now int64, zone *time.Location) ([]store.Txn, error) {
 	txns := make([]store.Txn, 0, len(entries))
 	perDate := map[string]int64{}
+	seen := map[string]int{}
 	for i, e := range entries {
 		day, err := time.ParseInLocation("2006-01-02", e.Date, zone)
 		if err != nil {
@@ -121,11 +122,17 @@ func Plan(entries []Entry, now int64, zone *time.Location) ([]store.Txn, error) 
 		if err != nil {
 			return nil, fmt.Errorf("row %d: %w", i, err)
 		}
+		id := entryUUID(e)
+		if first, dup := seen[id]; dup {
+			// Same uuid twice: the second would be "already there" and silently dropped.
+			return nil, fmt.Errorf("fcimport: row %d is a duplicate of row %d", i, first)
+		}
+		seen[id] = i
 		at := day.Add(12*time.Hour + time.Duration(perDate[e.Date])*time.Minute).UnixMilli()
 		perDate[e.Date]++
 		note := e.Note
 		txns = append(txns, store.Txn{
-			UUID: entryUUID(e), AmountPaise: paise, PayeeID: HistoryPayee.ID, CategoryID: cat,
+			UUID: id, AmountPaise: paise, PayeeID: HistoryPayee.ID, CategoryID: cat,
 			Source: "IMPORT", Status: "LOGGED", Regret: "UNRATED", Note: &note,
 			OccurredAt: at, CreatedAt: now, UpdatedAt: now,
 		})

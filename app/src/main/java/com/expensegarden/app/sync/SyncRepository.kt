@@ -64,7 +64,9 @@ class SyncRepository(
      *  this same snapshot, so the counts describe what is applied. */
     suspend fun fetchSnapshot(endpoint: SyncEndpoint): SyncResult<SyncSnapshot> {
         if (!endpoint.isComplete) return SyncResult.Failed(SyncFailure.BAD_URL, null)
-        return client.snapshot(endpoint).also { if (it is SyncResult.Failed) recordFailure(it) }
+        // Not recorded as the backup's failure: the typed server may not be the saved one, and
+        // Settings shows this failure in the restore line itself.
+        return client.snapshot(endpoint)
     }
 
     /** Save's check. With rows waiting it is a real push: an empty one could pass while every real

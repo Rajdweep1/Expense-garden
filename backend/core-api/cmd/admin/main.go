@@ -69,8 +69,8 @@ func main() {
 // importFC imports a Fortune City export under the named user and prints what it did, per
 // category, so the result can be checked against FC's own totals.
 func importFC(ctx context.Context, s *store.Store, name, path string) error {
-	var userID int64
-	if err := s.Pool.QueryRow(ctx, `SELECT id FROM app_user WHERE name = $1`, name).Scan(&userID); err != nil {
+	userID, err := s.UserIDByName(ctx, name)
+	if err != nil {
 		return fmt.Errorf("user %q: %w", name, err)
 	}
 	f, err := os.Open(path)
