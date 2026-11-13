@@ -3,7 +3,7 @@ package httpapi
 import "net/http"
 
 func (s *Server) handleSnapshot(w http.ResponseWriter, r *http.Request) {
-	b, err := s.Store.Snapshot(r.Context())
+	b, err := s.Store.Snapshot(r.Context(), userIDFrom(r.Context()))
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "snapshot failed"})
 		return

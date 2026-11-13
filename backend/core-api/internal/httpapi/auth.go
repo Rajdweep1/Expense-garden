@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"crypto/subtle"
 	"net/http"
 	"strings"
@@ -25,4 +26,9 @@ func (s *Server) requireToken(next http.HandlerFunc) http.HandlerFunc {
 		}
 		next(w, r)
 	}
+}
+
+// userIDFrom is the authenticated caller's user id.
+func userIDFrom(ctx context.Context) int64 {
+	return 0 // not implemented: Task 2 sets it in auth
 }

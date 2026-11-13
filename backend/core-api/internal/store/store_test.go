@@ -2,41 +2,30 @@ package store
 
 import (
 	"context"
-	"os"
 	"testing"
 
-	"expensegarden/core-api/internal/migrations"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"expensegarden/core-api/internal/testdb"
 )
 
 // The last-write-wins rule lives in SQL, so it is tested against real Postgres. A mock would
 // only prove that the mock agrees with itself.
 func newTestStore(t *testing.T) *Store {
 	t.Helper()
-	dsn := os.Getenv("TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("TEST_DATABASE_URL not set; see Task 0")
-	}
-	pool, err := pgxpool.New(context.Background(), dsn)
-	if err != nil {
-		t.Fatalf("connect: %v", err)
-	}
-	t.Cleanup(pool.Close)
-	if err := migrations.Apply(context.Background(), pool); err != nil {
-		t.Fatalf("migrate: %v", err)
-	}
-	// Each test starts clean. Order matters: children before parents.
-	for _, tbl := range []string{"game_event", "budget", "txn", "payee", "category"} {
-		if _, err := pool.Exec(context.Background(), "DELETE FROM "+tbl); err != nil {
-			t.Fatalf("clean %s: %v", tbl, err)
-		}
-	}
-	return &Store{Pool: pool}
+	return &Store{Pool: testdb.Pool(t)}
 }
 
-func seedCategory(t *testing.T, s *Store) {
+func newUser(t *testing.T, s *Store, name string) int64 {
 	t.Helper()
-	if err := s.ApplyBatch(context.Background(), Batch{
+	id, err := s.CreateUser(context.Background(), name, nil)
+	if err != nil {
+		t.Fatalf("create user %s: %v", name, err)
+	}
+	return id
+}
+
+func seedCategory(t *testing.T, s *Store, uid int64) {
+	t.Helper()
+	if err := s.ApplyBatch(context.Background(), uid, Batch{
 		Categories: []Category{{ID: 3, Name: "Transport", IsNecessity: true, UpdatedAt: 1}},
 	}); err != nil {
 		t.Fatalf("seed: %v", err)
@@ -82,13 +71,14 @@ func TestParseBudgetRowKey(t *testing.T) {
 func TestNewerWriteWins(t *testing.T) {
 	s := newTestStore(t)
 	ctx := context.Background()
-	seedCategory(t, s)
+	uid := newUser(t, s, "a")
+	seedCategory(t, s, uid)
 
 	for _, b := range []Budget{
 		{CategoryID: ptr(int64(3)), Month: "2026-09", AmountPaise: 100, UpdatedAt: 10},
 		{CategoryID: ptr(int64(3)), Month: "2026-09", AmountPaise: 200, UpdatedAt: 20},
 	} {
-		if err := s.ApplyBatch(ctx, Batch{Budgets: []Budget{b}}); err != nil {
+		if err := s.ApplyBatch(ctx, uid, Batch{Budgets: []Budget{b}}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -105,13 +95,14 @@ func TestNewerWriteWins(t *testing.T) {
 func TestOlderWriteIsIgnored(t *testing.T) {
 	s := newTestStore(t)
 	ctx := context.Background()
-	seedCategory(t, s)
+	uid := newUser(t, s, "a")
+	seedCategory(t, s, uid)
 
 	for _, b := range []Budget{
 		{CategoryID: ptr(int64(3)), Month: "2026-09", AmountPaise: 200, UpdatedAt: 20},
 		{CategoryID: ptr(int64(3)), Month: "2026-09", AmountPaise: 100, UpdatedAt: 10},
 	} {
-		if err := s.ApplyBatch(ctx, Batch{Budgets: []Budget{b}}); err != nil {
+		if err := s.ApplyBatch(ctx, uid, Batch{Budgets: []Budget{b}}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -130,13 +121,14 @@ func TestOlderWriteIsIgnored(t *testing.T) {
 func TestOverallBudgetIsUniquePerMonth(t *testing.T) {
 	s := newTestStore(t)
 	ctx := context.Background()
-	seedCategory(t, s)
+	uid := newUser(t, s, "a")
+	seedCategory(t, s, uid)
 
 	for _, b := range []Budget{
 		{CategoryID: nil, Month: "2026-09", AmountPaise: 500, UpdatedAt: 10},
 		{CategoryID: nil, Month: "2026-09", AmountPaise: 900, UpdatedAt: 20},
 	} {
-		if err := s.ApplyBatch(ctx, Batch{Budgets: []Budget{b}}); err != nil {
+		if err := s.ApplyBatch(ctx, uid, Batch{Budgets: []Budget{b}}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -154,15 +146,16 @@ func TestOverallBudgetIsUniquePerMonth(t *testing.T) {
 func TestStaleTombstoneDoesNotDeleteANewerBudget(t *testing.T) {
 	s := newTestStore(t)
 	ctx := context.Background()
-	seedCategory(t, s)
+	uid := newUser(t, s, "a")
+	seedCategory(t, s, uid)
 
-	if err := s.ApplyBatch(ctx, Batch{
+	if err := s.ApplyBatch(ctx, uid, Batch{
 		Budgets: []Budget{{CategoryID: ptr(int64(3)), Month: "2026-09", AmountPaise: 700, UpdatedAt: 50}},
 	}); err != nil {
 		t.Fatal(err)
 	}
 	// A delete that happened BEFORE the row's latest write must not erase it.
-	if err := s.ApplyBatch(ctx, Batch{
+	if err := s.ApplyBatch(ctx, uid, Batch{
 		Tombstones: []Tombstone{{TableName: "budget", RowKey: "3|2026-09", DeletedAt: 40}},
 	}); err != nil {
 		t.Fatal(err)
@@ -180,14 +173,15 @@ func TestStaleTombstoneDoesNotDeleteANewerBudget(t *testing.T) {
 func TestFreshTombstoneDeletesTheOverallBudget(t *testing.T) {
 	s := newTestStore(t)
 	ctx := context.Background()
-	seedCategory(t, s)
+	uid := newUser(t, s, "a")
+	seedCategory(t, s, uid)
 
-	if err := s.ApplyBatch(ctx, Batch{
+	if err := s.ApplyBatch(ctx, uid, Batch{
 		Budgets: []Budget{{CategoryID: nil, Month: "2026-09", AmountPaise: 700, UpdatedAt: 50}},
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.ApplyBatch(ctx, Batch{
+	if err := s.ApplyBatch(ctx, uid, Batch{
 		Tombstones: []Tombstone{{TableName: "budget", RowKey: "*|2026-09", DeletedAt: 60}},
 	}); err != nil {
 		t.Fatal(err)
@@ -205,10 +199,11 @@ func TestFreshTombstoneDeletesTheOverallBudget(t *testing.T) {
 func TestResendingAnEventIsANoOp(t *testing.T) {
 	s := newTestStore(t)
 	ctx := context.Background()
+	uid := newUser(t, s, "a")
 
 	ev := Event{ID: 1, Type: "gate.dodged", PayloadJSON: "{}", CreatedAt: 5}
 	for i := 0; i < 2; i++ {
-		if err := s.ApplyBatch(ctx, Batch{Events: []Event{ev}}); err != nil {
+		if err := s.ApplyBatch(ctx, uid, Batch{Events: []Event{ev}}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -225,9 +220,10 @@ func TestResendingAnEventIsANoOp(t *testing.T) {
 func TestSnapshotRoundTripsEveryTable(t *testing.T) {
 	s := newTestStore(t)
 	ctx := context.Background()
-	seedCategory(t, s)
+	uid := newUser(t, s, "a")
+	seedCategory(t, s, uid)
 
-	if err := s.ApplyBatch(ctx, Batch{
+	if err := s.ApplyBatch(ctx, uid, Batch{
 		Payees: []Payee{{ID: 7, Name: "Chaiwala", VPA: ptr("chai@ybl"), UpdatedAt: 5}},
 		Txns: []Txn{{
 			UUID: "u1", AmountPaise: 2000, PayeeID: 7, CategoryID: 3, Source: "MANUAL",
@@ -239,7 +235,7 @@ func TestSnapshotRoundTripsEveryTable(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	snap, err := s.Snapshot(ctx)
+	snap, err := s.Snapshot(ctx, uid)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -260,10 +256,11 @@ func TestSnapshotRoundTripsEveryTable(t *testing.T) {
 func TestAnEmptyBatchApplies(t *testing.T) {
 	s := newTestStore(t)
 	ctx := context.Background()
-	if err := s.ApplyBatch(ctx, Batch{}); err != nil {
+	uid := newUser(t, s, "a")
+	if err := s.ApplyBatch(ctx, uid, Batch{}); err != nil {
 		t.Fatalf("an empty batch was refused: %v", err)
 	}
-	snap, err := s.Snapshot(ctx)
+	snap, err := s.Snapshot(ctx, uid)
 	if err != nil {
 		t.Fatal(err)
 	}

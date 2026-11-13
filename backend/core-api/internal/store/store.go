@@ -8,6 +8,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"strings"
 
@@ -83,7 +84,7 @@ type Batch struct {
 
 // ApplyBatch writes an entire push in one transaction, in foreign-key order. All or nothing:
 // a partial apply would leave the phone's cursor advanced past rows the server never stored.
-func (s *Store) ApplyBatch(ctx context.Context, b Batch) error {
+func (s *Store) ApplyBatch(ctx context.Context, userID int64, b Batch) error {
 	return pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		for _, c := range b.Categories {
 			if _, err := tx.Exec(ctx, `
@@ -193,7 +194,7 @@ func ParseBudgetRowKey(key string) (*int64, string, bool) {
 
 // Snapshot is everything, for a restore. No pagination: a single user's lifetime ledger is a
 // few thousand rows, and streaming it would buy complexity nobody needs.
-func (s *Store) Snapshot(ctx context.Context) (Batch, error) {
+func (s *Store) Snapshot(ctx context.Context, userID int64) (Batch, error) {
 	var b Batch
 
 	rows, err := s.Pool.Query(ctx, `SELECT id, name, parent_id, is_necessity, updated_at FROM category ORDER BY id`)
@@ -270,4 +271,22 @@ func (s *Store) Snapshot(ctx context.Context) (Batch, error) {
 	rows.Close()
 
 	return b, rows.Err()
+}
+
+// ErrNoSuchUser is SetTokenHash's answer for a name that isn't there.
+var ErrNoSuchUser = errors.New("store: no such user")
+
+// CreateUser adds a user. A nil hash makes a user that exists but cannot sign in.
+func (s *Store) CreateUser(ctx context.Context, name string, tokenHash []byte) (int64, error) {
+	return 0, errors.New("not implemented")
+}
+
+// SetTokenHash replaces a user's token hash.
+func (s *Store) SetTokenHash(ctx context.Context, name string, tokenHash []byte) error {
+	return errors.New("not implemented")
+}
+
+// UserByTokenHash finds the user a token hash belongs to; (0, false, nil) when none does.
+func (s *Store) UserByTokenHash(ctx context.Context, h []byte) (int64, bool, error) {
+	return 0, false, errors.New("not implemented")
 }

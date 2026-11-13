@@ -16,6 +16,12 @@ var files embed.FS
 // Apply runs every unapplied migration inside its own transaction, recording it in
 // schema_migrations. Re-running is a no-op, which is what makes it safe on every boot.
 func Apply(ctx context.Context, pool *pgxpool.Pool) error {
+	return applyThrough(ctx, pool, "")
+}
+
+// applyThrough is Apply stopping after the file named last ("" = all). Tests use it to build a
+// database as an older schema left it.
+func applyThrough(ctx context.Context, pool *pgxpool.Pool, last string) error {
 	if _, err := pool.Exec(ctx,
 		`CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY)`); err != nil {
 		return fmt.Errorf("migrations: create ledger: %w", err)
@@ -59,6 +65,9 @@ func Apply(ctx context.Context, pool *pgxpool.Pool) error {
 		}
 		if err := tx.Commit(ctx); err != nil {
 			return err
+		}
+		if name == last {
+			return nil
 		}
 	}
 	return nil

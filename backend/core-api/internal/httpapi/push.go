@@ -30,7 +30,7 @@ func (s *Server) handlePush(w http.ResponseWriter, r *http.Request) {
 		Categories: req.Categories, Payees: req.Payees, Txns: req.Txns,
 		Budgets: req.Budgets, Tombstones: req.Tombstones, Events: req.Events,
 	}
-	if err := s.Store.ApplyBatch(r.Context(), batch); err != nil {
+	if err := s.Store.ApplyBatch(r.Context(), userIDFrom(r.Context()), batch); err != nil {
 		// The phone treats any non-2xx as "cursors do not advance", so a failure here is
 		// simply retried with the same rows. Nothing is lost by refusing — but the reason
 		// must reach the server log, because it never reaches the phone.
