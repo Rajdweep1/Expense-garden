@@ -14,6 +14,7 @@ import (
 type Server struct {
 	Token string
 	Store *store.Store
+	Users TokenLookup
 }
 
 func (s *Server) Routes() http.Handler {

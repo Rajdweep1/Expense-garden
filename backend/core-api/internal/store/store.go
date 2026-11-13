@@ -312,3 +312,11 @@ func (s *Store) UserByTokenHash(ctx context.Context, h []byte) (int64, bool, err
 	}
 	return id, true, nil
 }
+
+// HashToken is what app_user stores for a token.
+func HashToken(token string) []byte { return nil }
+
+// UserByToken is UserByTokenHash on HashToken(token).
+func (s *Store) UserByToken(ctx context.Context, token string) (int64, bool, error) {
+	return 0, false, errors.New("not implemented")
+}

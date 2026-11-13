@@ -32,3 +32,14 @@ func (s *Server) requireToken(next http.HandlerFunc) http.HandlerFunc {
 func userIDFrom(ctx context.Context) int64 {
 	return 0 // not implemented: Task 2 sets it in auth
 }
+
+// TokenLookup resolves a bearer token to a user. The store implements it; tests use a fake.
+type TokenLookup interface {
+	UserByToken(ctx context.Context, token string) (int64, bool, error)
+}
+
+func (s *Server) requireUser(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "not implemented"})
+	}
+}

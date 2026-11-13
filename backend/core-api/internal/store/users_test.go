@@ -172,3 +172,21 @@ func TestSetTokenHash(t *testing.T) {
 		t.Fatalf("want ErrNoSuchUser, got %v", err)
 	}
 }
+
+// The hash the server looks a token up by. Whitespace is trimmed first, as the phone does.
+func TestUserByTokenTrimsAndHashes(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+	id, err := s.CreateUser(ctx, "a", HashToken("secret-token"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tok := range []string{"secret-token", " secret-token\n"} {
+		if got, ok, err := s.UserByToken(ctx, tok); err != nil || !ok || got != id {
+			t.Fatalf("%q: want (%d, true, nil), got (%d, %v, %v)", tok, id, got, ok, err)
+		}
+	}
+	if string(HashToken("secret-token")) == "secret-token" || len(HashToken("x")) != 32 {
+		t.Fatal("HashToken must be a SHA-256, not the token")
+	}
+}
