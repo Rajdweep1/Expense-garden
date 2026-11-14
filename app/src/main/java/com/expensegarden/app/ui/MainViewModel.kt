@@ -44,6 +44,8 @@ data class EntryDraft(
     /** Minted when a scan draft starts, so the gate can preview the exact weed this will grow.
      *  Null on the manual path, which has no gate. */
     val txnUuid: String? = null,
+    /** The scanned QR, kept to pay a merchant with exactly what was scanned. Null on the manual path. */
+    val qrUri: String? = null,
 )
 
 /** Home header: null while Room's first emission is in flight (loading skeleton). */

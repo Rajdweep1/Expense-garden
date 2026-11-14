@@ -41,4 +41,9 @@ class UpiUriParserTest {
         val p = UpiUriParser.parse("upi://pay?pa=x@upi&pn=100%offer")
         assertEquals("x@upi", p?.vpa)
     }
+
+    @Test fun `keeps the scanned string`() {
+        val raw = "upi://pay?pa=shop@ybl&mc=5411&sign=ab+c%2B"
+        assertEquals(raw, UpiUriParser.parse("  $raw\n")?.raw)
+    }
 }

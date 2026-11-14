@@ -8,6 +8,8 @@ data class UpiPayee(
     val name: String?,
     val amountPaise: Long?,
     val note: String?,
+    /** The scanned string itself: a merchant QR is paid with exactly this (UpiQr.paymentUri). */
+    val raw: String,
 )
 
 object UpiUriParser {
@@ -30,6 +32,7 @@ object UpiUriParser {
             name = params["pn"]?.takeIf { it.isNotBlank() },
             amountPaise = params["am"]?.let { Money.parseToPaise(it) },
             note = params["tn"]?.takeIf { it.isNotBlank() },
+            raw = "",
         )
     }
 

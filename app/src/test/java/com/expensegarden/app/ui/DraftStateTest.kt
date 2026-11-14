@@ -14,6 +14,7 @@ class DraftStateTest {
         val scanned = EntryDraft(
             fromScan = true, vpa = "shop@ybl", payeeName = "Sharma Chai", amountText = "1,200",
             categoryId = 103L, note = "masala", occurredAt = 1_760_000_000_000L, txnUuid = "uuid-1",
+            qrUri = "upi://pay?pa=shop@ybl&mc=5411",
         )
         val manual = EntryDraft(payeeName = "Kirana", amountText = "250", occurredAt = 1_760_000_000_000L)
         for (draft in listOf(scanned, manual)) {

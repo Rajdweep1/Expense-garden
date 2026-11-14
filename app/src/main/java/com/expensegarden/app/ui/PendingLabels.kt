@@ -24,4 +24,7 @@ object PendingLabels {
     fun logged(amountPaise: Long, payee: String): String = "Logged ${Money.display(amountPaise)} to $payee"
 
     fun discarded(amountPaise: Long, payee: String): String = "Discarded ${Money.display(amountPaise)} to $payee"
+
+    /** A person's QR: UPI apps refuse person-to-person payments started by another app. */
+    fun payInApp(amountPaise: Long, payee: String): String = TODO()
 }

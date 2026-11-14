@@ -27,4 +27,9 @@ class PendingLabelsTest {
         assertEquals("Logged ₹200 to Sharma Chai", PendingLabels.logged(20_000, "Sharma Chai"))
         assertEquals("Discarded ₹200 to Sharma Chai", PendingLabels.discarded(20_000, "Sharma Chai"))
     }
+
+    @Test fun `a person QR tells you to pay in the UPI app`() = assertEquals(
+        "UPI apps don't take payments to people from other apps. Pay ₹100 to Sharma Chai in your UPI app, then confirm here.",
+        PendingLabels.payInApp(10_000, "Sharma Chai"),
+    )
 }
