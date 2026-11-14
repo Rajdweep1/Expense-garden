@@ -85,4 +85,28 @@ class LedgerTransitionTest {
         val upi = repo.saveManualLogged(cash("Chai Point", vpa = "chai@ybl"), breachedAtLogging = false)
         assertNotEquals(payeeIds.first(), db.transactionDao().byUuid(upi)!!.payeeId)
     }
+
+    // Pay first: the awaiting payment's id is the transaction's uuid, so Log it twice (a double tap,
+    // or a kill between the save and the store removal) writes one row (plan Q3).
+    @Test fun log_it_twice_writes_one_row() = runBlocking {
+        assertTrue(repo.saveLoggedOnce(draft(), TxnSource.QR_GATE, breached = false, uuid = "pay-1"))
+        assertFalse(repo.saveLoggedOnce(draft(), TxnSource.QR_GATE, breached = false, uuid = "pay-1"))
+        val row = db.transactionDao().byUuid("pay-1")!!
+        assertEquals(TxnSource.QR_GATE, row.source)
+        assertEquals(TxnStatus.LOGGED, row.status)
+        assertEquals(1, db.gameEventDao().ofType("transaction.logged").count { it.transactionUuid == "pay-1" })
+    }
+
+    @Test fun a_dodge_without_amount_or_category_is_recorded() = runBlocking {
+        repo.recordGateDodge(amountPaise = null, categoryId = null)
+        assertEquals(1, db.gameEventDao().ofType("gate.dodged").size)
+    }
+
+    @Test fun last_amount_to_reads_the_newest_logged_payment() = runBlocking {
+        assertEquals(null, repo.lastAmountTo("shop@ybl"))
+        repo.saveManualLogged(draft(amountPaise = 300).copy(occurredAt = 1L), false)
+        repo.saveManualLogged(draft(amountPaise = 700).copy(occurredAt = 2L), false)
+        repo.savePending(draft(amountPaise = 999).copy(occurredAt = 3L), false)   // not logged: ignored
+        assertEquals(700L, repo.lastAmountTo("shop@ybl"))
+    }
 }

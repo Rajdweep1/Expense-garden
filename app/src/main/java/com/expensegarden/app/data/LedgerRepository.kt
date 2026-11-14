@@ -49,6 +49,10 @@ class LedgerRepository(
             }
         }
 
+    suspend fun saveLoggedOnce(draft: Draft, source: TxnSource, breached: Boolean, uuid: String): Boolean = TODO()
+
+    suspend fun lastAmountTo(vpa: String): Long? = TODO()
+
     /** Manual path: post-hoc, money already spent — straight to LOGGED (spec §5.1). */
     suspend fun saveManualLogged(draft: Draft, breachedAtLogging: Boolean): String =
         save(draft, TxnSource.MANUAL, TxnStatus.LOGGED, breachedAtLogging)
@@ -107,7 +111,7 @@ class LedgerRepository(
     }
 
     /** User backed out at the gate — record the dodge; the game rewards it later (1C). */
-    suspend fun recordGateDodge(amountPaise: Long, categoryId: Long) {
+    suspend fun recordGateDodge(amountPaise: Long?, categoryId: Long?) {
         val payload = JSONObject().put("amountPaise", amountPaise).put("categoryId", categoryId)
         db.gameEventDao().insert(
             GameEventEntity(type = "gate.dodged", payloadJson = payload.toString(), transactionUuid = null, createdAt = now())
@@ -150,12 +154,12 @@ class LedgerRepository(
 
     /** Budget scopes relevant to a payment in [categoryId] during [occurredAt]'s month:
      *  overall (depth 0) + every budgeted category on the ancestor chain (deeper = more specific). */
-    suspend fun scopeInputs(categoryId: Long, occurredAt: Long, candidateUuid: String?): List<ScopeInput> {
+    suspend fun scopeInputs(categoryId: Long?, occurredAt: Long, candidateUuid: String?): List<ScopeInput> {
         val monthKey = monthKeyOf(occurredAt)
         val budgets = db.budgetDao().allForMonth(monthKey)
         if (budgets.isEmpty()) return emptyList()
         val tree = CategoryTree(db.categoryDao().all())
-        val chain = tree.ancestorChain(categoryId)                       // [self, …, root]
+        val chain = categoryId?.let { tree.ancestorChain(it) } ?: emptyList()   // [self, …, root]; none for an unknown payee
         val (from, to) = boundsOfMonth(monthKey)
         val leafSums = db.transactionDao().loggedOrPendingSumsByCategory(from, to, candidateUuid)
             .associate { it.categoryId to it.totalPaise }
@@ -197,7 +201,7 @@ class LedgerRepository(
      *    after a rotation killed the first attempt finds its own pending row, which must not count
      *    against itself (final review, 2026-11-10). null on the manual path, saved only after. */
     suspend fun evaluateGate(
-        categoryId: Long,
+        categoryId: Long?,
         amountPaise: Long,
         occurredAt: Long,
         ledgerBeganAt: Long?,

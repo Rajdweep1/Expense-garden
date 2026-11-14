@@ -235,4 +235,12 @@ class GateScopeTest {
             repo.evaluateGate(7, 100_000, noonOn(2), ledgerBeganAt = null, payeeVpa = "shop@ybl", candidateUuid = "scan-1").severity,
         )
     }
+
+    // An unknown payee has no category: only the overall budget can judge it (pay-first, plan Q8).
+    @Test fun no_category_judges_the_overall_budget_only() = runBlocking {
+        db.budgetDao().insert(BudgetEntity(categoryId = null, month = month, amountPaise = 10_000_000, updatedAt = 1L))
+        db.budgetDao().insert(BudgetEntity(categoryId = 1, month = month, amountPaise = 50_000, updatedAt = 1L))
+        val verdict = repo.evaluateGate(categoryId = null, amountPaise = 60_000, occurredAt = nowMillis, ledgerBeganAt = null, payeeVpa = null)
+        assertEquals(com.expensegarden.app.gate.Severity.OK, verdict.severity)
+    }
 }
