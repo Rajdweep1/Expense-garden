@@ -29,5 +29,9 @@ object PendingLabels {
     fun payInApp(amountPaise: Long, payee: String): String =
         "UPI apps don't take payments to people from other apps. Pay ${Money.display(amountPaise)} to $payee in your UPI app, then confirm here."
 
-    fun openingUpiApp(appLabel: String, scanner: Boolean): String = TODO()
+    /** A person's QR: UPI apps refuse person-to-person payments started by another app, so the
+     *  chosen UPI app opens and the same QR is scanned there. */
+    fun openingUpiApp(appLabel: String, scanner: Boolean): String =
+        "UPI won't let other apps pay people. Opening " +
+            (if (scanner) "$appLabel's scanner" else appLabel) + " — scan the same QR there."
 }
