@@ -19,13 +19,18 @@ object UpiUriParser {
         if (!trimmed.lowercase().startsWith("upi://pay")) return null
         val query = trimmed.substringAfter('?', missingDelimiterValue = "")
         if (query.isEmpty()) return null
-        val params = query.split('&').mapNotNull { pair ->
+        val pairs = query.split('&').mapNotNull { pair ->
             val idx = pair.indexOf('=')
             if (idx <= 0) return@mapNotNull null
-            val key = pair.substring(0, idx).lowercase()
-            val value = safeDecode(pair.substring(idx + 1))
-            key to value
-        }.toMap()
+            pair.substring(0, idx) to safeDecode(pair.substring(idx + 1))
+        }
+        // A key repeated, or disguised by encoding or spaces, could be read one way here and another
+        // by the UPI app — and a merchant QR is handed over as scanned (UpiQr) — so the ledger would
+        // record a payment other than the one made. Refuse such a QR (security review, 2026-11-14).
+        if (pairs.any { (k, _) -> k.contains('%') || k != k.trim() }) return null
+        val keys = pairs.map { it.first.lowercase() }
+        if (PAYMENT_KEYS.any { key -> keys.count { it == key } > 1 }) return null
+        val params = pairs.associate { (k, v) -> k.lowercase() to v }
         val vpa = params["pa"]?.takeIf { it.isNotBlank() } ?: return null
         return UpiPayee(
             vpa = vpa,
@@ -35,6 +40,8 @@ object UpiUriParser {
             raw = trimmed,
         )
     }
+
+    private val PAYMENT_KEYS = listOf("pa", "pn", "am", "cu", "mc", "tr")
 
     /** Merchant QRs sometimes carry raw '%' — never let decoding crash a scan. */
     private fun safeDecode(s: String): String = try {
