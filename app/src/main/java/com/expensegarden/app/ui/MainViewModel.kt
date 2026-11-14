@@ -189,7 +189,6 @@ class MainViewModel(private val container: AppContainer, private val saved: Save
             id = UUID.randomUUID().toString(), vpa = r.payee.vpa,
             payeeName = r.payee.name ?: r.payee.vpa.substringBefore('@'), qrUri = r.payee.raw,
             fixedAmountPaise = UpiQr.fixedAmountPaise(r.payee.raw), scannedAt = now, handedOffAt = now,
-            estimatePaise = r.estimatePaise,
         )
         container.awaiting.add(p)
         refreshAwaiting()

@@ -10,7 +10,6 @@ data class AwaitingPayment(
     val fixedAmountPaise: Long?,
     val scannedAt: Long,
     val handedOffAt: Long?,
-    val estimatePaise: Long,
 )
 
 /** Which awaiting payment does what. Pure, so the choices are JVM-tested. */
@@ -20,6 +19,5 @@ object AwaitingSelect {
         list.filter { it.handedOffAt != null }.minByOrNull { it.scannedAt }
 
     /** Every awaiting payment but the one whose form is open, oldest first. */
-    fun homeCards(list: List<AwaitingPayment>, openId: String?): List<AwaitingPayment> =
-        list.filter { it.id != openId }.sortedBy { it.scannedAt }
+    fun homeCards(list: List<AwaitingPayment>): List<AwaitingPayment> = TODO()
 }

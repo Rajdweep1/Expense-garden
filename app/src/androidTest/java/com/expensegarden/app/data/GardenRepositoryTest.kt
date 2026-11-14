@@ -153,4 +153,18 @@ class GardenRepositoryTest {
         // Against the plain line the rent fails June 1–21; against the fixed-cost line no day fails.
         assertEquals(30, garden.foldMonth("2025-06").streakDays)
     }
+
+    // Spec D3, wired end to end: a month holding a payment not logged yet doesn't close.
+    @Test fun a_month_holding_an_awaiting_payment_does_not_close() = runBlocking {
+        val ctx = ApplicationProvider.getApplicationContext<Context>()
+        val lastMonth = java.time.YearMonth.now(zone).minusMonths(1)
+        val inLastMonth = lastMonth.atDay(10).atTime(12, 0).atZone(zone).toInstant().toEpochMilli()
+        log(103, 5_000, at = inLastMonth)
+        val waiting = com.expensegarden.app.capture.AwaitingPayment("p", "x@ybl", "X", "upi://pay?pa=x@ybl", null, inLastMonth, null)
+        val held = GardenRepository(db, ledger, GardenPrefs(ctx).apply { firstObservedAt = inLastMonth - 1 }) { listOf(waiting) }
+        held.runReconciler()
+        assertEquals(0, db.gameEventDao().ofType("month.closed").size)
+        GardenRepository(db, ledger, GardenPrefs(ctx).apply { firstObservedAt = inLastMonth - 1 }).runReconciler()
+        assertEquals(1, db.gameEventDao().ofType("month.closed").size)
+    }
 }

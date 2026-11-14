@@ -16,6 +16,8 @@ class AwaitingLogStore(context: Context) {
 
     fun add(p: AwaitingPayment) = write(all().filterNot { it.id == p.id } + p)
 
+    fun handOff(p: AwaitingPayment): Boolean = TODO()
+
     /** Removes and returns the payment, or null when it isn't there. */
     fun remove(id: String): AwaitingPayment? {
         val list = all()
@@ -40,7 +42,7 @@ class AwaitingLogStore(context: Context) {
         fun encode(list: List<AwaitingPayment>): String = JSONArray(list.map { p ->
             JSONObject().put("id", p.id).put("vpa", p.vpa).put("payeeName", p.payeeName).put("qrUri", p.qrUri)
                 .put("fixedAmountPaise", p.fixedAmountPaise ?: JSONObject.NULL).put("scannedAt", p.scannedAt)
-                .put("handedOffAt", p.handedOffAt ?: JSONObject.NULL).put("estimatePaise", p.estimatePaise)
+                .put("handedOffAt", p.handedOffAt ?: JSONObject.NULL)
         }).toString()
 
         /** A corrupt file reads as empty rather than crashing every launch. */
@@ -54,7 +56,6 @@ class AwaitingLogStore(context: Context) {
                     fixedAmountPaise = if (o.isNull("fixedAmountPaise")) null else o.getLong("fixedAmountPaise"),
                     scannedAt = o.getLong("scannedAt"),
                     handedOffAt = if (o.isNull("handedOffAt")) null else o.getLong("handedOffAt"),
-                    estimatePaise = o.getLong("estimatePaise"),
                 )
             }
         } catch (e: JSONException) {

@@ -19,7 +19,7 @@ class AwaitingLogStoreTest {
     @After fun teardown() { file.edit().clear().commit() }
 
     private fun p(id: String, handedOffAt: Long? = 2L, fixed: Long? = null) =
-        AwaitingPayment(id, "shop@ybl", "Sharma Chai", "upi://pay?pa=shop@ybl&mc=5411", fixed, 1L, handedOffAt, 60_000)
+        AwaitingPayment(id, "shop@ybl", "Sharma Chai", "upi://pay?pa=shop@ybl&mc=5411", fixed, 1L, handedOffAt)
 
     @Test fun add_then_all_returns_it_with_every_field() {
         AwaitingLogStore(context).add(p("a", fixed = 5_000))
@@ -55,5 +55,14 @@ class AwaitingLogStoreTest {
     @Test fun a_corrupt_file_reads_as_empty() {
         file.edit().putString("payments", "{not json").commit()
         assertTrue(AwaitingLogStore(context).all().isEmpty())
+    }
+
+    // His call 6: one awaiting payment at a time — a new hand-off makes any earlier one a home card,
+    // so the form that opens on return is the new payment's (spec/AC review, 2026-11-14).
+    @Test fun a_new_hand_off_clears_older_markers() {
+        val store = AwaitingLogStore(context)
+        store.add(p("old"))
+        assertTrue(store.handOff(p("new").copy(scannedAt = 5L)))
+        assertEquals(mapOf("old" to null, "new" to 2L), AwaitingLogStore(context).all().associate { it.id to it.handedOffAt })
     }
 }

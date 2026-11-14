@@ -216,7 +216,7 @@ fun GardenHomeScreen(
                 }
             }
             // Pay first: payments handed to a UPI app and not logged yet, oldest first.
-            AwaitingSelect.homeCards(awaiting, openId = null).forEach { p ->
+            AwaitingSelect.homeCards(awaiting).forEach { p ->
                 key(p.id) {
                     Card(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
