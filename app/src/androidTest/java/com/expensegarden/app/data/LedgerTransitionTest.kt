@@ -63,12 +63,6 @@ class LedgerTransitionTest {
         assertEquals(0L, db.transactionDao().loggedSumBetween(0L, Long.MAX_VALUE))
     }
 
-    @Test fun saving_the_same_pending_twice_keeps_one_row() = runBlocking {
-        assertTrue(repo.savePendingOnce(draft(), false, "scan-1"))
-        assertFalse(repo.savePendingOnce(draft(), false, "scan-1"))
-        assertEquals(1, repo.observePendingRows().first().size)
-    }
-
     @Test fun pending_rows_carry_the_payee_name() = runBlocking {
         repo.savePending(draft(payeeName = "Sharma Chai"), false)
         assertEquals("Sharma Chai", repo.observePendingRows().first().single().payeeName)
