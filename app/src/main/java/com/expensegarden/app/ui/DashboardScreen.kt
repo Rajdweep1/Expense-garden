@@ -107,9 +107,7 @@ fun DashboardScreen(vm: DashboardViewModel, onBack: () -> Unit = {}) {
                         )
                     }
                     Text("Projected: ${Money.display(s.projectedPaise)} by month end", style = MaterialTheme.typography.bodyMedium)
-                    s.perDayPaise?.let {
-                        Text("${Money.display(it)}/day keeps you under", style = MaterialTheme.typography.bodyMedium)
-                    }
+                    perDayLine(s.perDayPaise)?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
                     paceLine(s.overallSeverity, s.overallBudgetPaise)?.let {
                         Text(
                             it,

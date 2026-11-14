@@ -25,4 +25,7 @@ internal fun stripLabel(overallBudgetPaise: Long?, hint: Severity, streakDays: I
     return "${Money.display(budget)} · ${paceLine(hint, budget)}$streak$waiting  ›"
 }
 
-internal fun perDayLine(perDayPaise: Long?): String? = TODO()
+/** What a day may cost and stay under budget — nothing once the budget is spent, where it used to
+ *  read "₹0/day keeps you under" above "over budget" (phone, 2026-11-14). */
+internal fun perDayLine(perDayPaise: Long?): String? =
+    perDayPaise?.takeIf { it > 0 }?.let { "${Money.display(it)}/day keeps you under" }

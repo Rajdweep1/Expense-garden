@@ -320,8 +320,7 @@ private fun UpiAppCard(upiPrefs: UpiPrefs) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("UPI app for people", style = MaterialTheme.typography.titleMedium)
             Text(
-                "UPI apps won't take a payment to a person from another app, so a person's QR " +
-                    "opens this app and you pay there.",
+                "A person's QR opens this app — on its scanner where it can — and you pay there.",
                 style = MaterialTheme.typography.bodySmall,
             )
             Box {
