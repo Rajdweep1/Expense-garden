@@ -24,3 +24,5 @@ internal fun stripLabel(overallBudgetPaise: Long?, hint: Severity, streakDays: I
     val streak = if (hint == Severity.OK && streakDays > 0) " · 🌱${streakDays}d" else ""
     return "${Money.display(budget)} · ${paceLine(hint, budget)}$streak$waiting  ›"
 }
+
+internal fun perDayLine(perDayPaise: Long?): String? = TODO()

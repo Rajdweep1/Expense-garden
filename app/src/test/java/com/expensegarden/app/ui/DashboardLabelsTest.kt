@@ -30,4 +30,12 @@ class DashboardLabelsTest {
         assertEquals("₹15,000 · over pace · 1 payment not logged  ›", stripLabel(1_500_000L, Severity.PACE_WARNING, 0, unlogged = 1))
         assertEquals("set a budget · 2 payments not logged  ›", stripLabel(null, Severity.OK, 0, unlogged = 2))
     }
+
+    // Over budget, no daily amount keeps you under: the old line read "₹0/day keeps you under"
+    // right above "over budget" (phone, 2026-11-14).
+    @Test fun `the per-day line only shows while there is budget left`() {
+        assertEquals("₹285.71/day keeps you under", perDayLine(28_571L))
+        assertEquals(null, perDayLine(0L))
+        assertEquals(null, perDayLine(null))
+    }
 }
