@@ -1,5 +1,13 @@
 package com.expensegarden.app.ui
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.ui.platform.LocalContext
+import com.expensegarden.app.capture.UpiApps
+import com.expensegarden.app.capture.UpiScanner
+import com.expensegarden.app.data.UpiPrefs
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -60,6 +68,7 @@ fun SettingsScreen(
     aiPrefs: AiPrefs,
     syncPrefs: SyncPrefs,
     sync: SyncRepository,
+    upiPrefs: UpiPrefs,
     /** A saved key or voice takes effect now: Settings is in the same activity, so returning
      *  from it is no foreground (review R16). */
     onAiChanged: () -> Unit,
@@ -171,6 +180,8 @@ fun SettingsScreen(
                 }
             }
         }
+
+        UpiAppCard(upiPrefs)
 
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -293,5 +304,49 @@ fun SettingsScreen(
                 { TextButton(onClick = { restoreOffer = null }) { Text("Cancel") } }
             },
         )
+    }
+}
+
+/** UPI apps refuse person-to-person payments started by another app, so a person's QR opens the
+ *  app chosen here; each entry says whether it opens on its scanner (UpiScanner). Saved on tap. */
+@Composable
+private fun UpiAppCard(upiPrefs: UpiPrefs) {
+    val context = LocalContext.current
+    val apps = remember { UpiApps.installed(context) }
+    var chosen by remember { mutableStateOf(upiPrefs.personAppPackage) }
+    var menuOpen by remember { mutableStateOf(false) }
+    val chosenApp = apps.firstOrNull { it.pkg == chosen }
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("UPI app for people", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "UPI apps won't take a payment to a person from another app, so a person's QR " +
+                    "opens this app and you pay there.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Box {
+                OutlinedButton(onClick = { menuOpen = true }, enabled = apps.isNotEmpty(), modifier = Modifier.fillMaxWidth()) {
+                    Text(chosenApp?.label ?: if (apps.isEmpty()) "No UPI app installed" else "Not chosen — asks the first time")
+                }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    DropdownMenuItem(
+                        text = { Text("None — ask each time") },
+                        onClick = { upiPrefs.personAppPackage = null; chosen = null; menuOpen = false },
+                    )
+                    apps.forEach { app ->
+                        DropdownMenuItem(
+                            text = {
+                                Column {
+                                    Text(app.label)
+                                    Text(UpiScanner.hint(app.pkg), style = MaterialTheme.typography.bodySmall)
+                                }
+                            },
+                            onClick = { upiPrefs.personAppPackage = app.pkg; chosen = app.pkg; menuOpen = false },
+                        )
+                    }
+                }
+            }
+            chosenApp?.let { Text(UpiScanner.hint(it.pkg), style = MaterialTheme.typography.labelMedium) }
+        }
     }
 }

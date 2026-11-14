@@ -50,6 +50,13 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import android.widget.Toast
 import com.expensegarden.app.capture.QrKind
+import androidx.compose.material3.AlertDialog
+import com.expensegarden.app.capture.UpiScanner
+import com.expensegarden.app.capture.UpiApps
+import com.expensegarden.app.capture.UpiApp
+import com.expensegarden.app.capture.ScannerLaunch
+import com.expensegarden.app.capture.PersonAction
+import com.expensegarden.app.GardenApp
 import com.expensegarden.app.capture.UpiIntents
 import com.expensegarden.app.capture.UpiQr
 import com.expensegarden.app.core.Money
@@ -95,6 +102,19 @@ fun EntryScreen(vm: MainViewModel, onDone: () -> Unit) {
     LaunchedEffect(Unit) { amountFocus.requestFocus() }
     SystemBarIcons(darkIcons = !isSystemInDarkTheme())
 
+    val upiPrefs = remember { (context.applicationContext as GardenApp).container.upiPrefs }
+    // The first person QR asks which UPI app to open. The screen stays until the picker is
+    // answered: onDone() would pop it and take the dialog (and this scope) with it.
+    var personPicker by remember { mutableStateOf<List<UpiApp>?>(null) }
+    var personPicked by remember { mutableStateOf(false) }
+
+    /** Opens [app] for a person's QR and says what opened. False when nothing could be started. */
+    fun openForPerson(app: UpiApp): Boolean {
+        val started = UpiApps.open(context, app.pkg) ?: return false
+        Toast.makeText(context, PendingLabels.openingUpiApp(app.label, scanner = started !is ScannerLaunch.AppHome), Toast.LENGTH_LONG).show()
+        return true
+    }
+
     fun fireAndFinish(amountPaise: Long, severity: Severity) {
         scope.launch {
             // Only the call that saved the pending row opens the UPI app: a second tap, or a retry
@@ -104,8 +124,21 @@ fun EntryScreen(vm: MainViewModel, onDone: () -> Unit) {
                 if (qr != null && UpiQr.kind(qr) == QrKind.MERCHANT) {
                     UpiIntents.launchPayment(context, UpiQr.paymentUri(qr, amountPaise))
                 } else {
-                    // UPI apps refuse person-to-person payments started by another app.
-                    Toast.makeText(context, PendingLabels.payInApp(amountPaise, draft.payeeName), Toast.LENGTH_LONG).show()
+                    // UPI apps refuse person-to-person payments started by another app: open the
+                    // chosen UPI app (on its scanner where known) and pay there.
+                    val apps = UpiApps.installed(context)
+                    when (val action = UpiScanner.personAction(upiPrefs.personAppPackage, apps.map { it.pkg })) {
+                        PersonAction.NoneInstalled -> Toast.makeText(context, "No UPI app found", Toast.LENGTH_LONG).show()
+                        is PersonAction.Open -> if (!openForPerson(apps.first { it.pkg == action.pkg })) {
+                            personPicker = apps
+                            return@launch   // the picker ends in onDone()
+                        }
+                        is PersonAction.Pick -> {
+                            if (action.clearSaved) upiPrefs.personAppPackage = null
+                            personPicker = apps
+                            return@launch   // the picker ends in onDone()
+                        }
+                    }
                 }
             }
             onDone()
@@ -277,6 +310,43 @@ fun EntryScreen(vm: MainViewModel, onDone: () -> Unit) {
         ) {
             Text(if (draft.fromScan) "Continue to pay" else "Log it")
         }
+    }
+
+    personPicker?.let { apps ->
+        AlertDialog(
+            onDismissRequest = { personPicker = null; onDone() },
+            title = { Text("Pay people with…") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        "UPI won't let other apps pay people. Pick the UPI app to open — you can change it in Settings.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    apps.forEach { app ->
+                        TextButton(
+                            onClick = {
+                                if (personPicked) return@TextButton   // one answer per picker
+                                personPicked = true
+                                personPicker = null
+                                upiPrefs.personAppPackage = app.pkg
+                                if (!openForPerson(app)) {
+                                    Toast.makeText(context, "Couldn't open ${app.label}", Toast.LENGTH_LONG).show()
+                                }
+                                onDone()
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Column(Modifier.fillMaxWidth()) {
+                                Text(app.label)
+                                Text(UpiScanner.hint(app.pkg), style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { personPicker = null; onDone() }) { Text("Not now") } },
+        )
     }
 
     gate?.let { view ->

@@ -6,6 +6,7 @@ import com.expensegarden.app.ai.GeminiClient
 import com.expensegarden.app.ai.LlmClient
 import com.expensegarden.app.ai.NoopLlmClient
 import com.expensegarden.app.data.AiPrefs
+import com.expensegarden.app.data.UpiPrefs
 import com.expensegarden.app.data.AppDatabase
 import com.expensegarden.app.data.BudgetRepository
 import com.expensegarden.app.data.DigestRepository
@@ -56,6 +57,7 @@ class AppContainer(private val app: Application) {
     val garden: GardenRepository = GardenRepository(db, ledger, prefs)
     val digests: DigestRepository = DigestRepository(db, ledger)
     val aiPrefs: AiPrefs = AiPrefs(app)
+    val upiPrefs: UpiPrefs = UpiPrefs(app)
 
     init {
         // Stamped once, on the first launch this build ever sees. A device upgrading from an
