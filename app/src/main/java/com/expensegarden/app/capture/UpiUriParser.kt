@@ -8,7 +8,8 @@ data class UpiPayee(
     val name: String?,
     val amountPaise: Long?,
     val note: String?,
-    /** The scanned string itself: a merchant QR is paid with exactly this (UpiQr.paymentUri). */
+    /** The scanned string itself: a merchant QR is handed over as this (UpiQr.handoffUri, which only
+     *  strips an `am` the QR doesn't fix validly). */
     val raw: String,
 )
 

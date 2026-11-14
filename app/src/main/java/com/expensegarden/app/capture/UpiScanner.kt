@@ -11,7 +11,7 @@ sealed interface ScannerLaunch {
     data class AppHome(val pkg: String) : ScannerLaunch
 }
 
-/** What a person's QR does once the pending row is saved. */
+/** What a person's QR does once the pre-payment check lets it through. */
 sealed interface PersonAction {
     data class Open(val pkg: String) : PersonAction
     /** Ask which app; [clearSaved] when the saved one was uninstalled (or restored onto a phone without it). */

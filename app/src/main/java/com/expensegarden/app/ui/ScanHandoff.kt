@@ -25,7 +25,7 @@ object ScanHandoff {
     fun start(context: Context, vm: MainViewModel, prefs: UpiPrefs, r: PrePayResult): HandoffOutcome {
         val qr = r.payee.raw
         if (UpiQr.kind(qr) == QrKind.MERCHANT) {
-            val p = vm.recordHandoff(r)
+            val p = vm.recordHandoff(r) ?: return couldNotSave(context)
             if (!UpiIntents.launchPayment(context, UpiQr.handoffUri(qr))) vm.cancelHandoff(p.id)
             return HandoffOutcome.Done
         }
@@ -52,10 +52,17 @@ object ScanHandoff {
         }
     }
 
+    /** Nothing opens when the payment couldn't be remembered: paying it would leave no way to log
+     *  it (code review, 2026-11-14). */
+    private fun couldNotSave(context: Context): HandoffOutcome {
+        Toast.makeText(context, "Couldn't save this payment — storage full? Not opening UPI.", Toast.LENGTH_LONG).show()
+        return HandoffOutcome.Done
+    }
+
     /** Opens [app] for a person's QR and says what opened. False, with nothing stored, when
      *  nothing could be started. */
     fun openForPerson(context: Context, vm: MainViewModel, r: PrePayResult, app: UpiApp): Boolean {
-        val p = vm.recordHandoff(r)
+        val p = vm.recordHandoff(r) ?: run { couldNotSave(context); return true }
         val started = UpiApps.open(context, app.pkg)
         if (started == null) {
             vm.cancelHandoff(p.id)

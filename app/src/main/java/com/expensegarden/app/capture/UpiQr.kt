@@ -29,7 +29,7 @@ object UpiQr {
         return Money.parseToPaise(am)
     }
 
-    /** The one amount for the gate, the pending row and the link: a QR that sets one wins. */
+    /** The amount the Log it form records: a QR that fixes one wins over what's typed. */
     fun payableAmount(qrUri: String?, amountText: String): Long? =
         qrUri?.let(::fixedAmountPaise) ?: Money.parseUserAmount(amountText)
 

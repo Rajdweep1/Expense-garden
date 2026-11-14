@@ -50,7 +50,7 @@ fun PrePayDialog(
                 if (quip.isNotBlank()) Text(quip, style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(8.dp))
                 Button(enabled = !answered, onClick = { answered = true; onNotNow() }, modifier = Modifier.fillMaxWidth()) { Text("Not now") }
-                TextButton(enabled = !answered, onClick = { answered = true; onPay() }, modifier = Modifier.fillMaxWidth()) { Text("Pay anyway") }
+                TextButton(enabled = !answered, onClick = { answered = true; onPay() }, modifier = Modifier.fillMaxWidth()) { Text("Pay") }
             }
         }
     }
@@ -66,7 +66,7 @@ fun UpiAppPickerDialog(apps: List<UpiApp>, onPick: (UpiApp) -> Unit, onDismiss: 
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    "UPI won't let other apps pay people. Pick the UPI app to open — you can change it in Settings.",
+                    "Pick the UPI app that opens for people's QRs — you can change it in Settings.",
                     style = MaterialTheme.typography.bodySmall,
                 )
                 apps.forEach { app ->

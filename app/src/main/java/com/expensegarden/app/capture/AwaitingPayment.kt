@@ -18,6 +18,6 @@ object AwaitingSelect {
     fun toOpen(list: List<AwaitingPayment>): AwaitingPayment? =
         list.filter { it.handedOffAt != null }.minByOrNull { it.scannedAt }
 
-    /** Every awaiting payment but the one whose form is open, oldest first. */
-    fun homeCards(list: List<AwaitingPayment>): List<AwaitingPayment> = TODO()
+    /** The home cards: every awaiting payment, oldest first. */
+    fun homeCards(list: List<AwaitingPayment>): List<AwaitingPayment> = list.sortedBy { it.scannedAt }
 }

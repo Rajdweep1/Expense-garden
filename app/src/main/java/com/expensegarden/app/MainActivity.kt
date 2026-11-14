@@ -134,6 +134,9 @@ private fun GardenNav(
         val observer = LifecycleEventObserver { _, event ->
             if (event != Lifecycle.Event.ON_RESUME) return@LifecycleEventObserver
             vm.refreshAwaiting()
+            // Already on a form (a manual entry typed while the scan was being checked): leave it;
+            // the payment keeps its marker and opens on the next resume (code review, 2026-11-14).
+            if (nav.currentDestination?.route == "entry") return@LifecycleEventObserver
             vm.takePaymentToOpen()?.let { id ->
                 vm.startAfterPayDraft(id)
                 nav.navigate("entry")

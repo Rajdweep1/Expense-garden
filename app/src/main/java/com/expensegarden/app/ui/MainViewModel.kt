@@ -71,6 +71,9 @@ sealed interface UndoOffer {
     data class Txn(override val message: String, val uuid: String, val from: TxnStatus, val to: TxnStatus) : UndoOffer
     /** "Didn't pay": put the awaiting payment back, as a home card (plan Q2). */
     data class Awaiting(override val message: String, val payment: AwaitingPayment) : UndoOffer
+    /** An after-pay Log it: discard the row and put the payment back as a home card, under a new id
+     *  (the old one now names the discarded row), so a mistyped amount can be logged again. */
+    data class LoggedScan(override val message: String, val uuid: String, val payment: AwaitingPayment) : UndoOffer
 }
 
 class MainViewModel(private val container: AppContainer, private val saved: SavedStateHandle) : ViewModel() {
@@ -182,17 +185,18 @@ class MainViewModel(private val container: AppContainer, private val saved: Save
     }
 
     /** Written (to disk) immediately before the UPI app opens, so a kill while paying keeps it
-     *  (plan Q1). The caller removes it with [cancelHandoff] when nothing opened. */
-    fun recordHandoff(r: PrePayResult): AwaitingPayment {
+     *  (plan Q1). Null when it couldn't be written — then nothing may open. The caller removes it
+     *  with [cancelHandoff] when nothing opened. */
+    fun recordHandoff(r: PrePayResult): AwaitingPayment? {
         val now = System.currentTimeMillis()
         val p = AwaitingPayment(
             id = UUID.randomUUID().toString(), vpa = r.payee.vpa,
             payeeName = r.payee.name ?: r.payee.vpa.substringBefore('@'), qrUri = r.payee.raw,
             fixedAmountPaise = UpiQr.fixedAmountPaise(r.payee.raw), scannedAt = now, handedOffAt = now,
         )
-        container.awaiting.add(p)
+        val saved = container.awaiting.handOff(p)
         refreshAwaiting()
-        return p
+        return p.takeIf { saved }
     }
 
     fun cancelHandoff(id: String) {
@@ -235,10 +239,14 @@ class MainViewModel(private val container: AppContainer, private val saved: Save
             container.budgets.carryForward(ledger.currentMonthKey())
             val verdict = ledger.evaluateGate(d.categoryId, amountPaise, d.occurredAt, container.garden.ledgerBeganAt(), d.vpa)
             val repoDraft = d.toRepoDraft(amountPaise)
-            ledger.saveLoggedOnce(repoDraft, TxnSource.QR_GATE, breached = verdict.severity == Severity.BREACH, uuid = id)
-            container.awaiting.remove(id)
+            val logged = ledger.saveLoggedOnce(repoDraft, TxnSource.QR_GATE, breached = verdict.severity == Severity.BREACH, uuid = id)
+            val payment = container.awaiting.remove(id)
             refreshAwaiting()
-            _undoOffer.value = UndoOffer.Txn(PendingLabels.logged(amountPaise, repoDraft.payeeName), id, TxnStatus.LOGGED, TxnStatus.DISCARDED)
+            // Already logged (killed between the save and the removal): nothing new was written,
+            // so there is nothing to announce or undo (code review, 2026-11-14).
+            if (logged && payment != null) {
+                _undoOffer.value = UndoOffer.LoggedScan(PendingLabels.logged(amountPaise, repoDraft.payeeName), id, payment)
+            }
         }
     }
 
@@ -259,6 +267,10 @@ class MainViewModel(private val container: AppContainer, private val saved: Save
             is UndoOffer.Txn -> ledger.revert(offer.uuid, offer.from, offer.to)
             is UndoOffer.Awaiting -> {
                 container.awaiting.restore(offer.payment)
+                refreshAwaiting()
+            }
+            is UndoOffer.LoggedScan -> if (ledger.revert(offer.uuid, TxnStatus.LOGGED, TxnStatus.DISCARDED)) {
+                container.awaiting.restore(offer.payment.copy(id = UUID.randomUUID().toString()))
                 refreshAwaiting()
             }
         }

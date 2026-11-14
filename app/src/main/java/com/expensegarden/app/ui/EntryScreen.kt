@@ -44,7 +44,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.expensegarden.app.capture.UpiQr
@@ -57,7 +56,6 @@ import java.time.format.DateTimeFormatter
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun EntryScreen(vm: MainViewModel, onDone: () -> Unit) {
-    val context = LocalContext.current
     val draft by vm.draft.collectAsState()
     val categories by vm.categories.collectAsState()
     var allCategoriesOpen by remember { mutableStateOf(false) }

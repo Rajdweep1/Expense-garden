@@ -14,9 +14,12 @@ class AwaitingLogStore(context: Context) {
 
     fun all(): List<AwaitingPayment> = decode(prefs.getString(KEY, null))
 
-    fun add(p: AwaitingPayment) = write(all().filterNot { it.id == p.id } + p)
+    fun add(p: AwaitingPayment): Boolean = write(all().filterNot { it.id == p.id } + p)
 
-    fun handOff(p: AwaitingPayment): Boolean = TODO()
+    /** A new hand-off: older payments lose their marker and become home cards (his call 6: one
+     *  awaiting at a time). False when it couldn't be written: the caller must not hand off. */
+    fun handOff(p: AwaitingPayment): Boolean =
+        write(all().filterNot { it.id == p.id }.map { it.copy(handedOffAt = null) } + p)
 
     /** Removes and returns the payment, or null when it isn't there. */
     fun remove(id: String): AwaitingPayment? {
@@ -30,11 +33,12 @@ class AwaitingLogStore(context: Context) {
     fun markShown(id: String) = write(all().map { if (it.id == id) it.copy(handedOffAt = null) else it })
 
     /** Undo of "Didn't pay": back as a home card, not a form that reopens itself. */
-    fun restore(p: AwaitingPayment) = add(p.copy(handedOffAt = null))
-
-    private fun write(list: List<AwaitingPayment>) {
-        prefs.edit().putString(KEY, encode(list)).commit()
+    fun restore(p: AwaitingPayment) {
+        add(p.copy(handedOffAt = null))
     }
+
+    /** False when the disk refused it (commit() reports that; apply() wouldn't). */
+    private fun write(list: List<AwaitingPayment>): Boolean = prefs.edit().putString(KEY, encode(list)).commit()
 
     private companion object {
         const val KEY = "payments"
