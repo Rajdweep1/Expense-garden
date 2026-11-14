@@ -28,8 +28,14 @@ class PendingLabelsTest {
         assertEquals("Discarded ₹200 to Sharma Chai", PendingLabels.discarded(20_000, "Sharma Chai"))
     }
 
-    @Test fun `a person QR tells you to pay in the UPI app`() = assertEquals(
-        "UPI apps don't take payments to people from other apps. Pay ₹100 to Sharma Chai in your UPI app, then confirm here.",
-        PendingLabels.payInApp(10_000, "Sharma Chai"),
-    )
+    @Test fun `a person QR says which app opens and how`() {
+        assertEquals(
+            "UPI won't let other apps pay people. Opening GPay's scanner — scan the same QR there.",
+            PendingLabels.openingUpiApp("GPay", scanner = true),
+        )
+        assertEquals(
+            "UPI won't let other apps pay people. Opening super.money — scan the same QR there.",
+            PendingLabels.openingUpiApp("super.money", scanner = false),
+        )
+    }
 }
