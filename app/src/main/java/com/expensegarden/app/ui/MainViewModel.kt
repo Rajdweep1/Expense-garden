@@ -7,6 +7,8 @@ import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.expensegarden.app.AppContainer
+import com.expensegarden.app.capture.AwaitingPayment
+import com.expensegarden.app.capture.AwaitingSelect
 import com.expensegarden.app.capture.UpiPayee
 import com.expensegarden.app.capture.UpiQr
 import com.expensegarden.app.core.Money
@@ -14,10 +16,13 @@ import com.expensegarden.app.data.CategoryEntity
 import com.expensegarden.app.data.LedgerRepository
 import com.expensegarden.app.data.Regret
 import com.expensegarden.app.data.TxnRow
+import com.expensegarden.app.data.TxnSource
 import com.expensegarden.app.data.TxnStatus
 import com.expensegarden.app.gate.GateEvaluator
-import com.expensegarden.app.gate.GatePresentation
-import com.expensegarden.app.gate.GateView
+import com.expensegarden.app.gate.EstimateSource
+import com.expensegarden.app.gate.PrePayCheck
+import com.expensegarden.app.gate.PrePayDecision
+import com.expensegarden.app.gate.PrePayInput
 import com.expensegarden.app.gate.Severity
 import com.expensegarden.app.stats.ChipOrder
 import com.expensegarden.app.stats.RecurringPayees
@@ -35,26 +40,38 @@ import java.time.ZoneId
 import java.util.UUID
 
 data class EntryDraft(
-    val fromScan: Boolean = false,
     val vpa: String? = null,
     val payeeName: String = "",
     val amountText: String = "",
     val categoryId: Long? = null,
     val note: String = "",
     val occurredAt: Long = System.currentTimeMillis(),
-    /** Minted when a scan draft starts, so the gate can preview the exact weed this will grow.
-     *  Null on the manual path, which has no gate. */
-    val txnUuid: String? = null,
     /** The scanned QR, kept to pay a merchant with exactly what was scanned. Null on the manual path. */
     val qrUri: String? = null,
+    /** Non-null: the after-payment form for this awaiting payment (pay-first). Null: manual. */
     val awaitingId: String? = null,
+)
+
+/** What the scan's pre-payment check decided, with what the hand-off and the card need. */
+data class PrePayResult(
+    val payee: UpiPayee,
+    val decision: PrePayDecision,
+    val estimatePaise: Long,
+    val categoryId: Long?,
+    val quip: String,
 )
 
 /** Home header: null while Room's first emission is in flight (loading skeleton). */
 data class HomeHeader(val spentPaise: Long, val overallBudgetPaise: Long?, val hint: Severity)
 
-/** The last money action that Undo can take back: move [uuid] from [from] back to [to]. */
-data class UndoOffer(val message: String, val uuid: String, val from: TxnStatus, val to: TxnStatus)
+/** The last money action that Undo can take back. */
+sealed interface UndoOffer {
+    val message: String
+    /** Move [uuid] from [from] back to [to]. */
+    data class Txn(override val message: String, val uuid: String, val from: TxnStatus, val to: TxnStatus) : UndoOffer
+    /** "Didn't pay": put the awaiting payment back, as a home card (plan Q2). */
+    data class Awaiting(override val message: String, val payment: AwaitingPayment) : UndoOffer
+}
 
 class MainViewModel(private val container: AppContainer, private val saved: SavedStateHandle) : ViewModel() {
     private val ledger = container.ledger
@@ -120,76 +137,133 @@ class MainViewModel(private val container: AppContainer, private val saved: Save
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val recent: Flow<List<TxnRow>> = ledger.observeRecent()
 
-    fun startScanDraft(payee: UpiPayee) {
-        draft.value = EntryDraft(
-            fromScan = true,
-            vpa = payee.vpa,
-            payeeName = payee.name ?: payee.vpa.substringBefore('@'),
-            // From UpiQr, the same reading that locks the field and sets the payable amount.
-            amountText = UpiQr.fixedAmountPaise(payee.raw)?.let { Money.intentAmount(it) } ?: "",
-            txnUuid = UUID.randomUUID().toString(),
-            qrUri = payee.raw,
-        )
-        viewModelScope.launch { prefillCategoryFromPayee(payee.vpa) }
-    }
-
     fun startManualDraft() {
-        draft.value = EntryDraft(fromScan = false)
+        draft.value = EntryDraft()
     }
 
-    /** Everything the dialog needs, decided in GatePresentation. OK yields None, and the caller
-     *  proceeds without interrupting (the silence rule at the gate).
-     *
-     *  The streak is fetched for every non-OK verdict rather than only for the case that prints
-     *  it. Branching on severity here would put the same rule in two places, and keeping it in
-     *  exactly one is the point of GateView — the extra cost is a single MIN aggregate beside the
-     *  several queries evaluateGate already ran. */
-    suspend fun prepareGateView(amountPaise: Long): GateView {
-        // The app can sit in the foreground across midnight on the 1st; the gate must not judge
-        // the new month against no budget at all.
-        container.budgets.carryForward(ledger.currentMonthKey())
+    private val _awaiting = MutableStateFlow(container.awaiting.all())
+    /** Payments handed to a UPI app and not logged yet (pay-first): home cards and the strip. */
+    val awaiting: StateFlow<List<AwaitingPayment>> = _awaiting
+
+    /** SharedPreferences can't be observed, so every write here, and every resume, re-reads it. */
+    fun refreshAwaiting() {
+        _awaiting.value = container.awaiting.all()
+    }
+
+    /** The scan's one decision before paying (pay-first spec): the card only when the month, with
+     *  this payment's best guess (D1), is already over — and never for necessities, fixed payees
+     *  or with a quip/dodge for unknown payees (D5, D6). */
+    suspend fun prePay(payee: UpiPayee): PrePayResult {
+        val monthKey = ledger.currentMonthKey()
+        container.budgets.carryForward(monthKey)
+        val fixedAmount = UpiQr.fixedAmountPaise(payee.raw)
+        val last = if (fixedAmount == null) ledger.lastAmountTo(payee.vpa) else null
+        val (estimate, source) = when {
+            fixedAmount != null -> fixedAmount to EstimateSource.QR_FIXED
+            last != null -> last to EstimateSource.LAST_LOGGED
+            else -> 0L to EstimateSource.NONE
+        }
+        val known = container.db.payeeDao().byVpa(payee.vpa)
+        val categoryId = known?.defaultCategoryId
+        val began = container.garden.ledgerBeganAt()
+        val verdict = ledger.evaluateGate(categoryId, estimate, System.currentTimeMillis(), began, payee.vpa)
+        val decision = PrePayCheck.decide(
+            PrePayInput(
+                verdict = verdict, estimatePaise = estimate, estimateSource = source,
+                payeeKnown = categoryId != null,
+                isNecessity = categoryId?.let { ledger.isNecessity(it) } ?: false,
+                isFixedPayee = known != null && ledger.recurringCaps(monthKey, began).containsKey(known.id),
+            )
+        )
+        // Picked only when shown: QuipRepository.pick spends one from the no-repeat rotation.
+        val quip = if (decision is PrePayDecision.Card && decision.withQuip)
+            container.quips.pick(decision.severity, container.aiPrefs.tone) else ""
+        return PrePayResult(payee, decision, estimate, categoryId, quip)
+    }
+
+    /** Written (to disk) immediately before the UPI app opens, so a kill while paying keeps it
+     *  (plan Q1). The caller removes it with [cancelHandoff] when nothing opened. */
+    fun recordHandoff(r: PrePayResult): AwaitingPayment {
+        val now = System.currentTimeMillis()
+        val p = AwaitingPayment(
+            id = UUID.randomUUID().toString(), vpa = r.payee.vpa,
+            payeeName = r.payee.name ?: r.payee.vpa.substringBefore('@'), qrUri = r.payee.raw,
+            fixedAmountPaise = UpiQr.fixedAmountPaise(r.payee.raw), scannedAt = now, handedOffAt = now,
+            estimatePaise = r.estimatePaise,
+        )
+        container.awaiting.add(p)
+        refreshAwaiting()
+        return p
+    }
+
+    fun cancelHandoff(id: String) {
+        container.awaiting.remove(id)
+        refreshAwaiting()
+    }
+
+    /** "Not now" on the pre-payment card. */
+    fun recordDodge(r: PrePayResult) = viewModelScope.launch {
+        ledger.recordGateDodge(r.estimatePaise.takeIf { it > 0 }, r.categoryId)
+    }
+
+    /** The payment whose Log it form opens on this resume, its marker cleared (spec D8). */
+    fun takePaymentToOpen(): String? {
+        val p = AwaitingSelect.toOpen(container.awaiting.all()) ?: return null
+        container.awaiting.markShown(p.id)
+        refreshAwaiting()
+        return p.id
+    }
+
+    /** Only when the form isn't already this payment's: a restore or recomposition must not wipe
+     *  a typed amount (plan Q12). */
+    fun startAfterPayDraft(id: String) {
+        if (draft.value.awaitingId == id) return
+        val p = container.awaiting.all().firstOrNull { it.id == id } ?: return
+        draft.value = EntryDraft(
+            vpa = p.vpa, payeeName = p.payeeName,
+            amountText = p.fixedAmountPaise?.let { Money.inputText(it) } ?: "",
+            occurredAt = p.scannedAt, qrUri = p.qrUri, awaitingId = p.id,
+        )
+        viewModelScope.launch { prefillCategoryFromPayee(p.vpa) }
+    }
+
+    /** Log it: once (the awaiting id is the uuid), judged at logging time like a manual log —
+     *  the payment that crosses the budget grows its weed (spec D2). */
+    fun logAfterPayment(amountPaise: Long) {
         val d = draft.value
-        val verdict = ledger.evaluateGate(d.categoryId!!, amountPaise, d.occurredAt, container.garden.ledgerBeganAt(), d.vpa, d.txnUuid)
-        if (verdict.severity == Severity.OK) return GateView.None
-
-        val isNecessity = ledger.isNecessity(d.categoryId!!)
-        // Necessities never ASK for a quip — not "ask and discard". QuipRepository.pick marks the
-        // row used, so asking here would consume one from the no-repeat rotation for a dialog
-        // that never shows it.
-        val quip = if (isNecessity) "" else container.quips.pick(verdict.severity, container.aiPrefs.tone)
-        val offender = verdict.offender
-
-        return GatePresentation.of(
-            severity = verdict.severity,
-            isNecessity = isNecessity,
-            streakDays = container.garden.currentUnderPaceStreak(),
-            txnUuid = d.txnUuid ?: UUID.randomUUID().toString(),
-            quip = quip,
-            scopeLabel = offender?.takeIf { it.categoryId != null }?.label,
-            spentPaise = offender?.spentPaise ?: 0L,
-            budgetPaise = offender?.budgetPaise ?: 0L,
-            candidatePaise = amountPaise,
-            // From the verdict, so the card's numbers use the fixed-cost line the verdict used.
-            allowancePaise = verdict.allowancePaise,
-            allowanceBeforePaise = verdict.allowanceBeforePaise,
-        )
+        val id = d.awaitingId ?: return
+        viewModelScope.launch {
+            container.budgets.carryForward(ledger.currentMonthKey())
+            val verdict = ledger.evaluateGate(d.categoryId, amountPaise, d.occurredAt, container.garden.ledgerBeganAt(), d.vpa)
+            val repoDraft = d.toRepoDraft(amountPaise)
+            ledger.saveLoggedOnce(repoDraft, TxnSource.QR_GATE, breached = verdict.severity == Severity.BREACH, uuid = id)
+            container.awaiting.remove(id)
+            refreshAwaiting()
+            _undoOffer.value = UndoOffer.Txn(PendingLabels.logged(amountPaise, repoDraft.payeeName), id, TxnStatus.LOGGED, TxnStatus.DISCARDED)
+        }
     }
 
-    /** QR path: persist pending + record breach flag, once per scan. @return true when this call
-     *  saved it — the caller opens the UPI app only then, so a double tap or a retry after a
-     *  rotation can't start a second payment. */
-    suspend fun savePendingFromDraft(amountPaise: Long, severity: Severity): Boolean =
-        ledger.savePendingOnce(
-            draft = draft.value.toRepoDraft(amountPaise),
-            breachedAtLogging = severity == Severity.BREACH,
-            uuid = requireNotNull(draft.value.txnUuid) { "a scan draft always carries its uuid" },
-        )
+    /** Didn't pay: nothing is written; Undo brings the payment back as a home card. */
+    fun didntPay() {
+        val id = draft.value.awaitingId ?: return
+        val p = container.awaiting.remove(id) ?: return
+        refreshAwaiting()
+        _undoOffer.value = UndoOffer.Awaiting(PendingLabels.dropped(p.payeeName), p)
+    }
 
     private val _undoOffer = MutableStateFlow<UndoOffer?>(null)
     /** The last undoable money action, for home's snackbar. */
     val undoOffer: StateFlow<UndoOffer?> = _undoOffer
 
-    fun applyUndo(offer: UndoOffer) = viewModelScope.launch { ledger.revert(offer.uuid, offer.from, offer.to) }
+    fun applyUndo(offer: UndoOffer) = viewModelScope.launch {
+        when (offer) {
+            is UndoOffer.Txn -> ledger.revert(offer.uuid, offer.from, offer.to)
+            is UndoOffer.Awaiting -> {
+                container.awaiting.restore(offer.payment)
+                refreshAwaiting()
+            }
+        }
+    }
 
     /** Clears only [offer]: a newer one that arrived meanwhile keeps its own bar. */
     fun dismissUndo(offer: UndoOffer) {
@@ -204,7 +278,7 @@ class MainViewModel(private val container: AppContainer, private val saved: Save
             val verdict = ledger.evaluateGate(d.categoryId!!, amountPaise, d.occurredAt, container.garden.ledgerBeganAt(), d.vpa)
             val repoDraft = d.toRepoDraft(amountPaise)
             val uuid = ledger.saveManualLogged(repoDraft, breachedAtLogging = verdict.severity == Severity.BREACH)
-            _undoOffer.value = UndoOffer(
+            _undoOffer.value = UndoOffer.Txn(
                 PendingLabels.logged(amountPaise, repoDraft.payeeName), uuid, TxnStatus.LOGGED, TxnStatus.DISCARDED,
             )
         }
@@ -216,14 +290,9 @@ class MainViewModel(private val container: AppContainer, private val saved: Save
         draft.value = draft.value.copy(occurredAt = epochMillis)
     }
 
-    fun recordDodge(amountPaise: Long) {
-        val categoryId = draft.value.categoryId ?: return
-        viewModelScope.launch { ledger.recordGateDodge(amountPaise, categoryId) }
-    }
-
     fun confirmPending(row: TxnRow) = viewModelScope.launch {
         if (ledger.confirm(row.uuid)) {
-            _undoOffer.value = UndoOffer(
+            _undoOffer.value = UndoOffer.Txn(
                 PendingLabels.logged(row.amountPaise, row.payeeName), row.uuid, TxnStatus.LOGGED, TxnStatus.PENDING_CONFIRM,
             )
         }
@@ -231,7 +300,7 @@ class MainViewModel(private val container: AppContainer, private val saved: Save
 
     fun discardPending(row: TxnRow) = viewModelScope.launch {
         if (ledger.discard(row.uuid)) {
-            _undoOffer.value = UndoOffer(
+            _undoOffer.value = UndoOffer.Txn(
                 PendingLabels.discarded(row.amountPaise, row.payeeName), row.uuid, TxnStatus.DISCARDED, TxnStatus.PENDING_CONFIRM,
             )
         }

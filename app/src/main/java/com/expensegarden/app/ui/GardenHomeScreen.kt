@@ -58,6 +58,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.expensegarden.app.capture.AwaitingSelect
 import com.expensegarden.app.core.Money
 import com.expensegarden.app.data.Regret
 import com.expensegarden.app.data.TxnRow
@@ -82,6 +83,7 @@ fun GardenHomeScreen(
     spriteCache: SpriteCache? = null,
     onScan: () -> Unit,
     onManual: () -> Unit,
+    onOpenAwaiting: (String) -> Unit,
     onOpenDashboard: () -> Unit,
     onOpenGreenhouse: () -> Unit,
     onOpenSettings: () -> Unit,
@@ -89,6 +91,7 @@ fun GardenHomeScreen(
     val homestead by gardenVm.homestead.collectAsState()
     val header by vm.homeHeader.collectAsState()
     val pending by vm.pendingConfirm.collectAsState()
+    val awaiting by vm.awaiting.collectAsState()
     val scope = rememberCoroutineScope()
     var plantTarget by remember { mutableStateOf<TxnRow?>(null) }
     val dateFmt = remember { DateTimeFormatter.ofPattern("dd MMM") }
@@ -147,7 +150,7 @@ fun GardenHomeScreen(
                         // two unbounded Texts, SpaceBetween let this one overrun the amount on
                         // its left at large font scales.
                         Text(
-                            stripLabel(h.overallBudgetPaise, h.hint, streak),
+                            stripLabel(h.overallBudgetPaise, h.hint, streak, unlogged = awaiting.size),
                             // Tinted like the dashboard: untinted, "over pace" read as good news (review R13).
                             color = when {
                                 h.overallBudgetPaise == null -> Color.Unspecified
@@ -208,6 +211,22 @@ fun GardenHomeScreen(
                             TextButton(onClick = { aiVm.dismiss() }) { Text("ok") }
                             // Spec §8 / parent §10: mutes the persona 24h, never logging.
                             TextButton(onClick = { aiVm.notToday() }) { Text("not today") }
+                        }
+                    }
+                }
+            }
+            // Pay first: payments handed to a UPI app and not logged yet, oldest first.
+            AwaitingSelect.homeCards(awaiting, openId = null).forEach { p ->
+                key(p.id) {
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(PendingLabels.logYourPayment(p.payeeName), style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                PendingLabels.paidAt(p.scannedAt, zone),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Button(onClick = { onOpenAwaiting(p.id) }) { Text("Log it") }
                         }
                     }
                 }

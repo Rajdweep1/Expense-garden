@@ -33,29 +33,6 @@ object UpiQr {
     fun payableAmount(qrUri: String?, amountText: String): Long? =
         qrUri?.let(::fixedAmountPaise) ?: Money.parseUserAmount(amountText)
 
-    /** The scanned string byte for byte — nothing decoded and re-encoded, so a `sign` survives —
-     *  with the scheme lowercased (Android matches it case-sensitively) and, when the QR doesn't
-     *  set a valid amount, its `am` replaced by [amountPaise] and `cu=INR` added if missing. */
-    fun paymentUri(raw: String, amountPaise: Long): String {
-        val trimmed = raw.trim()
-        val lowered = if (trimmed.length >= PREFIX.length && trimmed.startsWith(PREFIX, ignoreCase = true))
-            PREFIX + trimmed.substring(PREFIX.length) else trimmed
-        if (fixedAmountPaise(lowered) != null) return lowered
-
-        val hash = lowered.indexOf('#')
-        val body = if (hash >= 0) lowered.substring(0, hash) else lowered
-        val fragment = if (hash >= 0) lowered.substring(hash) else ""
-        val q = body.indexOf('?')
-        val head = if (q >= 0) body.substring(0, q + 1) else "$body?"
-        val pairs = (if (q >= 0) body.substring(q + 1) else "").split('&')
-            .filter { it.isNotEmpty() && keyOf(it) != "am" }
-        val added = buildList {
-            add("am=" + Money.intentAmount(amountPaise))
-            if (pairs.none { keyOf(it) == "cu" }) add("cu=INR")
-        }
-        return head + (pairs + added).joinToString("&") + fragment
-    }
-
     /** First value of [key] (case-insensitive), raw as scanned; null when absent. */
     private fun param(raw: String, key: String): String? = params(raw, key).firstOrNull()
 

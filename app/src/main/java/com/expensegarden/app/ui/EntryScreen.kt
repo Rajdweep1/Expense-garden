@@ -39,7 +39,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,31 +47,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import android.widget.Toast
-import com.expensegarden.app.capture.QrKind
-import androidx.compose.material3.AlertDialog
-import com.expensegarden.app.capture.UpiScanner
-import com.expensegarden.app.capture.UpiApps
-import com.expensegarden.app.capture.UpiApp
-import com.expensegarden.app.capture.ScannerLaunch
-import com.expensegarden.app.capture.PersonAction
-import com.expensegarden.app.GardenApp
-import com.expensegarden.app.capture.UpiIntents
 import com.expensegarden.app.capture.UpiQr
-import com.expensegarden.app.core.Money
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Surface
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.window.Dialog
-import com.expensegarden.app.gate.GateView
-import com.expensegarden.app.gate.headline
-import com.expensegarden.app.gate.severityForLogging
-import com.expensegarden.app.render.SpriteLoader
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import com.expensegarden.app.gate.Severity
-import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -83,10 +58,8 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun EntryScreen(vm: MainViewModel, onDone: () -> Unit) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val draft by vm.draft.collectAsState()
     val categories by vm.categories.collectAsState()
-    var gate by remember { mutableStateOf<GateView?>(null) }
     var allCategoriesOpen by remember { mutableStateOf(false) }
     // Inline field state rather than Toasts. A Toast appears at the far bottom of the screen,
     // vanishes, is invisible to TalkBack in the way an error field is not, and surfaces only
@@ -94,58 +67,13 @@ fun EntryScreen(vm: MainViewModel, onDone: () -> Unit) {
     // learned a category was also needed.
     var amountError by remember { mutableStateOf(false) }
     var categoryError by remember { mutableStateOf(false) }
-    // Set from a valid submit until the screen leaves, or until the gate is dismissed back to the
-    // form: a double tap used to log twice, or re-insert a scan and crash mid-payment.
+    // Set from a valid submit until the screen leaves: a double tap used to log twice.
     var submitting by remember { mutableStateOf(false) }
     val amountFocus = remember { FocusRequester() }
     // The first input of the app's primary action; every log used to cost an extra tap.
     LaunchedEffect(Unit) { amountFocus.requestFocus() }
     SystemBarIcons(darkIcons = !isSystemInDarkTheme())
-
-    val upiPrefs = remember { (context.applicationContext as GardenApp).container.upiPrefs }
-    // The first person QR asks which UPI app to open. The screen stays until the picker is
-    // answered: onDone() would pop it and take the dialog (and this scope) with it.
-    var personPicker by remember { mutableStateOf<List<UpiApp>?>(null) }
-    var personPicked by remember { mutableStateOf(false) }
-
-    /** Opens [app] for a person's QR and says what opened. False when nothing could be started. */
-    fun openForPerson(app: UpiApp): Boolean {
-        val started = UpiApps.open(context, app.pkg) ?: return false
-        Toast.makeText(context, PendingLabels.openingUpiApp(app.label, scanner = started !is ScannerLaunch.AppHome), Toast.LENGTH_LONG).show()
-        return true
-    }
-
-    fun fireAndFinish(amountPaise: Long, severity: Severity) {
-        scope.launch {
-            // Only the call that saved the pending row opens the UPI app: a second tap, or a retry
-            // after a rotation cancelled the first attempt, must not start a second payment.
-            if (vm.savePendingFromDraft(amountPaise, severity)) {
-                val qr = draft.qrUri
-                if (qr != null && UpiQr.kind(qr) == QrKind.MERCHANT) {
-                    UpiIntents.launchPayment(context, UpiQr.paymentUri(qr, amountPaise))
-                } else {
-                    // UPI apps refuse person-to-person payments started by another app: open the
-                    // chosen UPI app (on its scanner where known) and pay there.
-                    val apps = UpiApps.installed(context)
-                    when (val action = UpiScanner.personAction(upiPrefs.personAppPackage, apps.map { it.pkg })) {
-                        PersonAction.NoneInstalled -> Toast.makeText(context, "No UPI app found", Toast.LENGTH_LONG).show()
-                        is PersonAction.Open -> if (!openForPerson(apps.first { it.pkg == action.pkg })) {
-                            val label = apps.first { it.pkg == action.pkg }.label
-                            Toast.makeText(context, "Couldn't open $label — pick another", Toast.LENGTH_LONG).show()
-                            personPicker = apps
-                            return@launch   // the picker ends in onDone()
-                        }
-                        is PersonAction.Pick -> {
-                            if (action.clearSaved) upiPrefs.personAppPackage = null
-                            personPicker = apps
-                            return@launch   // the picker ends in onDone()
-                        }
-                    }
-                }
-            }
-            onDone()
-        }
-    }
+    val afterPayment = draft.awaitingId != null
 
     // Scrolls and pads for the keyboard, exactly as SettingsScreen does and for the same
     // reason: "Log it" must never sit behind the IME. Edge-to-edge on targetSdk 35 means
@@ -164,7 +92,7 @@ fun EntryScreen(vm: MainViewModel, onDone: () -> Unit) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onDone, contentPadding = PaddingValues(horizontal = 8.dp)) { Text("← garden") }
             Text(
-                if (draft.fromScan) "Paying ${draft.payeeName}" else "Log an expense",
+                if (afterPayment) "Paid ${draft.payeeName}" else "Log an expense",
                 style = MaterialTheme.typography.headlineSmall,
                 modifier = Modifier.padding(start = 8.dp),
             )
@@ -173,7 +101,7 @@ fun EntryScreen(vm: MainViewModel, onDone: () -> Unit) {
         OutlinedTextField(
             value = draft.amountText,
             onValueChange = { vm.draft.value = draft.copy(amountText = it); amountError = false },
-            // A QR that sets its own amount is paid exactly that.
+            // A QR that sets its own amount was paid exactly that.
             readOnly = draft.qrUri?.let(UpiQr::fixedAmountPaise) != null,
             label = { Text("Amount (₹)") },
             isError = amountError,
@@ -182,7 +110,7 @@ fun EntryScreen(vm: MainViewModel, onDone: () -> Unit) {
             modifier = Modifier.fillMaxWidth().focusRequester(amountFocus),
         )
 
-        if (!draft.fromScan) {
+        if (!afterPayment) {
             OutlinedTextField(
                 value = draft.payeeName,
                 onValueChange = { vm.draft.value = draft.copy(payeeName = it) },
@@ -290,179 +218,24 @@ fun EntryScreen(vm: MainViewModel, onDone: () -> Unit) {
                 // rather than discovering the second after fixing the first.
                 amountError = amountPaise == null
                 categoryError = draft.categoryId == null
-                when {
-                    amountPaise == null || draft.categoryId == null -> Unit
-                    draft.fromScan -> {
-                        submitting = true
-                        scope.launch {
-                            val view = vm.prepareGateView(amountPaise)
-                            if (view == GateView.None) fireAndFinish(amountPaise, Severity.OK)
-                            else gate = view
-                        }
-                    }
-                    else -> {
-                        submitting = true
-                        vm.saveManualFromDraft(amountPaise)
-                        onDone()
-                    }
+                if (amountPaise != null && draft.categoryId != null) {
+                    submitting = true
+                    if (afterPayment) vm.logAfterPayment(amountPaise) else vm.saveManualFromDraft(amountPaise)
+                    onDone()
                 }
             },
             enabled = !submitting,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text(if (draft.fromScan) "Continue to pay" else "Log it")
+            Text("Log it")
         }
-    }
-
-    personPicker?.let { apps ->
-        AlertDialog(
-            onDismissRequest = { personPicker = null; onDone() },
-            title = { Text("Pay people with…") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        "UPI won't let other apps pay people. Pick the UPI app to open — you can change it in Settings.",
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                    apps.forEach { app ->
-                        TextButton(
-                            onClick = {
-                                if (personPicked) return@TextButton   // one answer per picker
-                                personPicked = true
-                                personPicker = null
-                                upiPrefs.personAppPackage = app.pkg
-                                if (!openForPerson(app)) {
-                                    Toast.makeText(context, "Couldn't open ${app.label}", Toast.LENGTH_LONG).show()
-                                }
-                                onDone()
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Column(Modifier.fillMaxWidth()) {
-                                Text(app.label)
-                                Text(UpiScanner.hint(app.pkg), style = MaterialTheme.typography.bodySmall)
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {},
-            dismissButton = { TextButton(onClick = { personPicker = null; onDone() }) { Text("Not now") } },
-        )
-    }
-
-    gate?.let { view ->
-        val amountPaise = UpiQr.payableAmount(draft.qrUri, draft.amountText) ?: return@let
-        GateDialog(
-            view = view,
-            onProceed = {
-                val severity = view.severityForLogging()
-                gate = null
-                fireAndFinish(amountPaise, severity)
-            },
-            onBackOut = {
-                if (view.backOutReturnsToForm) {
-                    gate = null; submitting = false
-                } else {
-                    if (view.recordsDodge) vm.recordDodge(amountPaise)
-                    gate = null
-                    onDone()
-                }
-            },
-            // Back to the form, which can be submitted again.
-            onDismiss = { gate = null; submitting = false },
-        )
-    }
-}
-
-/** The gate. A custom Dialog rather than AlertDialog because the emphasis has to invert: on a
- *  discretionary purchase the quiet option is the recommended one, and Material's confirmButton
- *  slot always renders rightmost and loudest. */
-@Composable
-private fun GateDialog(
-    view: GateView,
-    onProceed: () -> Unit,
-    onBackOut: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val context = LocalContext.current
-    var sprite by remember(view) { mutableStateOf<ImageBitmap?>(null) }
-    // One answer per card: a second tap on "Pay anyway" would run the payment path twice.
-    var answered by remember(view) { mutableStateOf(false) }
-    LaunchedEffect(view) {
-        sprite = (view as? GateView.Weed)?.let { weed ->
-            withContext(Dispatchers.IO) { SpriteLoader.decodePlant(context, weed.archetype, weed.variant) }
-        }
-    }
-
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.surface) {
-            Column(
-                Modifier.padding(24.dp).fillMaxWidth(),
-                horizontalAlignment = if (view is GateView.Neutral) Alignment.Start else Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                when (view) {
-                    is GateView.Weed -> {
-                        // A missing sprite degrades to text: the heading already names the
-                        // consequence, so an uninstalled pack must not leave a broken slot.
-                        sprite?.let {
-                            Image(bitmap = it, contentDescription = null, modifier = Modifier.size(96.dp))
-                        }
-                        Text("This grows a weed", style = MaterialTheme.typography.titleLarge)
-                        Text(view.quip, style = MaterialTheme.typography.bodyMedium)
-                        Text(
-                            listOfNotNull(view.scopeLabel, "${Money.displayRupees(view.overPaise)} over").joinToString(" · "),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    is GateView.Streak -> {
-                        Text(view.headline(), style = MaterialTheme.typography.titleLarge)
-                        Text(view.quip, style = MaterialTheme.typography.bodyMedium)
-                        Text(
-                            listOfNotNull(
-                                view.scopeLabel,
-                                "${Money.displayRupees(view.overPaise)} over today's ${Money.displayRupees(view.allowancePaise)}",
-                            ).joinToString(" · "),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    is GateView.Neutral -> {
-                        Text("${view.scopeLabel}, after this", style = MaterialTheme.typography.titleLarge)
-                        Text(
-                            "${Money.display(view.afterPaise)} of your ${Money.display(view.budgetPaise)} budget.",
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                        Text(
-                            "Nothing grows badly here — necessities never do.",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    GateView.None -> Unit
-                }
-
-                Spacer(Modifier.height(8.dp))
-
-                if (view is GateView.Neutral) {
-                    // A necessity should be paid. The loud button is the one that proceeds.
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        TextButton(enabled = !answered, onClick = { answered = true; onBackOut() }) { Text("Back") }
-                        Button(
-                            enabled = !answered,
-                            onClick = { answered = true; onProceed() },
-                            modifier = Modifier.padding(start = 8.dp),
-                        ) { Text("Continue") }
-                    }
-                } else {
-                    // Both stay visible, same tap target, no delay and no confirm step — the only
-                    // change is which one is louder, and the user installed a budgeting app.
-                    Button(enabled = !answered, onClick = { answered = true; onBackOut() }, modifier = Modifier.fillMaxWidth()) { Text("Not now") }
-                    TextButton(enabled = !answered, onClick = { answered = true; onProceed() }, modifier = Modifier.fillMaxWidth()) { Text("Pay anyway") }
-                }
-            }
+        if (afterPayment) {
+            // Pay first: the UPI app was opened, but the user may have backed out of it.
+            TextButton(
+                onClick = { submitting = true; vm.didntPay(); onDone() },
+                enabled = !submitting,
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Didn't pay") }
         }
     }
 }

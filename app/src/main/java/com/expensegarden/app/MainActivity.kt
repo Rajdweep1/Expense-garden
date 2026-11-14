@@ -1,6 +1,21 @@
 package com.expensegarden.app
 
 import android.os.Bundle
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import com.expensegarden.app.capture.UpiApp
+import com.expensegarden.app.gate.PrePayDecision
+import com.expensegarden.app.ui.HandoffOutcome
+import com.expensegarden.app.ui.PrePayDialog
+import com.expensegarden.app.ui.PrePayResult
+import com.expensegarden.app.ui.ScanHandoff
+import com.expensegarden.app.ui.UpiAppPickerDialog
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -87,15 +102,68 @@ private fun GardenNav(
     val nav = rememberNavController()
     val context = LocalContext.current
 
+    val scope = rememberCoroutineScope()
+    val upiPrefs = remember { (context.applicationContext as GardenApp).container.upiPrefs }
+    // Pay first: the card and the first-time picker are dialogs over home, so an OK month goes
+    // from the scanner straight to the UPI app with no screen in between (plan Q11).
+    var prePayCard by remember { mutableStateOf<PrePayResult?>(null) }
+    var picker by remember { mutableStateOf<Pair<PrePayResult, List<UpiApp>>?>(null) }
+
+    fun handOff(r: PrePayResult) {
+        val out = ScanHandoff.start(context, vm, upiPrefs, r)
+        if (out is HandoffOutcome.NeedPicker) picker = r to out.apps
+    }
+
     val scanLauncher = rememberLauncherForActivityResult(ScanContract()) { result ->
         val contents = result.contents ?: return@rememberLauncherForActivityResult
         val payee = UpiUriParser.parse(contents)
         if (payee == null) {
             Toast.makeText(context, "Not a UPI QR", Toast.LENGTH_SHORT).show()
         } else {
-            vm.startScanDraft(payee)
-            nav.navigate("entry")
+            scope.launch {
+                val r = vm.prePay(payee)
+                if (r.decision is PrePayDecision.Card) prePayCard = r else handOff(r)
+            }
         }
+    }
+
+    // Back from the UPI app: the payment just handed off opens its Log it form (spec D8). The
+    // scanner's own return resumes too, but no payment is marked yet at that point.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event != Lifecycle.Event.ON_RESUME) return@LifecycleEventObserver
+            vm.refreshAwaiting()
+            vm.takePaymentToOpen()?.let { id ->
+                vm.startAfterPayDraft(id)
+                nav.navigate("entry")
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    prePayCard?.let { r ->
+        val card = r.decision as PrePayDecision.Card
+        PrePayDialog(
+            card = card, payee = r.payee.name ?: r.payee.vpa, quip = r.quip,
+            onPay = { prePayCard = null; handOff(r) },
+            onNotNow = { prePayCard = null; if (card.recordsDodge) vm.recordDodge(r) },
+            onDismiss = { prePayCard = null },
+        )
+    }
+    picker?.let { (r, apps) ->
+        UpiAppPickerDialog(
+            apps = apps,
+            onPick = { app ->
+                picker = null
+                upiPrefs.personAppPackage = app.pkg
+                if (!ScanHandoff.openForPerson(context, vm, r, app)) {
+                    Toast.makeText(context, "Couldn't open ${app.label}", Toast.LENGTH_LONG).show()
+                }
+            },
+            onDismiss = { picker = null },
+        )
     }
 
     NavHost(
@@ -133,6 +201,7 @@ private fun GardenNav(
                         )
                     },
                     onManual = { vm.startManualDraft(); nav.navigate("entry") },
+                    onOpenAwaiting = { id -> vm.startAfterPayDraft(id); nav.navigate("entry") },
                     onOpenDashboard = { nav.navigate("dashboard") },
                     onOpenGreenhouse = { nav.navigate("greenhouse") },
                     onOpenSettings = { nav.navigate("settings") },

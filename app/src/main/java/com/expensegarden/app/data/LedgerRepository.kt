@@ -32,22 +32,10 @@ class LedgerRepository(
         val occurredAt: Long,
     )
 
-    /** QR path: saved as PENDING_CONFIRM before the UPI intent fires. Returns txn uuid. */
+    /** A PENDING_CONFIRM row: what scans saved before pay-first. No longer created by the app; kept
+     *  because such rows still exist and confirm/discard (spec AC-8), and tests seed them here. */
     suspend fun savePending(draft: Draft, breachedAtLogging: Boolean, uuid: String? = null): String =
         save(draft, TxnSource.QR_GATE, TxnStatus.PENDING_CONFIRM, breachedAtLogging, uuid)
-
-    /** The QR path's save, once per scan: false, writing nothing, when [uuid] already exists. A
-     *  double tap, or a retry after a rotation killed the first attempt mid-flight, used to insert
-     *  the same uuid again and crash mid-payment; the caller now also knows not to open the UPI
-     *  app a second time. Check and insert share one transaction. */
-    suspend fun savePendingOnce(draft: Draft, breachedAtLogging: Boolean, uuid: String): Boolean =
-        db.withTransaction {
-            if (db.transactionDao().byUuid(uuid) != null) false
-            else {
-                savePending(draft, breachedAtLogging, uuid)
-                true
-            }
-        }
 
     /** Pay first's Log it: straight to LOGGED with the scan's [uuid], once — false, writing
      *  nothing, when that uuid already exists (a double tap, or a kill between this and the
@@ -167,14 +155,14 @@ class LedgerRepository(
 
     /** Budget scopes relevant to a payment in [categoryId] during [occurredAt]'s month:
      *  overall (depth 0) + every budgeted category on the ancestor chain (deeper = more specific). */
-    suspend fun scopeInputs(categoryId: Long?, occurredAt: Long, candidateUuid: String?): List<ScopeInput> {
+    suspend fun scopeInputs(categoryId: Long?, occurredAt: Long): List<ScopeInput> {
         val monthKey = monthKeyOf(occurredAt)
         val budgets = db.budgetDao().allForMonth(monthKey)
         if (budgets.isEmpty()) return emptyList()
         val tree = CategoryTree(db.categoryDao().all())
         val chain = categoryId?.let { tree.ancestorChain(it) } ?: emptyList()   // [self, …, root]; none for an unknown payee
         val (from, to) = boundsOfMonth(monthKey)
-        val leafSums = db.transactionDao().loggedOrPendingSumsByCategory(from, to, candidateUuid)
+        val leafSums = db.transactionDao().loggedOrPendingSumsByCategory(from, to)
             .associate { it.categoryId to it.totalPaise }
         val rolled = tree.rollupSums(leafSums)
         return budgets.mapNotNull { b ->
@@ -209,24 +197,20 @@ class LedgerRepository(
      *    recurring payee takes what is left of its fixed cap the moment it is logged, and leaving
      *    that out of the fixed term here made the gate contradict the strip (final review,
      *    2026-10-19). The manual path passes its null VPA; it reads only BREACH, which no fixed
-     *    term moves.
-     *  @param candidateUuid the payment's own uuid when it may already be saved: a scan retried
-     *    after a rotation killed the first attempt finds its own pending row, which must not count
-     *    against itself (final review, 2026-11-10). null on the manual path, saved only after. */
+     *    term moves. */
     suspend fun evaluateGate(
         categoryId: Long?,
         amountPaise: Long,
         occurredAt: Long,
         ledgerBeganAt: Long?,
         payeeVpa: String?,
-        candidateUuid: String? = null,
     ): GateVerdict {
         val (day, days) = dayAndLengthOf(occurredAt)
         val monthKey = monthKeyOf(occurredAt)
         val (from, to) = boundsOfMonth(monthKey)
         // Pending payments count here as they will once answered (review R10), including in the
         // fixed-cost math, which reads LOGGED rows only: a pending rent is fixed, not spending.
-        val monthTxns = db.transactionDao().loggedOrPendingBetween(from, to, candidateUuid).map { it.copy(status = TxnStatus.LOGGED) }
+        val monthTxns = db.transactionDao().loggedOrPendingBetween(from, to).map { it.copy(status = TxnStatus.LOGGED) }
         val caps = recurringCaps(monthKey, ledgerBeganAt)
         val payeeId = payeeVpa?.let { db.payeeDao().byVpa(it)?.id }
         // Fixed costs leave the overall pace line, so a day-1 rent payment doesn't raise a dialog on
@@ -235,7 +219,7 @@ class LedgerRepository(
         // takes what is left of its payee's cap (RecurringPayees.newPaymentShare).
         val fixed = RecurringPayees.fixedSpentPaise(monthTxns, caps)
         return GateAggregator.aggregate(
-            scopeInputs(categoryId, occurredAt, candidateUuid), amountPaise, fixed, day, days,
+            scopeInputs(categoryId, occurredAt), amountPaise, fixed, day, days,
             candidateFixedPaise = RecurringPayees.newPaymentShare(monthTxns, caps, payeeId, amountPaise),
         )
     }
@@ -253,9 +237,8 @@ class LedgerRepository(
         breached: Boolean,
         uuidOverride: String? = null,
     ): String {
-        // The QR path mints this before the gate so the dialog can preview the exact weed this
-        // transaction will grow — which weed is a pure function of the uuid (PlantMapper.kt:74).
-        // Every other caller still gets a fresh one here.
+        // Pay first's Log it passes the awaiting payment's id, so logging it twice writes one row;
+        // every other caller gets a fresh one here.
         val uuid = uuidOverride ?: UUID.randomUUID().toString()
         db.withTransaction {
             val payeeId = resolvePayee(draft)

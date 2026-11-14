@@ -69,7 +69,7 @@ data class TransactionEntity(
     val source: TxnSource,
     val status: TxnStatus,
     val regret: Regret = Regret.UNRATED,
-    val breachedAtLogging: Boolean,        // weed rule input, frozen at capture time (spec §9.3)
+    val breachedAtLogging: Boolean,        // weed rule input, decided when the payment is logged (spec §9.3; pay-first D2)
     val note: String?,
     val occurredAt: Long,                  // epoch millis; user-settable backdating UI lands in 1B
     val createdAt: Long,

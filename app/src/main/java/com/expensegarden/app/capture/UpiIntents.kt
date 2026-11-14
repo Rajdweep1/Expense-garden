@@ -6,7 +6,7 @@ import android.net.Uri
 import android.widget.Toast
 
 object UpiIntents {
-    /** Opens the UPI app chooser for [uri] (from UpiQr.paymentUri). False when no UPI app is installed. */
+    /** Opens the UPI app chooser for [uri] (from UpiQr.handoffUri). False when no UPI app is installed. */
     fun launchPayment(context: Context, uri: String): Boolean {
         val pay = Intent(Intent.ACTION_VIEW, Uri.parse(uri))
         // createChooser never throws ActivityNotFoundException — probe explicitly instead.

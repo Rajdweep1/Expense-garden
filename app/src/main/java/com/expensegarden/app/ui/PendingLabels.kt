@@ -26,12 +26,16 @@ object PendingLabels {
     fun discarded(amountPaise: Long, payee: String): String = "Discarded ${Money.display(amountPaise)} to $payee"
 
     /** A person's QR: UPI apps refuse person-to-person payments started by another app, so the
-     *  chosen UPI app opens and the same QR is scanned there. */
+     *  chosen UPI app opens and the same QR is scanned there. Says what happens next, not what
+     *  can't (his call, 2026-11-14). */
     fun openingUpiApp(appLabel: String, scanner: Boolean): String =
-        "UPI won't let other apps pay people. Opening " +
-            (if (scanner) "$appLabel's scanner" else appLabel) + " — scan the same QR there."
+        "Opening " + (if (scanner) "$appLabel's scanner" else appLabel) + " — scan the same QR to pay."
 
-    fun logYourPayment(payee: String): String = TODO()
-    fun paidAt(epochMillis: Long, zone: ZoneId): String = TODO()
-    fun dropped(payee: String): String = TODO()
+    /** A home card for a payment handed off and not logged yet (pay-first). */
+    fun logYourPayment(payee: String): String = "Log your payment to $payee"
+
+    fun paidAt(epochMillis: Long, zone: ZoneId): String = "Paid " + time.format(Instant.ofEpochMilli(epochMillis).atZone(zone))
+
+    /** The Undo bar after "Didn't pay". */
+    fun dropped(payee: String): String = "Removed the payment to $payee"
 }
