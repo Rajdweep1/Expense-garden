@@ -24,6 +24,23 @@ sealed interface PrePayDecision {
     ) : PrePayDecision
 }
 
+/** Pay first: the one card before paying appears only when the month (with this payment's best
+ *  guess, spec D1) is already over pace or budget. Necessities and fixed payees never get it, and
+ *  an unknown payee gets it without the quip or dodge credit — backing out of a first-time chemist
+ *  must not farm the "backed out" rare (spec D5, GatePresentation's old rule). */
 object PrePayCheck {
-    fun decide(i: PrePayInput): PrePayDecision = TODO()
+    fun decide(i: PrePayInput): PrePayDecision {
+        val offender = i.verdict.offender
+        if (i.verdict.severity == Severity.OK || offender == null || i.isNecessity || i.isFixedPayee) return PrePayDecision.Go
+        val line = if (i.verdict.severity == Severity.BREACH) offender.budgetPaise else i.verdict.allowancePaise
+        return PrePayDecision.Card(
+            severity = i.verdict.severity,
+            overPaise = offender.spentPaise + i.estimatePaise - line,
+            scopeLabel = offender.label.takeIf { offender.categoryId != null },
+            estimatePaise = i.estimatePaise,
+            estimateSource = i.estimateSource,
+            withQuip = i.payeeKnown,
+            recordsDodge = i.payeeKnown,
+        )
+    }
 }

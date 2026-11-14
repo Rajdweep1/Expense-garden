@@ -9,6 +9,9 @@ object Reconciler {
 
     data class Decisions(val monthsToClose: List<String>, val streakHitsToEmit: List<Int>)
 
+    /** @param heldMonths months holding a payment not logged yet: closing them now would be
+     *    permanent (append-only) and could be wrong (pay-first spec D3).
+     *  @param holdStreak true while any payment is unlogged, for the same reason. */
     fun decide(
         currentMonth: YearMonth,
         monthsWithData: List<YearMonth>,
@@ -19,9 +22,10 @@ object Reconciler {
         holdStreak: Boolean = false,
     ): Decisions = Decisions(
         monthsToClose = monthsWithData
-            .filter { it < currentMonth && it.toString() !in closedMonths }
+            .filter { it < currentMonth && it.toString() !in closedMonths && it.toString() !in heldMonths }
             .sorted()
             .map { it.toString() },
-        streakHitsToEmit = STREAK_THRESHOLDS.filter { it <= currentStreakDays && it !in streakHitDaysThisMonth },
+        streakHitsToEmit = if (holdStreak) emptyList()
+            else STREAK_THRESHOLDS.filter { it <= currentStreakDays && it !in streakHitDaysThisMonth },
     )
 }

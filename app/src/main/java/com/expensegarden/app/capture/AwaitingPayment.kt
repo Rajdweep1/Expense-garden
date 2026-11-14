@@ -1,5 +1,7 @@
 package com.expensegarden.app.capture
 
+/** A scanned payment handed to a UPI app and not logged yet (pay-first spec). [id] becomes the
+ *  transaction's uuid, so logging it twice writes one row. */
 data class AwaitingPayment(
     val id: String,
     val vpa: String,
@@ -11,7 +13,13 @@ data class AwaitingPayment(
     val estimatePaise: Long,
 )
 
+/** Which awaiting payment does what. Pure, so the choices are JVM-tested. */
 object AwaitingSelect {
-    fun toOpen(list: List<AwaitingPayment>): AwaitingPayment? = TODO()
-    fun homeCards(list: List<AwaitingPayment>, openId: String?): List<AwaitingPayment> = TODO()
+    /** The payment to open the Log it form for on return: the oldest just handed off (spec D8). */
+    fun toOpen(list: List<AwaitingPayment>): AwaitingPayment? =
+        list.filter { it.handedOffAt != null }.minByOrNull { it.scannedAt }
+
+    /** Every awaiting payment but the one whose form is open, oldest first. */
+    fun homeCards(list: List<AwaitingPayment>, openId: String?): List<AwaitingPayment> =
+        list.filter { it.id != openId }.sortedBy { it.scannedAt }
 }

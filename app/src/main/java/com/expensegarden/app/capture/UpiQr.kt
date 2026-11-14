@@ -66,5 +66,20 @@ object UpiQr {
 
     private fun keyOf(pair: String) = pair.substringBefore('=').lowercase()
 
-    fun handoffUri(raw: String): String = TODO()
+    /** What the pay-first hand-off sends: the scanned string byte for byte with the scheme
+     *  lowercased; a valid fixed `am` stays, any other `am` is removed, nothing is added — with no
+     *  amount the UPI app asks for one, exactly as when its own scanner reads the QR. */
+    fun handoffUri(raw: String): String {
+        val lowered = lowerScheme(raw.trim())
+        if (fixedAmountPaise(lowered) != null || params(lowered, "am").isEmpty()) return lowered
+        val hash = lowered.indexOf('#')
+        val body = if (hash >= 0) lowered.substring(0, hash) else lowered
+        val fragment = if (hash >= 0) lowered.substring(hash) else ""
+        val q = body.indexOf('?')
+        val kept = body.substring(q + 1).split('&').filter { it.isNotEmpty() && keyOf(it) != "am" }
+        return body.substring(0, q + 1) + kept.joinToString("&") + fragment
+    }
+
+    private fun lowerScheme(s: String): String =
+        if (s.length >= PREFIX.length && s.startsWith(PREFIX, ignoreCase = true)) PREFIX + s.substring(PREFIX.length) else s
 }
