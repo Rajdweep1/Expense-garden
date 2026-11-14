@@ -6,10 +6,14 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-feature android:name="android.hardware.camera" android:required="true" />
 
+    <!-- The host is load-bearing: GPay, CRED and most bank apps register only for upi://pay, and a
+         query for bare upi: doesn't match a filter that names a host. Without it the app could
+         see Flipkart and Amazon but no real UPI app, and said "No UPI app found" (phone E2E,
+         2026-11-14). A scheme-only filter still matches this query. -->
     <queries>
         <intent>
             <action android:name="android.intent.action.VIEW" />
-            <data android:scheme="upi" />
+            <data android:scheme="upi" android:host="pay" />
         </intent>
     </queries>
 
