@@ -46,4 +46,21 @@ class UpiUriParserTest {
         val raw = "upi://pay?pa=shop@ybl&mc=5411&sign=ab+c%2B"
         assertEquals(raw, UpiUriParser.parse("  $raw\n")?.raw)
     }
+
+    // A QR that repeats a payment key, or hides one behind encoding or spaces, could be read one way
+    // here and another by the UPI app, so the ledger would record a payment other than the one made.
+    // Such a QR is refused (security review, 2026-11-14).
+    @Test fun `a QR repeating a payment key is refused`() {
+        for (key in listOf("pa", "pn", "am", "cu", "mc", "tr"))
+            assertNull(key, UpiUriParser.parse("upi://pay?pa=shop@ybl&$key=1&$key=2"))
+    }
+
+    @Test fun `a QR with an encoded or padded key is refused`() {
+        assertNull(UpiUriParser.parse("upi://pay?pa=shop@ybl&%61m=9999"))
+        assertNull(UpiUriParser.parse("upi://pay?pa=shop@ybl& am=5"))
+        assertNull(UpiUriParser.parse("upi://pay?pa=shop@ybl&am =5"))
+    }
+
+    @Test fun `a repeated harmless key is still accepted`() =
+        assertEquals("shop@ybl", UpiUriParser.parse("upi://pay?pa=shop@ybl&aid=1&aid=2")?.vpa)
 }
