@@ -130,6 +130,8 @@ fun EntryScreen(vm: MainViewModel, onDone: () -> Unit) {
                     when (val action = UpiScanner.personAction(upiPrefs.personAppPackage, apps.map { it.pkg })) {
                         PersonAction.NoneInstalled -> Toast.makeText(context, "No UPI app found", Toast.LENGTH_LONG).show()
                         is PersonAction.Open -> if (!openForPerson(apps.first { it.pkg == action.pkg })) {
+                            val label = apps.first { it.pkg == action.pkg }.label
+                            Toast.makeText(context, "Couldn't open $label — pick another", Toast.LENGTH_LONG).show()
                             personPicker = apps
                             return@launch   // the picker ends in onDone()
                         }

@@ -330,7 +330,7 @@ private fun UpiAppCard(upiPrefs: UpiPrefs) {
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     DropdownMenuItem(
-                        text = { Text("None — ask each time") },
+                        text = { Text("None — ask next time") },
                         onClick = { upiPrefs.personAppPackage = null; chosen = null; menuOpen = false },
                     )
                     apps.forEach { app ->

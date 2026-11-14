@@ -25,7 +25,6 @@ object PendingLabels {
 
     fun discarded(amountPaise: Long, payee: String): String = "Discarded ${Money.display(amountPaise)} to $payee"
 
-
     /** A person's QR: UPI apps refuse person-to-person payments started by another app, so the
      *  chosen UPI app opens and the same QR is scanned there. */
     fun openingUpiApp(appLabel: String, scanner: Boolean): String =
