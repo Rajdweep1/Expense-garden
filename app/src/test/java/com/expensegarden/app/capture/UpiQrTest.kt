@@ -7,53 +7,33 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class UpiQrTest {
-    @Test fun `a merchant QR passes through with only the amount added`() {
-        val raw = "upi://pay?pa=shop@ybl&pn=Sharma%20Chai&mc=5411&tr=ORD1&sign=ab%2Bc%3D"
-        assertEquals("$raw&am=1.00&cu=INR", UpiQr.paymentUri(raw, 100))
+    // The hand-off link: the scanned QR byte for byte, the scheme lowercased (Android matches it
+    // case-sensitively), and an `am` kept only when the QR fixes a valid one — the UPI app asks for
+    // the amount otherwise (pay-first spec, D10).
+    @Test fun `a QR without an amount is handed over unchanged`() {
+        val raw = "upi://pay?pa=shop@ybl&pn=Sharma%20Chai&mc=5411&tr=ORD1&sign=ab+c%2B%3D"
+        assertEquals(raw, UpiQr.handoffUri(raw))
+        assertEquals("upi://pay?pa=x@ybl&", UpiQr.handoffUri("upi://pay?pa=x@ybl&"))
     }
 
-    @Test fun `a QR with its own amount is passed through untouched`() {
+    @Test fun `a QR with its own amount keeps it`() {
         val raw = "upi://pay?pa=shop@ybl&mc=5411&am=50.00&cu=INR"
-        assertEquals(raw, UpiQr.paymentUri(raw, 5000))
+        assertEquals(raw, UpiQr.handoffUri(raw))
     }
 
-    @Test fun `cu is not added twice`() {
-        val raw = "upi://pay?pa=shop@ybl&mc=5411&cu=INR"
-        assertEquals("$raw&am=1.00", UpiQr.paymentUri(raw, 100))
+    @Test fun `a malformed or duplicated am is stripped and nothing is added`() {
+        assertEquals("upi://pay?pa=shop@ybl&mc=5411", UpiQr.handoffUri("upi://pay?pa=shop@ybl&am=0.00&mc=5411"))
+        assertEquals("upi://pay?pa=s@ybl&mc=5411", UpiQr.handoffUri("upi://pay?pa=s@ybl&mc=5411&am=50&am=60"))
+        assertEquals("upi://pay?pa=x@ybl&mc=5411#x", UpiQr.handoffUri("upi://pay?pa=x@ybl&am=&mc=5411#x"))
     }
 
-    @Test fun `keys match in any case`() {
-        val raw = "upi://pay?pa=shop@ybl&AM=5&MC=5411"
-        assertEquals(raw, UpiQr.paymentUri(raw, 500))
-        assertEquals(QrKind.MERCHANT, UpiQr.kind(raw))
+    @Test fun `an uppercase scheme is lowercased and nothing else`() =
+        assertEquals("upi://pay?pa=X@ybl&mc=5411", UpiQr.handoffUri("UPI://PAY?pa=X@ybl&mc=5411"))
+
+    @Test fun `keys are read in any case`() {
+        assertEquals(QrKind.MERCHANT, UpiQr.kind("upi://pay?pa=shop@ybl&MC=5411"))
+        assertEquals(500L, UpiQr.fixedAmountPaise("upi://pay?pa=shop@ybl&AM=5"))
     }
-
-    @Test fun `an invalid am is replaced by the typed amount`() {
-        val out = UpiQr.paymentUri("upi://pay?pa=shop@ybl&am=0.00&mc=5411", 100)
-        assertEquals("upi://pay?pa=shop@ybl&mc=5411&am=1.00&cu=INR", out)
-        assertEquals("upi://pay?pa=x&am=1.00&cu=INR", UpiQr.paymentUri("upi://pay?pa=x&am=", 100))
-    }
-
-    @Test fun `an uppercase scheme is lowercased and nothing else`() {
-        assertTrue(UpiQr.paymentUri("UPI://PAY?pa=X@ybl&mc=5411", 100).startsWith("upi://pay?pa=X@ybl&mc=5411"))
-    }
-
-    @Test fun `a literal plus and percent-escapes survive`() {
-        val raw = "upi://pay?pa=shop@ybl&mc=5411&sign=ab+c%2B%3D"
-        assertEquals("$raw&am=1.00&cu=INR", UpiQr.paymentUri(raw, 100))
-    }
-
-    @Test fun `a bare QR gets the amount and currency`() =
-        assertEquals("upi://pay?pa=x@ybl&am=1.00&cu=INR", UpiQr.paymentUri("upi://pay?pa=x@ybl", 100))
-
-    @Test fun `a trailing ampersand adds no second one`() =
-        assertEquals("upi://pay?pa=x@ybl&am=1.00&cu=INR", UpiQr.paymentUri("upi://pay?pa=x@ybl&", 100))
-
-    @Test fun `a fragment stays last`() =
-        assertEquals(
-            "upi://pay?pa=x@ybl&mc=5411&am=1.00&cu=INR#x",
-            UpiQr.paymentUri("upi://pay?pa=x@ybl&mc=5411#x", 100),
-        )
 
     @Test fun `merchant means an mc that is neither blank nor 0000`() {
         assertEquals(QrKind.MERCHANT, UpiQr.kind("upi://pay?pa=s@ybl&mc=5411"))
@@ -89,9 +69,5 @@ class UpiQrTest {
     @Test fun `a duplicated or padded am does not fix the amount`() {
         assertNull(UpiQr.fixedAmountPaise("upi://pay?pa=s@ybl&mc=5411&am=50&am=60"))
         assertNull(UpiQr.fixedAmountPaise("upi://pay?pa=s@ybl&mc=5411&am= 50"))
-        assertEquals(
-            "upi://pay?pa=s@ybl&mc=5411&am=1.00&cu=INR",
-            UpiQr.paymentUri("upi://pay?pa=s@ybl&mc=5411&am=50&am=60", 100),
-        )
     }
 }

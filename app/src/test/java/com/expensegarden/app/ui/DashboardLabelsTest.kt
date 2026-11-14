@@ -25,4 +25,9 @@ class DashboardLabelsTest {
     @Test fun `the strip asks for a budget when there is none`() {
         assertEquals("set a budget  ›", stripLabel(null, Severity.OK, streakDays = 0))
     }
+
+    @Test fun `unlogged payments are counted before the arrow`() {
+        assertEquals("₹15,000 · over pace · 1 payment not logged  ›", stripLabel(1_500_000L, Severity.PACE_WARNING, 0, unlogged = 1))
+        assertEquals("set a budget · 2 payments not logged  ›", stripLabel(null, Severity.OK, 0, unlogged = 2))
+    }
 }

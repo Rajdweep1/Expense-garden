@@ -14,7 +14,7 @@ internal fun paceLine(severity: Severity, overallBudgetPaise: Long?): String? =
 
 /** The home strip's label. The streak shows only while the month is on pace: past today's line,
  *  today can't extend it, and a streak beside "over pace" read as good news (review R13). */
-internal fun stripLabel(overallBudgetPaise: Long?, hint: Severity, streakDays: Int): String {
+internal fun stripLabel(overallBudgetPaise: Long?, hint: Severity, streakDays: Int, unlogged: Int = 0): String {
     val budget = overallBudgetPaise ?: return "set a budget  ›"
     val streak = if (hint == Severity.OK && streakDays > 0) " · 🌱${streakDays}d" else ""
     return "${Money.display(budget)} · ${paceLine(hint, budget)}$streak  ›"

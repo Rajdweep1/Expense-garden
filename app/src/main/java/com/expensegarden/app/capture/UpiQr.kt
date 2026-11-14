@@ -65,4 +65,6 @@ object UpiQr {
             .filter { keyOf(it) == key }.map { it.substringAfter('=', "") }
 
     private fun keyOf(pair: String) = pair.substringBefore('=').lowercase()
+
+    fun handoffUri(raw: String): String = TODO()
 }

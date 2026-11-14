@@ -15,6 +15,8 @@ object Reconciler {
         closedMonths: Set<String>,
         currentStreakDays: Int,
         streakHitDaysThisMonth: Set<Int>,
+        heldMonths: Set<String> = emptySet(),
+        holdStreak: Boolean = false,
     ): Decisions = Decisions(
         monthsToClose = monthsWithData
             .filter { it < currentMonth && it.toString() !in closedMonths }

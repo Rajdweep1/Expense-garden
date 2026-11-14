@@ -40,4 +40,23 @@ class ReconcilerTest {
         )
         assertTrue(second.streakHitsToEmit.isEmpty())
     }
+
+    // Spec D3: a payment not logged yet could still change these, and both are append-only.
+    @Test fun `a month holding an unlogged payment waits to close`() {
+        val out = Reconciler.decide(
+            currentMonth = YearMonth.of(2026, 7),
+            monthsWithData = listOf(YearMonth.of(2026, 5), YearMonth.of(2026, 6)),
+            closedMonths = emptySet(), currentStreakDays = 0, streakHitDaysThisMonth = emptySet(),
+            heldMonths = setOf("2026-06"),
+        )
+        assertEquals(listOf("2026-05"), out.monthsToClose)
+    }
+
+    @Test fun `streak hits wait while any payment is unlogged`() {
+        val out = Reconciler.decide(
+            currentMonth = YearMonth.of(2026, 7), monthsWithData = emptyList(), closedMonths = emptySet(),
+            currentStreakDays = 7, streakHitDaysThisMonth = emptySet(), holdStreak = true,
+        )
+        assertTrue(out.streakHitsToEmit.isEmpty())
+    }
 }
