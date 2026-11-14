@@ -140,9 +140,9 @@ Phase 1: **1A capture core** (done bar the real-payment E2E) → **1B budgets + 
 **1E Fortune City CSV import** (not started — verify FC's CSV export actually exists first).
 
 Phase 2 backend, split three ways: **2A sync core** (done — Go core-api + Postgres, auth
-hardened 2026-10-18, wipe-and-restore verified) → **2B deploy** (runbook written; Neon + Google
-Cloud Run — Koyeb dropped 2026-10-18 when it stopped being free for new accounts; awaiting
-signup) → **2C durability** (backups, Sentry — deferred).
+hardened 2026-10-18, wipe-and-restore verified; per-user accounts 2026-11-13) → **2B deploy**
+(runbook written; Neon + Render free, both Singapore, kept awake by a cron-job.org ping — chosen
+2026-11-14 so no card is on file anywhere; Koyeb and Cloud Run dropped; awaiting signup) → **2C durability** (backups, Sentry — deferred).
 
 **Phase 3 (`ai-svc`) is dropped.** 1D delivers persona and digests on-device at ₹0 with the
 LLM outside every read path; moving it server-side would spend the offline guarantee for
