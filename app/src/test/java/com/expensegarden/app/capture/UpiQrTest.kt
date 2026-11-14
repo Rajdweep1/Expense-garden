@@ -83,4 +83,15 @@ class UpiQrTest {
         assertNull(UpiQr.payableAmount(null, "abc"))
         assertFalse(UpiQr.payableAmount("upi://pay?pa=s@ybl", "") != null)
     }
+
+    // Two `am`s, or one with spaces: the scan parser and UpiQr would read different amounts, so
+    // neither counts as fixed and the typed amount replaces them all (code review, 2026-11-14).
+    @Test fun `a duplicated or padded am does not fix the amount`() {
+        assertNull(UpiQr.fixedAmountPaise("upi://pay?pa=s@ybl&mc=5411&am=50&am=60"))
+        assertNull(UpiQr.fixedAmountPaise("upi://pay?pa=s@ybl&mc=5411&am= 50"))
+        assertEquals(
+            "upi://pay?pa=s@ybl&mc=5411&am=1.00&cu=INR",
+            UpiQr.paymentUri("upi://pay?pa=s@ybl&mc=5411&am=50&am=60", 100),
+        )
+    }
 }
