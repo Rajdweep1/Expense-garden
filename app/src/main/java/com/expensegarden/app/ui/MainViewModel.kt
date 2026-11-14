@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.expensegarden.app.AppContainer
 import com.expensegarden.app.capture.UpiPayee
+import com.expensegarden.app.capture.UpiQr
 import com.expensegarden.app.core.Money
 import com.expensegarden.app.data.CategoryEntity
 import com.expensegarden.app.data.LedgerRepository
@@ -123,7 +124,8 @@ class MainViewModel(private val container: AppContainer, private val saved: Save
             fromScan = true,
             vpa = payee.vpa,
             payeeName = payee.name ?: payee.vpa.substringBefore('@'),
-            amountText = payee.amountPaise?.let { Money.intentAmount(it) } ?: "",
+            // From UpiQr, the same reading that locks the field and sets the payable amount.
+            amountText = UpiQr.fixedAmountPaise(payee.raw)?.let { Money.intentAmount(it) } ?: "",
             txnUuid = UUID.randomUUID().toString(),
             qrUri = payee.raw,
         )

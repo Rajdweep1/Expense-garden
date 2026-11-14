@@ -20,8 +20,14 @@ object UpiQr {
         return if (!mc.isNullOrBlank() && mc != "0000") QrKind.MERCHANT else QrKind.PERSON
     }
 
-    /** The QR's own amount, only when it parses; an unparseable one is treated as absent. */
-    fun fixedAmountPaise(raw: String): Long? = param(raw, "am")?.let { Money.parseToPaise(it) }
+    /** The QR's own amount, only when there is exactly one `am`, unpadded, that parses. Anything
+     *  else is treated as absent and replaced by the typed amount: two `am`s would let the scan
+     *  parser (last wins) and this (first wins) read different amounts (code review, 2026-11-14). */
+    fun fixedAmountPaise(raw: String): Long? {
+        val ams = params(raw, "am")
+        val am = ams.singleOrNull()?.takeIf { it == it.trim() } ?: return null
+        return Money.parseToPaise(am)
+    }
 
     /** The one amount for the gate, the pending row and the link: a QR that sets one wins. */
     fun payableAmount(qrUri: String?, amountText: String): Long? =
@@ -51,10 +57,12 @@ object UpiQr {
     }
 
     /** First value of [key] (case-insensitive), raw as scanned; null when absent. */
-    private fun param(raw: String, key: String): String? {
-        val query = raw.substringAfter('?', "").substringBefore('#')
-        return query.split('&').firstOrNull { keyOf(it) == key }?.substringAfter('=', "")
-    }
+    private fun param(raw: String, key: String): String? = params(raw, key).firstOrNull()
+
+    /** Every value of [key] (case-insensitive), raw as scanned, in order. */
+    private fun params(raw: String, key: String): List<String> =
+        raw.substringAfter('?', "").substringBefore('#').split('&')
+            .filter { keyOf(it) == key }.map { it.substringAfter('=', "") }
 
     private fun keyOf(pair: String) = pair.substringBefore('=').lowercase()
 }
