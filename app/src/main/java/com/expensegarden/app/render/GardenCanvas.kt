@@ -637,10 +637,11 @@ fun GardenCanvas(
             // the result was horizontal seams — foliage and faces banding the house under the
             // eave and under the balcony, so it read as three stacked slabs with garden
             // showing through the joins. A landmark building must render whole, so it is drawn
-            // after every plant (see the drawHomestead() call below the loop). The cost is
-            // that plants standing directly in front of it lose their tops behind the wall —
-            // Rajdweep's explicit call: an unbroken house beats a few occluded plants.
-            visPlants.map { it to anchorOf(it) }.sortedBy { it.second.y }.forEach { (plant, anchor) ->
+            // after every plant BESIDE OR BEHIND it. Plants past the block's front edges are nearer
+            // the viewer than any of the house, so they are painted after it (HouseDepth): drawn
+            // first, the house's plinth buried them and it seemed to float (phone, 2026-11-14).
+            // They can't band the walls — the banding came from plants beside it.
+            fun drawPlantAt(plant: Plant, anchor: Offset) {
                 val ax = anchor.x; val ay = anchor.y
                 val popScale = pop[plant.txnUuid]?.value ?: 1f
                 if (popScale < 1f) {                                     // soil poof while springing in
@@ -693,6 +694,9 @@ fun GardenCanvas(
                     }
                 }
             }
+            val (frontPlants, otherPlants) = visPlants.map { it to anchorOf(it) }.sortedBy { it.second.y }
+                .partition { (plant, _) -> houseBmp != null && HouseDepth.inFront(plant.tile, side, foot) }
+            otherPlants.forEach { (plant, anchor) -> drawPlantAt(plant, anchor) }
             // ---- month signposts: little wooden signs where each month's growth began ----
             // Drawn in TWO passes, split around the house by the same ground-depth rule the
             // plants use. A signpost standing behind the homestead has to be occluded by it,
@@ -719,9 +723,10 @@ fun GardenCanvas(
             }
 
             drawMarkers(behind = true)
-            // house had no plants in front of it (or all front rows culled) — draw it now.
-            // Sole draw path for the homestead: after every plant, so the house is never sliced.
+            // Sole draw path for the homestead: after the plants beside and behind it, before the
+            // ones in front, so the house is never sliced and never buries a front plant.
             if (houseBmp != null && houseRowsVisible && !houseDrawn) drawHomestead()
+            frontPlants.forEach { (plant, anchor) -> drawPlantAt(plant, anchor) }
             drawMarkers(behind = false)
 
             // ---- bees: orbit a flower head, then hop to the next (stable plant list, so
