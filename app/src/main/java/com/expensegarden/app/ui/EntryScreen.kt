@@ -48,7 +48,10 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import android.widget.Toast
+import com.expensegarden.app.capture.QrKind
 import com.expensegarden.app.capture.UpiIntents
+import com.expensegarden.app.capture.UpiQr
 import com.expensegarden.app.core.Money
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size
@@ -97,7 +100,13 @@ fun EntryScreen(vm: MainViewModel, onDone: () -> Unit) {
             // Only the call that saved the pending row opens the UPI app: a second tap, or a retry
             // after a rotation cancelled the first attempt, must not start a second payment.
             if (vm.savePendingFromDraft(amountPaise, severity)) {
-                UpiIntents.launchPayment(context, draft.vpa!!, draft.payeeName, amountPaise, draft.note.ifBlank { null })
+                val qr = draft.qrUri
+                if (qr != null && UpiQr.kind(qr) == QrKind.MERCHANT) {
+                    UpiIntents.launchPayment(context, UpiQr.paymentUri(qr, amountPaise))
+                } else {
+                    // UPI apps refuse person-to-person payments started by another app.
+                    Toast.makeText(context, PendingLabels.payInApp(amountPaise, draft.payeeName), Toast.LENGTH_LONG).show()
+                }
             }
             onDone()
         }
@@ -129,6 +138,8 @@ fun EntryScreen(vm: MainViewModel, onDone: () -> Unit) {
         OutlinedTextField(
             value = draft.amountText,
             onValueChange = { vm.draft.value = draft.copy(amountText = it); amountError = false },
+            // A QR that sets its own amount is paid exactly that.
+            readOnly = draft.qrUri?.let(UpiQr::fixedAmountPaise) != null,
             label = { Text("Amount (₹)") },
             isError = amountError,
             supportingText = if (amountError) ({ Text("Enter an amount") }) else null,
@@ -239,7 +250,7 @@ fun EntryScreen(vm: MainViewModel, onDone: () -> Unit) {
 
         Button(
             onClick = {
-                val amountPaise = Money.parseUserAmount(draft.amountText)
+                val amountPaise = UpiQr.payableAmount(draft.qrUri, draft.amountText)
                 // Both flags set in one pass, so a user learns about both problems at once
                 // rather than discovering the second after fixing the first.
                 amountError = amountPaise == null
@@ -269,7 +280,7 @@ fun EntryScreen(vm: MainViewModel, onDone: () -> Unit) {
     }
 
     gate?.let { view ->
-        val amountPaise = Money.parseUserAmount(draft.amountText) ?: return@let
+        val amountPaise = UpiQr.payableAmount(draft.qrUri, draft.amountText) ?: return@let
         GateDialog(
             view = view,
             onProceed = {

@@ -125,6 +125,7 @@ class MainViewModel(private val container: AppContainer, private val saved: Save
             payeeName = payee.name ?: payee.vpa.substringBefore('@'),
             amountText = payee.amountPaise?.let { Money.intentAmount(it) } ?: "",
             txnUuid = UUID.randomUUID().toString(),
+            qrUri = payee.raw,
         )
         viewModelScope.launch { prefillCategoryFromPayee(payee.vpa) }
     }

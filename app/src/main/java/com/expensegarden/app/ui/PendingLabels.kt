@@ -26,5 +26,6 @@ object PendingLabels {
     fun discarded(amountPaise: Long, payee: String): String = "Discarded ${Money.display(amountPaise)} to $payee"
 
     /** A person's QR: UPI apps refuse person-to-person payments started by another app. */
-    fun payInApp(amountPaise: Long, payee: String): String = TODO()
+    fun payInApp(amountPaise: Long, payee: String): String =
+        "UPI apps don't take payments to people from other apps. Pay ${Money.display(amountPaise)} to $payee in your UPI app, then confirm here."
 }

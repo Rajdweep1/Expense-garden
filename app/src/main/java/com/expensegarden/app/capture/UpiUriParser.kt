@@ -32,7 +32,7 @@ object UpiUriParser {
             name = params["pn"]?.takeIf { it.isNotBlank() },
             amountPaise = params["am"]?.let { Money.parseToPaise(it) },
             note = params["tn"]?.takeIf { it.isNotBlank() },
-            raw = "",
+            raw = trimmed,
         )
     }
 

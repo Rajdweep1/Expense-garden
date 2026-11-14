@@ -14,6 +14,7 @@ object DraftState {
     private const val NOTE = "draft.note"
     private const val OCCURRED_AT = "draft.occurredAt"
     private const val TXN_UUID = "draft.txnUuid"
+    private const val QR_URI = "draft.qrUri"
 
     fun save(handle: SavedStateHandle, draft: EntryDraft) {
         handle[FROM_SCAN] = draft.fromScan
@@ -24,6 +25,7 @@ object DraftState {
         handle[NOTE] = draft.note
         handle[OCCURRED_AT] = draft.occurredAt
         handle[TXN_UUID] = draft.txnUuid
+        handle[QR_URI] = draft.qrUri
         handle[PRESENT] = true
     }
 
@@ -39,6 +41,7 @@ object DraftState {
             note = handle.get<String>(NOTE) ?: "",
             occurredAt = handle.get<Long>(OCCURRED_AT) ?: System.currentTimeMillis(),
             txnUuid = handle.get<String>(TXN_UUID),
+            qrUri = handle.get<String>(QR_URI),
         )
     }
 }
