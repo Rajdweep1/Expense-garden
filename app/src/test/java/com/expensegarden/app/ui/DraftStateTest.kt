@@ -10,10 +10,10 @@ class DraftStateTest {
     private fun afterProcessDeath(before: SavedStateHandle) =
         SavedStateHandle(before.keys().associateWith { before.get<Any?>(it) })
 
-    @Test fun `a scanned draft and a manual one both survive saved state`() {
+    @Test fun `an after-payment draft and a manual one both survive saved state`() {
         val scanned = EntryDraft(
-            fromScan = true, vpa = "shop@ybl", payeeName = "Sharma Chai", amountText = "1,200",
-            categoryId = 103L, note = "masala", occurredAt = 1_760_000_000_000L, txnUuid = "uuid-1",
+            awaitingId = "pay-1", vpa = "shop@ybl", payeeName = "Sharma Chai", amountText = "1,200",
+            categoryId = 103L, note = "masala", occurredAt = 1_760_000_000_000L,
             qrUri = "upi://pay?pa=shop@ybl&mc=5411",
         )
         val manual = EntryDraft(payeeName = "Kirana", amountText = "250", occurredAt = 1_760_000_000_000L)

@@ -47,6 +47,7 @@ data class EntryDraft(
     val txnUuid: String? = null,
     /** The scanned QR, kept to pay a merchant with exactly what was scanned. Null on the manual path. */
     val qrUri: String? = null,
+    val awaitingId: String? = null,
 )
 
 /** Home header: null while Room's first emission is in flight (loading skeleton). */

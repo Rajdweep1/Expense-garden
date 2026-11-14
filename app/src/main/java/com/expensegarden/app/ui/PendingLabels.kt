@@ -30,4 +30,8 @@ object PendingLabels {
     fun openingUpiApp(appLabel: String, scanner: Boolean): String =
         "UPI won't let other apps pay people. Opening " +
             (if (scanner) "$appLabel's scanner" else appLabel) + " — scan the same QR there."
+
+    fun logYourPayment(payee: String): String = TODO()
+    fun paidAt(epochMillis: Long, zone: ZoneId): String = TODO()
+    fun dropped(payee: String): String = TODO()
 }

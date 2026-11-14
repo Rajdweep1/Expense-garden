@@ -28,14 +28,20 @@ class PendingLabelsTest {
         assertEquals("Discarded ₹200 to Sharma Chai", PendingLabels.discarded(20_000, "Sharma Chai"))
     }
 
-    @Test fun `a person QR says which app opens and how`() {
+    @Test fun `a person QR says which app opens and what to do there`() {
         assertEquals(
-            "UPI won't let other apps pay people. Opening GPay's scanner — scan the same QR there.",
+            "Opening GPay's scanner — scan the same QR to pay.",
             PendingLabels.openingUpiApp("GPay", scanner = true),
         )
         assertEquals(
-            "UPI won't let other apps pay people. Opening super.money — scan the same QR there.",
+            "Opening super.money — scan the same QR to pay.",
             PendingLabels.openingUpiApp("super.money", scanner = false),
         )
+    }
+
+    @Test fun `an awaiting payment card names the payee and when it was paid`() {
+        assertEquals("Log your payment to Sharma Chai", PendingLabels.logYourPayment("Sharma Chai"))
+        assertEquals("Paid 14 Nov, 18:30", PendingLabels.paidAt(1_763_125_200_000L, zone))
+        assertEquals("Removed the payment to Sharma Chai", PendingLabels.dropped("Sharma Chai"))
     }
 }
