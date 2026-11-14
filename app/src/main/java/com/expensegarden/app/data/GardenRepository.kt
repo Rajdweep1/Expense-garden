@@ -1,5 +1,6 @@
 package com.expensegarden.app.data
 
+import com.expensegarden.app.capture.AwaitingPayment
 import com.expensegarden.app.game.BudgetInForce
 import com.expensegarden.app.game.GardenFolder
 import com.expensegarden.app.game.GardenState
@@ -31,6 +32,8 @@ class GardenRepository(
     private val db: AppDatabase,
     private val ledger: LedgerRepository,
     private val prefs: GardenPrefs,
+    /** Payments not logged yet: their months may not close, nor streaks be awarded (spec D3). */
+    private val awaiting: () -> List<AwaitingPayment> = { emptyList() },
 ) {
     private val zone: ZoneId = ZoneId.systemDefault()
 
@@ -304,6 +307,8 @@ class GardenRepository(
             closedMonths = closed,
             currentStreakDays = streak,
             streakHitDaysThisMonth = hitAlready,
+            heldMonths = awaiting().map { ledger.monthKeyOf(it.scannedAt) }.toSet(),
+            holdStreak = awaiting().isNotEmpty(),
         )
 
         for (m in decisions.monthsToClose) {

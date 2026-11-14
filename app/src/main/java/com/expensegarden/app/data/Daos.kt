@@ -107,6 +107,12 @@ interface TransactionDao {
     @Query("SELECT * FROM txn WHERE uuid = :uuid")
     suspend fun byUuid(uuid: String): TransactionEntity?
 
+    @Query(
+        "SELECT t.amountPaise FROM txn t JOIN payee p ON p.id = t.payeeId " +
+            "WHERE p.vpa = :vpa AND t.status = 'LOGGED' ORDER BY t.occurredAt DESC LIMIT 1"
+    )
+    suspend fun lastLoggedAmountTo(vpa: String): Long?
+
     @Query("UPDATE txn SET regret = :regret, updatedAt = :updatedAt WHERE uuid = :uuid")
     suspend fun setRegret(uuid: String, regret: Regret, updatedAt: Long)
 

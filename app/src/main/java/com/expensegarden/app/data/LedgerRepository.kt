@@ -49,9 +49,20 @@ class LedgerRepository(
             }
         }
 
-    suspend fun saveLoggedOnce(draft: Draft, source: TxnSource, breached: Boolean, uuid: String): Boolean = TODO()
+    /** Pay first's Log it: straight to LOGGED with the scan's [uuid], once — false, writing
+     *  nothing, when that uuid already exists (a double tap, or a kill between this and the
+     *  awaiting store's removal). Check and insert share one transaction. */
+    suspend fun saveLoggedOnce(draft: Draft, source: TxnSource, breached: Boolean, uuid: String): Boolean =
+        db.withTransaction {
+            if (db.transactionDao().byUuid(uuid) != null) false
+            else {
+                save(draft, source, TxnStatus.LOGGED, breached, uuid)
+                true
+            }
+        }
 
-    suspend fun lastAmountTo(vpa: String): Long? = TODO()
+    /** The newest logged payment to [vpa] — the pre-payment card's best guess (spec D1). */
+    suspend fun lastAmountTo(vpa: String): Long? = db.transactionDao().lastLoggedAmountTo(vpa)
 
     /** Manual path: post-hoc, money already spent — straight to LOGGED (spec §5.1). */
     suspend fun saveManualLogged(draft: Draft, breachedAtLogging: Boolean): String =
@@ -110,7 +121,9 @@ class LedgerRepository(
         onChanged()
     }
 
-    /** User backed out at the gate — record the dodge; the game rewards it later (1C). */
+    /** User backed out before paying — record the dodge; the game rewards it later (1C). Amount and
+     *  category only when known: paying first, an unknown payee has neither (spec D4), and nothing
+     *  that reads gate.dodged uses the payload. */
     suspend fun recordGateDodge(amountPaise: Long?, categoryId: Long?) {
         val payload = JSONObject().put("amountPaise", amountPaise).put("categoryId", categoryId)
         db.gameEventDao().insert(

@@ -6,6 +6,7 @@ import com.expensegarden.app.ai.GeminiClient
 import com.expensegarden.app.ai.LlmClient
 import com.expensegarden.app.ai.NoopLlmClient
 import com.expensegarden.app.data.AiPrefs
+import com.expensegarden.app.data.AwaitingLogStore
 import com.expensegarden.app.data.UpiPrefs
 import com.expensegarden.app.data.AppDatabase
 import com.expensegarden.app.data.BudgetRepository
@@ -54,7 +55,9 @@ class AppContainer(private val app: Application) {
     // Declared above `garden`, which now takes it. Same declaration-order hazard as the clock
     // above: leaving it below would hand GardenRepository a null GardenPrefs.
     val prefs: GardenPrefs = GardenPrefs(app)
-    val garden: GardenRepository = GardenRepository(db, ledger, prefs)
+    // Above `garden`, which reads it: the same declaration-order hazard as `prefs`.
+    val awaiting: AwaitingLogStore = AwaitingLogStore(app)
+    val garden: GardenRepository = GardenRepository(db, ledger, prefs, awaiting::all)
     val digests: DigestRepository = DigestRepository(db, ledger)
     val aiPrefs: AiPrefs = AiPrefs(app)
     val upiPrefs: UpiPrefs = UpiPrefs(app)
